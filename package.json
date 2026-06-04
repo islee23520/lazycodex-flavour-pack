@@ -1,0 +1,50 @@
+{
+  "name": "lfp",
+  "version": "0.1.0",
+  "description": "Linalab-local LazyCodex/Codex flavour pack with lightweight agent override sync.",
+  "type": "module",
+  "license": "MIT",
+  "author": {
+    "name": "Linalab",
+    "email": "dev@linalab.io",
+    "url": "https://linalab.io"
+  },
+  "homepage": "https://linalab.io",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/islee23520/lzy-lfp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/islee23520/lzy-lfp/issues"
+  },
+  "keywords": [
+    "lazycodex",
+    "codex",
+    "linalab",
+    "flavour-pack",
+    "agents",
+    "hooks"
+  ],
+  "bin": {
+    "lfp": "scripts/cli.mjs"
+  },
+  "files": [
+    ".codex-plugin",
+    "agent-configs",
+    "agent-overrides",
+    "hooks",
+    "scripts",
+    "ROADMAP.md",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "setup": "node scripts/cli.mjs setup",
+    "dry-setup": "node scripts/cli.mjs dry-setup",
+    "doctor": "node scripts/cli.mjs doctor",
+    "pack:check": "npm pack --dry-run"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

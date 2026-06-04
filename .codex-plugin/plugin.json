@@ -1,0 +1,42 @@
+{
+  "name": "lfp",
+  "version": "0.1.0",
+  "description": "Linalab-local extensions for LazyCodex without modifying the upstream plugin cache.",
+  "author": {
+    "name": "Linalab",
+    "email": "dev@linalab.io",
+    "url": "https://linalab.io"
+  },
+  "homepage": "https://linalab.io",
+  "repository": "https://github.com/islee23520/lzy-lfp",
+  "license": "MIT",
+  "keywords": ["lazycodex", "linalab", "flavour-pack", "codex", "hooks", "agents"],
+  "hooks": "./hooks/hooks.json",
+  "interface": {
+    "displayName": "LazyCodex Linalab Flavour Pack",
+    "shortDescription": "Linalab hooks, agents, and model overrides layered on LazyCodex.",
+    "longDescription": "Adds Linalab-specific Codex hooks, agent role files, and vanilla LazyCodex/OMO model override sync without editing upstream plugin cache files.",
+    "developerName": "Linalab",
+    "category": "Developer Tools",
+    "capabilities": ["Hooks", "Agents", "Workflow"],
+    "websiteURL": "https://linalab.io",
+    "privacyPolicyURL": "https://linalab.io",
+    "termsOfServiceURL": "https://linalab.io",
+    "defaultPrompt": [
+      "Run UI work with Linalab visual QA.",
+      "Sync Linalab LazyCodex agent model overrides.",
+      "Use visual-engineering for screenshot-backed review.",
+      "Use visual-looker for Gemini multimodal visual evidence inspection."
+    ],
+    "brandColor": "#2563EB",
+    "screenshots": []
+  },
+  "x-linalab": {
+    "extends": ["omo@sisyphuslabs", "lazycodex-ai"],
+    "modelOverrideSource": "./agent-configs/omo-agent-model-overrides.toml",
+    "additionalAgents": [
+      "./agent-configs/visual-engineering.toml",
+      "./agent-configs/visual-looker.toml"
+    ]
+  }
+}

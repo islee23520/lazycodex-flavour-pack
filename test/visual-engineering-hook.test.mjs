@@ -1,0 +1,107 @@
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import test from "node:test";
+import assert from "node:assert/strict";
+
+import { runUserPromptSubmitHook } from "../scripts/visual-engineering-hook.mjs";
+
+test("given visual code work prompt when hook runs then emits visual-engineering guidance", () => {
+  const output = runUserPromptSubmitHook({
+    hook_event_name: "UserPromptSubmit",
+    prompt: "Update the React layout and run visual QA against screenshots."
+  });
+
+  const parsed = JSON.parse(output);
+  assert.equal(parsed.hookSpecificOutput.hookEventName, "UserPromptSubmit");
+  assert.match(parsed.hookSpecificOutput.additionalContext, /visual-engineering/);
+  assert.match(parsed.hookSpecificOutput.additionalContext, /agent_type="visual-engineering"/);
+  assert.match(parsed.hookSpecificOutput.additionalContext, /agent-configs\/visual-engineering\.toml/);
+  assert.match(parsed.hookSpecificOutput.additionalContext, /visual-looker/);
+  assert.match(parsed.hookSpecificOutput.additionalContext, /agent_type="visual-looker"/);
+  assert.match(parsed.hookSpecificOutput.additionalContext, /agent-configs\/visual-looker\.toml/);
+});
+
+test("given art work prompt when hook runs then emits visual-engineering guidance", () => {
+  const output = runUserPromptSubmitHook({
+    hook_event_name: "UserPromptSubmit",
+    prompt: "Please help with art direction and sprite polish for this asset."
+  });
+
+  const parsed = JSON.parse(output);
+  assert.match(parsed.hookSpecificOutput.additionalContext, /agent_type="visual-engineering"/);
+  assert.match(parsed.hookSpecificOutput.additionalContext, /agent_type="visual-looker"/);
+});
+
+test("given Korean art work prompt when hook runs then emits visual-engineering guidance", () => {
+  const output = runUserPromptSubmitHook({
+    hook_event_name: "UserPromptSubmit",
+    prompt: "캐릭터 아트 작업 품질 확인해줘."
+  });
+
+  const parsed = JSON.parse(output);
+  assert.match(parsed.hookSpecificOutput.additionalContext, /agent_type="visual-engineering"/);
+});
+
+test("given QA session prompt when hook runs then requires visual reviewer coverage", () => {
+  const output = runUserPromptSubmitHook({
+    hook_event_name: "UserPromptSubmit",
+    prompt: "Start a QA session for this game asset and produce the final verdict."
+  });
+
+  const parsed = JSON.parse(output);
+  assert.match(parsed.hookSpecificOutput.additionalContext, /visual reviewer/i);
+  assert.match(parsed.hookSpecificOutput.additionalContext, /final verdict/i);
+  assert.match(parsed.hookSpecificOutput.additionalContext, /agent_type="visual-engineering"/);
+});
+
+test("given ULW reviewer prompt when hook runs then requires final visual verdict", () => {
+  const output = runUserPromptSubmitHook({
+    hook_event_name: "UserPromptSubmit",
+    prompt: "Run ulw review-work and make the reviewer final verdict check visual quality."
+  });
+
+  const parsed = JSON.parse(output);
+  assert.match(parsed.hookSpecificOutput.additionalContext, /ULW/i);
+  assert.match(parsed.hookSpecificOutput.additionalContext, /visual reviewer/i);
+  assert.match(parsed.hookSpecificOutput.additionalContext, /agent_type="visual-looker"/);
+});
+
+test("given ULW plan prompt when hook runs then requires high accuracy review after draft", () => {
+  const output = runUserPromptSubmitHook({
+    hook_event_name: "UserPromptSubmit",
+    prompt: "Use ulw-plan to draft the implementation plan for this feature."
+  });
+
+  const parsed = JSON.parse(output);
+  assert.match(parsed.hookSpecificOutput.additionalContext, /ulw-plan/i);
+  assert.match(parsed.hookSpecificOutput.additionalContext, /plan draft/i);
+  assert.match(parsed.hookSpecificOutput.additionalContext, /high-accuracy review/i);
+});
+
+test("given non-visual prompt when hook runs then stays quiet", () => {
+  const output = runUserPromptSubmitHook({
+    hook_event_name: "UserPromptSubmit",
+    prompt: "Refactor the backend repository class."
+  });
+
+  assert.equal(output, "");
+});
+
+test("given transcript already has guidance when hook runs then does not repeat", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "linalab-visual-hook-"));
+  try {
+    const transcriptPath = path.join(root, "transcript.jsonl");
+    writeFileSync(transcriptPath, "<linalab-visual-engineering-guidance>\n");
+
+    const output = runUserPromptSubmitHook({
+      hook_event_name: "UserPromptSubmit",
+      prompt: "Check UI screenshot alignment.",
+      transcript_path: transcriptPath
+    });
+
+    assert.equal(output, "");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
