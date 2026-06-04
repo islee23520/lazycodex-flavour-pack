@@ -92,7 +92,11 @@ test("given packaged override config when reading then targets Codex-loaded agen
 
   assert.equal(config.source.agentsDir, "/Users/ilseoblee/.codex/agents");
   assert.equal(config.overrides.explorer.model, "grok-4.20-0309-non-reasoning");
-  assert.equal(config.overrides.librarian.model, "grok-4.3");
+  assert.deepEqual(config.overrides.librarian, {
+    model: "gpt-5.4-mini",
+    model_reasoning_effort: "low",
+    service_tier: "fast"
+  });
 });
 
 test("given check mode when syncing then reports pending changes without writing", () => {

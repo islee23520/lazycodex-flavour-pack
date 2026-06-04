@@ -7,6 +7,6 @@ model_reasoning_effort = "low"
 service_tier = "fast"
 
 [agents.librarian]
-model = "grok-4.3"
+model = "gpt-5.4-mini"
 model_reasoning_effort = "low"
 service_tier = "fast"
