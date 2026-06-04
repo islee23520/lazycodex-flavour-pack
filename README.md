@@ -4,6 +4,8 @@ LFP means LazyCodex Flavour Pack. This package is the Linalab-local flavour pack
 
 This plugin is intentionally layered on top of the upstream LazyCodex/OMO plugin. It must stay lightweight: installing or syncing it only overrides selected settings on already-installed agents. It does not create, regenerate, migrate, or manage the upstream agent set.
 
+Repository and LFP-owned issues live at <https://github.com/islee23520/lfp>. If a failure is caused by upstream LazyCodex/OMO behavior rather than this flavour pack, register that issue on the upstream LazyCodex tracker instead.
+
 The setup command checks that the configured upstream `agentsDir` exists and that every agent named in the override config already has a TOML file there. If LazyCodex/OMO is missing or stale, the command fails and the operator must install or update the upstream plugin first.
 
 The durable source of truth is `agent-configs/`; the sync command reapplies only model-related fields to the current OMO agent snapshot.

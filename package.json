@@ -12,10 +12,10 @@
   "homepage": "https://linalab.io",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/islee23520/lzy-lfp.git"
+    "url": "git+https://github.com/islee23520/lfp.git"
   },
   "bugs": {
-    "url": "https://github.com/islee23520/lzy-lfp/issues"
+    "url": "https://github.com/islee23520/lfp/issues"
   },
   "keywords": [
     "lazycodex",

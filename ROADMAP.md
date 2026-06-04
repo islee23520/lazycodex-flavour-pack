@@ -2,6 +2,8 @@
 
 LFP means LazyCodex Flavour Pack. Keep that expansion visible in planning docs, README text, and issue surfaces so the package name does not drift into an unexplained acronym.
 
+Roadmap items should be mirrored as GitHub issues on <https://github.com/islee23520/lfp/issues>. Keep issues scoped to LFP unless the root cause is upstream LazyCodex/OMO behavior.
+
 ## Direction
 
 - Keep LFP as a lightweight overlay for already-installed LazyCodex/OMO agents.
