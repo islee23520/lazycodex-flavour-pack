@@ -6,6 +6,13 @@ import assert from "node:assert/strict";
 
 import { runUserPromptSubmitHook } from "../scripts/visual-engineering-hook.mjs";
 
+const lfpHooks = JSON.parse(readFileSync(path.resolve("hooks/hooks.json"), "utf8"));
+const lazyCodexUserPromptSubmitHooks = [
+  { hooks: [{ type: "command", command: "node \"${PLUGIN_ROOT}/components/rules/dist/cli.js\" hook user-prompt-submit" }] },
+  { hooks: [{ type: "command", command: "node \"${PLUGIN_ROOT}/components/ultrawork/dist/cli.js\" hook user-prompt-submit" }] },
+  { hooks: [{ type: "command", command: "node \"${PLUGIN_ROOT}/components/ulw-loop/dist/cli.js\" hook user-prompt-submit" }] }
+];
+
 test("given visual code work prompt when hook runs then emits visual-engineering guidance", () => {
   const output = runUserPromptSubmitHook({
     hook_event_name: "UserPromptSubmit",
@@ -67,6 +74,25 @@ test("given ULW reviewer prompt when hook runs then requires final visual verdic
   assert.match(parsed.hookSpecificOutput.additionalContext, /agent_type="visual-looker"/);
 });
 
+test("given full Codex ULW visual payload when hook runs then emits UserPromptSubmit additional context", () => {
+  const output = runUserPromptSubmitHook({
+    hook_event_name: "UserPromptSubmit",
+    session_id: "session-test",
+    turn_id: "turn-test",
+    cwd: "/tmp/project",
+    model: "gpt-5.5",
+    permission_mode: "default",
+    transcript_path: null,
+    prompt: "Run ulw review-work and check UI screenshot alignment before final verdict."
+  });
+
+  const parsed = JSON.parse(output);
+  assert.equal(parsed.hookSpecificOutput.hookEventName, "UserPromptSubmit");
+  assert.match(parsed.hookSpecificOutput.additionalContext, /<lfp-visual-engineering-guidance>/);
+  assert.match(parsed.hookSpecificOutput.additionalContext, /ULW completion/i);
+  assert.doesNotMatch(parsed.hookSpecificOutput.additionalContext, /<ultrawork-mode>/);
+});
+
 test("given ULW plan prompt when hook runs then requires high accuracy review after draft", () => {
   const output = runUserPromptSubmitHook({
     hook_event_name: "UserPromptSubmit",
@@ -79,6 +105,20 @@ test("given ULW plan prompt when hook runs then requires high accuracy review af
   assert.match(parsed.hookSpecificOutput.additionalContext, /high-accuracy review/i);
 });
 
+test("given LFP and LazyCodex hooks when manifests are inspected then they coexist as UserPromptSubmit siblings", () => {
+  const lfpUserPromptSubmit = lfpHooks.hooks.UserPromptSubmit;
+
+  assert.equal(lfpUserPromptSubmit.length, 1);
+  assert.equal(lfpUserPromptSubmit[0].hooks.length, 1);
+  assert.equal(lfpUserPromptSubmit[0].hooks[0].type, "command");
+  assert.match(lfpUserPromptSubmit[0].hooks[0].command, /\$\{PLUGIN_ROOT\}\/scripts\/visual-engineering-hook\.mjs/);
+  assert.equal(lfpUserPromptSubmit[0].hooks[0].timeout, 5);
+  assert.equal(lfpUserPromptSubmit[0].matcher, undefined);
+  assert.equal(lazyCodexUserPromptSubmitHooks.length, 3);
+  assert.match(JSON.stringify(lazyCodexUserPromptSubmitHooks), /ultrawork\/dist\/cli\.js/);
+  assert.match(JSON.stringify(lazyCodexUserPromptSubmitHooks), /ulw-loop\/dist\/cli\.js/);
+});
+
 test("given non-visual prompt when hook runs then stays quiet", () => {
   const output = runUserPromptSubmitHook({
     hook_event_name: "UserPromptSubmit",
@@ -89,10 +129,10 @@ test("given non-visual prompt when hook runs then stays quiet", () => {
 });
 
 test("given transcript already has guidance when hook runs then does not repeat", () => {
-  const root = mkdtempSync(path.join(tmpdir(), "linalab-visual-hook-"));
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-visual-hook-"));
   try {
     const transcriptPath = path.join(root, "transcript.jsonl");
-    writeFileSync(transcriptPath, "<linalab-visual-engineering-guidance>\n");
+    writeFileSync(transcriptPath, "<lfp-visual-engineering-guidance>\n");
 
     const output = runUserPromptSubmitHook({
       hook_event_name: "UserPromptSubmit",
@@ -106,8 +146,46 @@ test("given transcript already has guidance when hook runs then does not repeat"
   }
 });
 
+test("given transcript has legacy Linalab guidance marker when ULW hook runs then does not repeat", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-visual-hook-"));
+  try {
+    const transcriptPath = path.join(root, "transcript.jsonl");
+    writeFileSync(transcriptPath, "<linalab-visual-engineering-guidance>\n");
+
+    const output = runUserPromptSubmitHook({
+      hook_event_name: "UserPromptSubmit",
+      prompt: "ulw review-work visual QA final verdict for this UI screenshot",
+      transcript_path: transcriptPath
+    });
+
+    assert.equal(output, "");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("given transcript only has LazyCodex ultrawork marker when ULW visual hook runs then emits LFP guidance", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-visual-hook-"));
+  try {
+    const transcriptPath = path.join(root, "transcript.jsonl");
+    writeFileSync(transcriptPath, "<ultrawork-mode>\nLazyCodex ultrawork context\n");
+
+    const output = runUserPromptSubmitHook({
+      hook_event_name: "UserPromptSubmit",
+      prompt: "ulw review-work visual QA final verdict for this UI screenshot",
+      transcript_path: transcriptPath
+    });
+
+    const parsed = JSON.parse(output);
+    assert.match(parsed.hookSpecificOutput.additionalContext, /<lfp-visual-engineering-guidance>/);
+    assert.match(parsed.hookSpecificOutput.additionalContext, /visual reviewer/i);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("given stale explorer override when hook runs then setup is applied silently", () => {
-  const root = mkdtempSync(path.join(tmpdir(), "linalab-visual-hook-"));
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-visual-hook-"));
   try {
     const codexHome = path.join(root, "codex-home");
     const sourceDir = path.join(root, "agents");
