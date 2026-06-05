@@ -1,21 +1,28 @@
 {
   "name": "lfp",
   "version": "0.1.0",
-  "description": "Linalab-local extensions for LazyCodex without modifying the upstream plugin cache.",
+  "description": "Linalab Flavour pack for LazyCodex.",
   "author": {
     "name": "Linalab",
-    "email": "dev@linalab.io",
+    "email": "islee@linalab.io",
     "url": "https://linalab.io"
   },
   "homepage": "https://linalab.io",
   "repository": "https://github.com/islee23520/lfp",
   "license": "MIT",
-  "keywords": ["lazycodex", "linalab", "flavour-pack", "codex", "hooks", "agents"],
+  "keywords": [
+    "lazycodex",
+    "linalab",
+    "flavour-pack",
+    "codex",
+    "hooks",
+    "agents"
+  ],
   "hooks": "./hooks/hooks.json",
   "interface": {
-    "displayName": "LazyCodex Linalab Flavour Pack",
-    "shortDescription": "Linalab hooks, agents, and model overrides layered on LazyCodex.",
-    "longDescription": "Adds Linalab-specific Codex hooks, agent role files, and vanilla LazyCodex/OMO model override sync without editing upstream plugin cache files.",
+    "displayName": "LazyCodex Flavour Pack",
+    "shortDescription": "LFP hooks, agents, and model overrides layered on LazyCodex.",
+    "longDescription": "Adds LFP Codex hooks, agent role files, and vanilla LazyCodex/OMO model override sync without editing upstream plugin cache files.",
     "developerName": "Linalab",
     "category": "Developer Tools",
     "capabilities": ["Hooks", "Agents", "Workflow"],

@@ -17,6 +17,10 @@
   "bugs": {
     "url": "https://github.com/islee23520/lfp/issues"
   },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "keywords": [
     "lazycodex",
     "codex",
