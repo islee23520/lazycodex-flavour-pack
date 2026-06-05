@@ -24,9 +24,9 @@ Usage:
   lfp help
 
 npx:
-  npx lfp@latest setup
-  npx lfp@latest dry-setup
-  npx lfp@latest doctor
+  npx @islee23520/lfp@latest setup
+  npx @islee23520/lfp@latest dry-setup
+  npx @islee23520/lfp@latest doctor
 
 This package is a lightweight overlay. setup installs/enables this pack in Codex, checks that LazyCodex/OMO is already installed, then applies configured overrides to existing agents. It does not install or update LazyCodex/OMO.`;
 
@@ -74,10 +74,17 @@ function runSetup(argv, { check }) {
   if (check) {
     for (const action of pending.actions) console.log(`would ${action}`);
   } else {
+    if (pending.state.openAiCompatProvider.status === "drifted") {
+      printOpenAiCompatProviderState(pending.state);
+      process.exitCode = 1;
+      return;
+    }
+
     const installed = installCodexPlugin(ROOT);
     console.log(`installed ${PLUGIN_REF} to ${installed.pluginRoot}`);
     console.log(`installed LFP agents to ${path.join(installed.codexHome, "agents")}`);
     console.log(`enabled ${PLUGIN_REF} in ${installed.configPath}`);
+    printOpenAiCompatProviderState(installed);
     printInstallSmokeState();
   }
 
@@ -105,6 +112,8 @@ function runDoctor(argv) {
   console.log(`lfp doctor: marketplace config: ${state.marketplaceConfigured ? "configured" : "missing"} (${state.configPath})`);
   console.log(`lfp doctor: plugin config: ${state.pluginEnabled ? "enabled" : "missing"} (${PLUGIN_REF})`);
   hasIssue ||= !state.pluginFilesInstalled || !state.additionalAgentsInstalled || !state.marketplaceConfigured || !state.pluginEnabled;
+  const openAiCompatProviderOk = printOpenAiCompatProviderState(state);
+  hasIssue ||= !openAiCompatProviderOk;
   const installSmokeOk = printInstallSmokeState();
   hasIssue ||= !installSmokeOk;
   const visualSmokeOk = printVisualSmokeState();
@@ -124,6 +133,21 @@ function runDoctor(argv) {
   }
 
   if (hasIssue) process.exitCode = 1;
+}
+
+function printOpenAiCompatProviderState(state) {
+  const provider = state.openAiCompatProvider;
+  console.log(`lfp doctor: OpenAI-compatible provider: ${provider.status} (${provider.id})`);
+
+  if (provider.activeStatus === "user-managed") {
+    console.log(`lfp doctor: active model provider: user-managed (${provider.activeProvider})`);
+  } else if (provider.activeStatus === "configured") {
+    console.log(`lfp doctor: active model provider: ${provider.id}`);
+  } else {
+    console.log("lfp doctor: active model provider: missing");
+  }
+
+  return provider.status === "configured";
 }
 
 function printInstallSmokeState() {

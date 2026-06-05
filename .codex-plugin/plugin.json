@@ -1,18 +1,13 @@
 {
-  "name": "lfp",
+  "name": "@islee23520/lfp",
   "version": "0.1.0",
-  "description": "Linalab Flavour pack for LazyCodex.",
-  "author": {
-    "name": "Linalab",
-    "email": "islee@linalab.io",
-    "url": "https://linalab.io"
-  },
+  "description": "LazyCodex flavour pack.",
+  "author": "islee23520",
   "homepage": "https://linalab.io",
   "repository": "https://github.com/islee23520/lfp",
   "license": "MIT",
   "keywords": [
     "lazycodex",
-    "linalab",
     "flavour-pack",
     "codex",
     "hooks",
@@ -23,22 +18,22 @@
     "displayName": "LazyCodex Flavour Pack",
     "shortDescription": "LFP hooks, agents, and model overrides layered on LazyCodex.",
     "longDescription": "Adds LFP Codex hooks, agent role files, and vanilla LazyCodex/OMO model override sync without editing upstream plugin cache files.",
-    "developerName": "Linalab",
+    "developerName": "islee23520",
     "category": "Developer Tools",
     "capabilities": ["Hooks", "Agents", "Workflow"],
     "websiteURL": "https://linalab.io",
     "privacyPolicyURL": "https://linalab.io",
     "termsOfServiceURL": "https://linalab.io",
     "defaultPrompt": [
-      "Run UI work with Linalab visual QA.",
-      "Sync Linalab LazyCodex agent model overrides.",
+      "Run UI work with visual QA.",
+      "Sync LazyCodex agent model overrides.",
       "Use visual-engineering for screenshot-backed review.",
       "Use visual-looker for Gemini multimodal visual evidence inspection."
     ],
     "brandColor": "#2563EB",
     "screenshots": []
   },
-  "x-linalab": {
+  "x-lfp": {
     "extends": ["omo@sisyphuslabs", "lazycodex-ai"],
     "modelOverrideSource": "./agent-configs/omo-agent-model-overrides.toml",
     "additionalAgents": [

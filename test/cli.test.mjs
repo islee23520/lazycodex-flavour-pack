@@ -85,9 +85,9 @@ test("given CLI help when invoked then documents npx usage", () => {
   const result = spawnSync(process.execPath, [CLI, "help"], { encoding: "utf8" });
 
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /npx lfp@latest setup/);
-  assert.match(result.stdout, /npx lfp@latest dry-setup/);
-  assert.match(result.stdout, /npx lfp@latest doctor/);
+  assert.match(result.stdout, /npx @islee23520\/lfp@latest setup/);
+  assert.match(result.stdout, /npx @islee23520\/lfp@latest dry-setup/);
+  assert.match(result.stdout, /npx @islee23520\/lfp@latest doctor/);
   assert.match(result.stdout, /does not install or update LazyCodex\/OMO/);
 });
 

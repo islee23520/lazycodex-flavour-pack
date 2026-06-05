@@ -5,6 +5,8 @@ import assert from "node:assert/strict";
 
 const packageJson = JSON.parse(readFileSync(path.resolve("package.json"), "utf8"));
 const pluginJson = JSON.parse(readFileSync(path.resolve(".codex-plugin", "plugin.json"), "utf8"));
+const cliText = readFileSync(path.resolve("scripts/cli.mjs"), "utf8");
+const readmeText = readFileSync(path.resolve("README.md"), "utf8");
 
 test("given npm package metadata when validating publish settings then package is public", () => {
   assert.notEqual(packageJson.private, true);
@@ -42,6 +44,15 @@ test("given plugin manifest when validating release metadata then bundled manife
   assert.equal(pluginJson.hooks, "./hooks/hooks.json");
 });
 
+test("given scoped npm package name when validating docs and CLI help then npx commands use package identity", () => {
+  const npxCommand = `npx ${packageJson.name}@latest setup`;
+
+  assert.match(cliText, new RegExp(escapeRegExp(npxCommand)));
+  assert.match(readmeText, new RegExp(escapeRegExp(npxCommand)));
+  assert.doesNotMatch(cliText, /npx lfp@latest/);
+  assert.doesNotMatch(readmeText, /npx lfp@latest/);
+});
+
 test("given npm package metadata when validating internal files then code maps are excluded", () => {
   const publishedFiles = new Set(packageJson.files);
   assert.equal(publishedFiles.has("AGENTS.md"), false);
@@ -49,3 +60,7 @@ test("given npm package metadata when validating internal files then code maps a
   assert.equal(publishedFiles.has("test"), false);
   assert.equal(existsSync(path.resolve(".npmignore")), true);
 });
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}

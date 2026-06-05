@@ -1,19 +1,28 @@
 # LFP Roadmap
 
-LFP means LazyCodex Flavour Pack. Keep that expansion visible in planning docs, README text, and issue surfaces so the package name does not drift into an unexplained acronym.
+LFP means LazyCodex Flavour Pack.
 
-Roadmap items should be mirrored as GitHub issues on <https://github.com/islee23520/lfp/issues>. Keep issues scoped to LFP unless the root cause is upstream LazyCodex/OMO behavior.
+Track roadmap work in GitHub issues: <https://github.com/islee23520/lfp/issues>. File upstream LazyCodex/OMO bugs upstream.
 
 ## Direction
 
-- Keep LFP as a lightweight overlay for already-installed LazyCodex/OMO agents.
-- Keep `agent-configs/` as the durable source of truth for Linalab-owned helper agents and narrow upstream model overrides.
-- Keep setup simple: install/register LFP in Codex, install LFP-owned helper agents, verify upstream LazyCodex/OMO exists, then apply model-field overrides.
-- Keep issue discussions grounded in the LazyCodex Flavour Pack scope rather than turning LFP into an agent lifecycle manager or upstream plugin replacement.
+- Lightweight overlay for already-installed LazyCodex/OMO agents.
+- `agent-configs/` is the source of truth for helper agents and model overrides.
+- Setup stays small: register LFP, install helper agents, configure the provider when safe, verify upstream LazyCodex/OMO, then apply model-field overrides.
+- No agent lifecycle manager, upstream plugin replacement, or broad TOML rewriting.
 
 ## Near-Term Work
 
-- Preserve the `setup`, `dry-setup`, and `doctor` command surface.
-- Expand doctor output only when it improves the operator answer to "is LFP installed in Codex?"
-- Add visual hook trigger terms only with positive and quiet-case tests.
-- Keep legacy JSON override compatibility until old callers are known to be gone.
+- Preserve `setup`, `dry-setup`, and `doctor`.
+- Make `doctor` answer "is LFP installed in Codex?" without noisy output.
+- Keep `cliproxyapi` setup conservative: add missing config, preserve user-managed active providers, report drift.
+- Add visual hook triggers only with positive and quiet-case tests.
+- Keep legacy JSON override compatibility until old callers are gone.
+
+## Backlog
+
+- <https://github.com/islee23520/lfp/issues/6>: Interactive external model configuration.
+- <https://github.com/islee23520/lfp/issues/7>: Install-time Codex OpenAI-compatible provider registration.
+- <https://github.com/islee23520/lfp/issues/8>: TTY provider selector.
+- <https://github.com/islee23520/lfp/issues/9>: Noninteractive provider configuration input.
+- <https://github.com/islee23520/lfp/issues/10>: Provider auth and secret-source validation.

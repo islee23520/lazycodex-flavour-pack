@@ -32,7 +32,7 @@ test("given vanilla agent text when applying overrides then only model fields ch
 });
 
 test("given source dir and override config when syncing then updates source agent config in place", () => {
-  const root = mkdtempSync(path.join(tmpdir(), "linalab-agent-sync-"));
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-agent-sync-"));
   try {
     const sourceDir = path.join(root, "source");
     const configPath = path.join(root, "config.json");
@@ -57,7 +57,7 @@ test("given source dir and override config when syncing then updates source agen
 });
 
 test("given TOML override config when reading then maps agents dir and model fields", () => {
-  const root = mkdtempSync(path.join(tmpdir(), "linalab-agent-sync-"));
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-agent-sync-"));
   try {
     const configPath = path.join(root, "overrides.toml");
     writeFileSync(
@@ -100,7 +100,7 @@ test("given packaged override config when reading then targets Codex-loaded agen
 });
 
 test("given check mode when syncing then reports pending changes without writing", () => {
-  const root = mkdtempSync(path.join(tmpdir(), "linalab-agent-sync-"));
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-agent-sync-"));
   try {
     const sourceDir = path.join(root, "source");
     const configPath = path.join(root, "config.json");
@@ -126,7 +126,7 @@ test("given check mode when syncing then reports pending changes without writing
 });
 
 test("given missing agents dir when syncing then reports install or update guidance", () => {
-  const root = mkdtempSync(path.join(tmpdir(), "linalab-agent-sync-"));
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-agent-sync-"));
   try {
     const configPath = path.join(root, "config.json");
     const sourceDir = path.join(root, "missing-source");
@@ -157,7 +157,7 @@ test("given missing override config when syncing then reports the missing config
 });
 
 test("given missing required agent TOML when syncing then reports incomplete install and does not create files", () => {
-  const root = mkdtempSync(path.join(tmpdir(), "linalab-agent-sync-"));
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-agent-sync-"));
   try {
     const sourceDir = path.join(root, "source");
     const configPath = path.join(root, "config.json");
