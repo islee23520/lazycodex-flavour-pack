@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -101,6 +101,41 @@ test("given transcript already has guidance when hook runs then does not repeat"
     });
 
     assert.equal(output, "");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("given stale explorer override when hook runs then setup is applied silently", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "linalab-visual-hook-"));
+  try {
+    const codexHome = path.join(root, "codex-home");
+    const sourceDir = path.join(root, "agents");
+    const configPath = path.join(root, "overrides.json");
+    const explorerPath = path.join(sourceDir, "explorer.toml");
+    mkdirSync(sourceDir);
+    writeFileSync(explorerPath, 'name = "explorer"\nmodel = "gpt-5.4-mini"\n');
+    writeFileSync(
+      configPath,
+      JSON.stringify({
+        source: { agentsDir: sourceDir },
+        overrides: { explorer: { model: "grok-4.3" } }
+      })
+    );
+
+    const output = runUserPromptSubmitHook(
+      {
+        hook_event_name: "UserPromptSubmit",
+        prompt: "Refactor the backend repository class."
+      },
+      { configPath, env: { CODEX_HOME: codexHome } }
+    );
+    const updated = readFileSync(explorerPath, "utf8");
+
+    assert.equal(output, "");
+    assert.match(updated, /model = "grok-4\.3"/);
+    assert.equal(existsSync(path.join(codexHome, "local-marketplaces", "linalab", "plugins", "lfp", ".codex-plugin", "plugin.json")), true);
+    assert.equal(existsSync(path.join(codexHome, "agents", "visual-engineering.toml")), true);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

@@ -3,6 +3,9 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
+import { getPendingCodexPluginActions, installCodexPlugin } from "./codex-plugin-install.mjs";
+import { syncAgentOverrides } from "./sync-agent-overrides.mjs";
+
 const VISUAL_PATTERN =
   /\b(?:visual(?:\s+qa|\s+check(?:ing)?|\s+engineering)?|vision(?:\s+check(?:ing)?)?|frontend|front-end|ui|ux|css|layout|responsive|screenshot|figma|art\s+(?:direction|work|asset|polish)|artwork|sprite|illustration|qa\s+session|review(?:er|-work)?|final\s+verdict|ulw)\b|비주얼|비전|프론트엔드|화면|레이아웃|아트|스프라이트|일러스트|검수|리뷰어|최종\s*판정/i;
 const GUIDANCE_MARKER = "<linalab-visual-engineering-guidance>";
@@ -17,6 +20,7 @@ const CONTEXT_PRESSURE_MARKERS = [
   "long threads and multiple compactions"
 ];
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+const DEFAULT_CONFIG = path.join(ROOT, "agent-configs", "omo-agent-model-overrides.toml");
 const VISUAL_ENGINEERING_CONFIG = path.join(ROOT, "agent-configs", "visual-engineering.toml");
 const VISUAL_LOOKER_CONFIG = path.join(ROOT, "agent-configs", "visual-looker.toml");
 
@@ -36,8 +40,9 @@ if (isDirectRun()) {
   if (output.length > 0) process.stdout.write(output);
 }
 
-export function runUserPromptSubmitHook(value) {
+export function runUserPromptSubmitHook(value, options = {}) {
   if (!isHookInput(value)) return "";
+  ensureLfpSetupCurrent(options);
   if (isContextPressure(value.prompt)) return "";
   if (!VISUAL_PATTERN.test(value.prompt)) return "";
   if (hasGuidanceAlready(value.transcript_path)) return "";
@@ -48,6 +53,23 @@ export function runUserPromptSubmitHook(value) {
       additionalContext: GUIDANCE
     }
   })}\n`;
+}
+
+function ensureLfpSetupCurrent(options) {
+  const configPath = options.configPath ?? DEFAULT_CONFIG;
+  const packageRoot = options.packageRoot ?? ROOT;
+  const pluginOptions = options.env === undefined ? {} : { env: options.env };
+
+  try {
+    const pending = getPendingCodexPluginActions(pluginOptions);
+    const pendingOverrides = syncAgentOverrides(configPath, { check: true });
+    if (pending.actions.length === 0 && pendingOverrides.changed.length === 0) return;
+
+    installCodexPlugin(packageRoot, pluginOptions);
+    syncAgentOverrides(configPath, { check: false });
+  } catch {
+    return;
+  }
 }
 
 function readStdinJson() {
