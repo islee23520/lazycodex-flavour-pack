@@ -32,7 +32,6 @@ test("given npm package metadata when validating release files then package incl
     "agent-overrides",
     "hooks",
     "scripts",
-    "ROADMAP.md",
     "README.md"
   ]);
 });
@@ -41,4 +40,12 @@ test("given plugin manifest when validating release metadata then bundled manife
   assert.equal(pluginJson.name, packageJson.name);
   assert.equal(pluginJson.version, packageJson.version);
   assert.equal(pluginJson.hooks, "./hooks/hooks.json");
+});
+
+test("given npm package metadata when validating internal files then code maps are excluded", () => {
+  const publishedFiles = new Set(packageJson.files);
+  assert.equal(publishedFiles.has("AGENTS.md"), false);
+  assert.equal(publishedFiles.has("ROADMAP.md"), false);
+  assert.equal(publishedFiles.has("test"), false);
+  assert.equal(existsSync(path.resolve(".npmignore")), true);
 });

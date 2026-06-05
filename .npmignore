@@ -1,0 +1,15 @@
+# Internal agent instructions and generated knowledge maps
+AGENTS.md
+**/AGENTS.md
+
+# Repository planning and local workflow state
+ROADMAP.md
+.github/
+.omo/
+test/
+
+# Local artifacts
+.DS_Store
+node_modules/
+npm-debug.log*
+*.tgz
