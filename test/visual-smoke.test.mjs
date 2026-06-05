@@ -25,6 +25,29 @@ test("given setup has run when doctor runs then reports visual Gemini smoke veri
   }
 });
 
+test("given existing LazyCodex explorer in Codex home when setup runs then install smoke reports it preserved", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-visual-smoke-"));
+  try {
+    const fixture = createFixture(root);
+    const codexAgentsDir = path.join(fixture.codexHome, "agents");
+    const explorerPath = path.join(codexAgentsDir, "explorer.toml");
+    const explorerText = 'name = "explorer"\nmodel = "lazycodex-original"\n';
+    mkdirSync(codexAgentsDir, { recursive: true });
+    writeFileSync(explorerPath, explorerText);
+
+    const setup = runCli(["setup", "--config", fixture.configPath], fixture.codexHome);
+    const doctor = runCli(["doctor", "--config", fixture.configPath], fixture.codexHome);
+    const afterSetup = readFileSync(explorerPath, "utf8");
+
+    assert.equal(setup.status, 0, setup.stderr);
+    assert.equal(doctor.status, 0, doctor.stderr);
+    assert.equal(afterSetup, explorerText);
+    assert.match(doctor.stdout, /install smoke: explorer preserved/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("given visual looker is missing when doctor runs then reports visual smoke failure", () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-visual-smoke-"));
   try {

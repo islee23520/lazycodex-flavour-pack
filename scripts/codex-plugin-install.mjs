@@ -7,6 +7,7 @@ export const PLUGIN_ID = "lfp";
 export const PLUGIN_REF = `${PLUGIN_ID}@${MARKETPLACE_ID}`;
 
 const ADDITIONAL_AGENT_CONFIGS = ["visual-engineering.toml", "visual-looker.toml"];
+const PROTECTED_UPSTREAM_AGENT_CONFIGS = ["explorer.toml"];
 const VISUAL_AGENT_EXPECTATIONS = [
   { name: "visual-engineering", fileName: "visual-engineering.toml", model: "gemini-3.1-pro-preview" },
   { name: "visual-looker", fileName: "visual-looker.toml", model: "gemini-3.1-pro-preview" }
@@ -72,6 +73,20 @@ export function getVisualSmokeState(options = {}) {
   };
 }
 
+export function getInstallSmokeState(options = {}) {
+  const codexHome = getCodexHome(options.env);
+  const agentsRoot = path.join(codexHome, "agents");
+  const collisions = ADDITIONAL_AGENT_CONFIGS.filter((fileName) =>
+    PROTECTED_UPSTREAM_AGENT_CONFIGS.includes(fileName)
+  );
+
+  return {
+    explorerPreserved: collisions.length === 0,
+    explorerPath: path.join(agentsRoot, "explorer.toml"),
+    collisions
+  };
+}
+
 export function installCodexPlugin(packageRoot, options = {}) {
   const state = getCodexPluginState(options);
   mkdirSync(path.dirname(state.pluginRoot), { recursive: true });
@@ -100,10 +115,19 @@ export function getPendingCodexPluginActions(options = {}) {
 function installAdditionalAgents(packageRoot, state) {
   const sourceRoot = path.join(packageRoot, "agent-configs");
   const targetRoot = path.join(state.codexHome, "agents");
+  assertNoProtectedAgentInstallTargets();
   mkdirSync(targetRoot, { recursive: true });
   for (const fileName of ADDITIONAL_AGENT_CONFIGS) {
     cpSync(path.join(sourceRoot, fileName), path.join(targetRoot, fileName));
   }
+}
+
+function assertNoProtectedAgentInstallTargets() {
+  const collisions = ADDITIONAL_AGENT_CONFIGS.filter((fileName) =>
+    PROTECTED_UPSTREAM_AGENT_CONFIGS.includes(fileName)
+  );
+  if (collisions.length === 0) return;
+  throw new Error(`LFP agent install would overwrite upstream LazyCodex agents: ${collisions.join(", ")}`);
 }
 
 function getCodexHome(env = process.env) {

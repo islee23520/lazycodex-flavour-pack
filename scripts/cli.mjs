@@ -4,6 +4,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 import {
   getCodexPluginState,
+  getInstallSmokeState,
   getPendingCodexPluginActions,
   getVisualSmokeState,
   installCodexPlugin,
@@ -77,6 +78,7 @@ function runSetup(argv, { check }) {
     console.log(`installed ${PLUGIN_REF} to ${installed.pluginRoot}`);
     console.log(`installed LFP agents to ${path.join(installed.codexHome, "agents")}`);
     console.log(`enabled ${PLUGIN_REF} in ${installed.configPath}`);
+    printInstallSmokeState();
   }
 
   const result = check ? pendingOverrides : syncAgentOverrides(configPath, { check: false });
@@ -103,6 +105,8 @@ function runDoctor(argv) {
   console.log(`lfp doctor: marketplace config: ${state.marketplaceConfigured ? "configured" : "missing"} (${state.configPath})`);
   console.log(`lfp doctor: plugin config: ${state.pluginEnabled ? "enabled" : "missing"} (${PLUGIN_REF})`);
   hasIssue ||= !state.pluginFilesInstalled || !state.additionalAgentsInstalled || !state.marketplaceConfigured || !state.pluginEnabled;
+  const installSmokeOk = printInstallSmokeState();
+  hasIssue ||= !installSmokeOk;
   const visualSmokeOk = printVisualSmokeState();
   hasIssue ||= !visualSmokeOk;
 
@@ -120,6 +124,17 @@ function runDoctor(argv) {
   }
 
   if (hasIssue) process.exitCode = 1;
+}
+
+function printInstallSmokeState() {
+  const smoke = getInstallSmokeState();
+  if (smoke.explorerPreserved) {
+    console.log(`lfp install smoke: explorer preserved (${smoke.explorerPath})`);
+    return true;
+  }
+
+  console.log(`lfp install smoke: explorer overwrite risk (${smoke.collisions.join(", ")})`);
+  return false;
 }
 
 function printVisualSmokeState() {
