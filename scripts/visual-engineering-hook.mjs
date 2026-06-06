@@ -27,13 +27,15 @@ const VISUAL_LOOKER_CONFIG = path.join(ROOT, "agent-configs", "visual-looker.tom
 
 const GUIDANCE = `${GUIDANCE_MARKER}
 
-For frontend/UI code, layout, responsive behavior, or visual QA judgment, prefer the LFP visual specialist agent. Spawn it with agent_type="visual-engineering"; its role config is ${VISUAL_ENGINEERING_CONFIG}.
+For any visual judgment, QA, comparison, diagram review, image analysis, layout checks, or visual acceptance criteria, use the LFP vision specialist agent. Spawn it with agent_type="visual-engineering"; its role config is ${VISUAL_ENGINEERING_CONFIG}.
 
-For QA sessions, reviewer passes, final verdicts, and ULW completion involving UI, art, screenshots, documents, or other visual output, require a visual reviewer pass before the final verdict. Use visual-engineering for judgment and acceptance criteria.
+For QA sessions, reviewer passes, final verdicts, and ULW completion involving any visual content (UI, art, screenshots, documents, diagrams, images), require a visual reviewer pass before the final verdict. Use visual-engineering for judgment and acceptance criteria.
 
-For ulw-plan work, once the plan draft is done, always run a high-accuracy review before treating the plan as ready to execute. Incorporate required corrections from that review into the final plan.
+For screenshot, image, document, or diagram inspection where the main need is to describe visible evidence, use the LFP vision looker. Spawn it with agent_type="visual-looker"; its role config is ${VISUAL_LOOKER_CONFIG}. Keep root-agent ownership of integration and final verification.
 
-For screenshot/image/document inspection where the main need is to describe visible evidence, use the LFP multimodal looker. Spawn it with agent_type="visual-looker"; its role config is ${VISUAL_LOOKER_CONFIG}. Keep root-agent ownership of integration and final verification.`;
+These vision agents use xAI Grok via the codex-xai-oauth@linalab OAuth plugin. If xAI OAuth is not configured, tell the root agent to install and configure the codex-xai-oauth@linalab plugin first.
+
+For ulw-plan work, once the plan draft is done, always run a high-accuracy review before treating the plan as ready to execute. Incorporate required corrections from that review into the final plan.`;
 
 if (isDirectRun()) {
   const input = readStdinJson();

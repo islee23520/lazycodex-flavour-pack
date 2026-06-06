@@ -17,8 +17,8 @@ const DEFAULT_PACKAGE_ROOT = path.dirname(path.dirname(fileURLToPath(import.meta
 const ADDITIONAL_AGENT_CONFIGS = ["visual-engineering.toml", "visual-looker.toml"];
 const PROTECTED_UPSTREAM_AGENT_CONFIGS = ["explorer.toml"];
 const VISUAL_AGENT_EXPECTATIONS = [
-  { name: "visual-engineering", fileName: "visual-engineering.toml", model: "gemini-3.1-pro-preview" },
-  { name: "visual-looker", fileName: "visual-looker.toml", model: "gemini-3.1-pro-preview" }
+  { name: "visual-engineering", fileName: "visual-engineering.toml", model: "grok-4.20-0309-non-reasoning" },
+  { name: "visual-looker", fileName: "visual-looker.toml", model: "grok-4.20-0309-non-reasoning" }
 ];
 
 const RUNTIME_ENTRIES = [

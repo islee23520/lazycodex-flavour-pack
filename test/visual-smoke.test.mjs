@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 
 const CLI = path.resolve("scripts/cli.mjs");
 
-test("given setup has run when doctor runs then reports visual Gemini smoke verification", () => {
+test("given setup has run when doctor runs then reports vision agent grok smoke verification", () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-visual-smoke-"));
   try {
     const fixture = createFixture(root);
@@ -18,8 +18,8 @@ test("given setup has run when doctor runs then reports visual Gemini smoke veri
     assert.equal(setup.status, 0, setup.stderr);
     assert.equal(doctor.status, 0, doctor.stderr);
     assert.match(doctor.stdout, /visual smoke: verified/);
-    assert.match(doctor.stdout, /visual-engineering: gemini-3\.1-pro-preview/);
-    assert.match(doctor.stdout, /visual-looker: gemini-3\.1-pro-preview/);
+    assert.match(doctor.stdout, /visual-engineering: grok-4\.20-0309-non-reasoning/);
+    assert.match(doctor.stdout, /visual-looker: grok-4\.20-0309-non-reasoning/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -67,7 +67,7 @@ test("given visual looker is missing when doctor runs then reports visual smoke 
   }
 });
 
-test("given visual agent model is not Gemini when doctor runs then reports model mismatch", () => {
+test("given visual agent model is not grok when doctor runs then reports model mismatch", () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-visual-smoke-"));
   try {
     const fixture = createFixture(root);
@@ -75,7 +75,7 @@ test("given visual agent model is not Gemini when doctor runs then reports model
 
     const setup = runCli(["setup", "--config", fixture.configPath], fixture.codexHome);
     const drifted = readFileSync(driftedPath, "utf8").replace(
-      'model = "gemini-3.1-pro-preview"',
+      'model = "grok-4.20-0309-non-reasoning"',
       'model = "gpt-5.4"'
     );
     writeFileSync(driftedPath, drifted);
@@ -86,7 +86,7 @@ test("given visual agent model is not Gemini when doctor runs then reports model
     assert.match(doctor.stdout, /visual smoke: failed/);
     assert.match(
       doctor.stdout,
-      /visual-looker model mismatch: expected gemini-3\.1-pro-preview, got gpt-5\.4/
+      /visual-looker model mismatch: expected grok-4.20-0309-non-reasoning, got gpt-5.4/
     );
   } finally {
     rmSync(root, { recursive: true, force: true });
