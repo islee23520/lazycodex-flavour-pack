@@ -214,8 +214,8 @@ function createPackageRoot(root, provider) {
   writeFileSync(path.join(packageRoot, "hooks", "hooks.json"), "{}\n");
   writeFileSync(path.join(packageRoot, "README.md"), "# fixture\n");
   writeFileSync(path.join(packageRoot, "package.json"), "{}\n");
-  writeFileSync(path.join(packageRoot, "agent-configs", "visual-engineering.toml"), 'name = "visual-engineering"\nmodel = "grok-4.20-0309-non-reasoning"\n');
-  writeFileSync(path.join(packageRoot, "agent-configs", "visual-looker.toml"), 'name = "visual-looker"\nmodel = "grok-4.20-0309-non-reasoning"\n');
+  writeFileSync(path.join(packageRoot, "agent-configs", "visual-engineering.toml"), 'name = "visual-engineering"\nmodel = "gemini-3.1-pro-preview"\n');
+  writeFileSync(path.join(packageRoot, "agent-configs", "visual-looker.toml"), 'name = "visual-looker"\nmodel = "gemini-3.1-pro-preview"\n');
   writeFileSync(
     path.join(packageRoot, "agent-configs", "codex-openai-compat-provider.toml"),
     [
