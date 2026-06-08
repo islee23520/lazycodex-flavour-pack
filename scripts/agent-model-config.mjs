@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import os from "node:os";
-import { readFileSync, writeFileSync } from "node:fs";
+import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import { readOverrideConfig } from "./sync-agent-overrides.mjs";
@@ -11,6 +11,7 @@ const SERVICE_TIERS = [
   { value: "default", label: "default (non-fast)" },
   { value: "fast", label: "fast" }
 ];
+const LFP_AGENT_NAMES = new Set(["artistry", "artistry-gen", "artistry-qa", "visual-engineering", "visual-looker"]);
 const DEFAULT_CONFIG_NAME = "config.toml";
 
 export async function configureAgentModelOverrides(configPath, options = {}) {
@@ -18,7 +19,8 @@ export async function configureAgentModelOverrides(configPath, options = {}) {
 
   const config = readOverrideConfig(configPath, options);
   const agentNames = Object.keys(config.overrides ?? {});
-  if (agentNames.length === 0) return config;
+  const additionalAgents = options.additionalAgents ?? discoverAdditionalAgents(config.source?.agentsDir, config.overrides ?? {});
+  if (agentNames.length === 0 && additionalAgents.length === 0) return config;
 
   const models = options.models ?? (await safeFetchAvailableModels(options));
   if (models.length === 0) {
@@ -51,9 +53,49 @@ export async function configureAgentModelOverrides(configPath, options = {}) {
     config.overrides[agentName] = fields;
   }
 
+  for (const agent of additionalAgents) {
+    const shouldChange = await promptForYesNo(rl, `  Change ${agent.name} model/tier too? [y/N]: `);
+    if (!shouldChange) continue;
+
+    config.overrides[agent.name] = {
+      model: await promptForModel(rl, {
+        agentName: agent.name,
+        current: agent.model ?? models[0],
+        models,
+        output: options.output
+      }),
+      service_tier: await promptForServiceTier(rl, {
+        agentName: agent.name,
+        current: agent.service_tier ?? "default",
+        output: options.output
+      })
+    };
+  }
+
   writeOverrideFields(configPath, config.overrides);
   options.output?.log?.("OMO override model configuration written.\n");
   return config;
+}
+
+export function discoverAdditionalAgents(sourceDir, overrides) {
+  if (typeof sourceDir !== "string") return [];
+  const configured = new Set(Object.keys(overrides ?? {}));
+  const agents = [];
+
+  for (const fileName of safeReadDir(sourceDir)) {
+    if (!fileName.endsWith(".toml")) continue;
+    const name = fileName.slice(0, -".toml".length);
+    if (configured.has(name) || LFP_AGENT_NAMES.has(name)) continue;
+
+    const text = readFileSync(path.join(sourceDir, fileName), "utf8");
+    agents.push({
+      name,
+      model: readTomlString(text, "model"),
+      service_tier: readTomlString(text, "service_tier")
+    });
+  }
+
+  return agents.sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export async function fetchAvailableModels(options = {}) {
@@ -119,10 +161,14 @@ export function writeOverrideFields(configPath, overrides) {
   const lines = readFileSync(configPath, "utf8").split(/\r?\n/);
   const output = [];
   let section = null;
+  const seenAgentSections = new Set();
 
   for (const line of lines) {
     const sectionMatch = line.trim().match(/^\[([A-Za-z0-9_.-]+)]$/);
-    if (sectionMatch) section = sectionMatch[1];
+    if (sectionMatch) {
+      section = sectionMatch[1];
+      if (section.startsWith("agents.")) seenAgentSections.add(section.slice("agents.".length));
+    }
 
     const agentName = section?.startsWith("agents.") ? section.slice("agents.".length) : null;
     const key = line.includes("=") ? line.split("=", 1)[0].trim() : "";
@@ -132,6 +178,14 @@ export function writeOverrideFields(configPath, overrides) {
     }
 
     output.push(line);
+  }
+
+  for (const [agentName, fields] of Object.entries(overrides)) {
+    if (seenAgentSections.has(agentName)) continue;
+    output.push("", `[agents.${agentName}]`);
+    for (const key of WRITABLE_FIELDS) {
+      if (fields?.[key]) output.push(`${key} = ${JSON.stringify(String(fields[key]))}`);
+    }
   }
 
   writeFileSync(configPath, `${output.join("\n").replace(/\n*$/, "")}\n`);
@@ -181,6 +235,11 @@ function printServiceTierChoices(output) {
   }
 }
 
+async function promptForYesNo(rl, question) {
+  const answer = (await prompt(rl, question)).trim().toLowerCase();
+  return ["y", "yes"].includes(answer);
+}
+
 function parseModelSelection(answer, models) {
   if (/^[0-9]+$/.test(answer)) {
     const index = Number(answer) - 1;
@@ -188,6 +247,14 @@ function parseModelSelection(answer, models) {
   }
 
   return models.includes(answer) ? answer : null;
+}
+
+function safeReadDir(sourceDir) {
+  try {
+    return readdirSync(sourceDir);
+  } catch {
+    return [];
+  }
 }
 
 function printModelChoices(models, output) {

@@ -119,6 +119,73 @@ test("given interactive OMO override setup when user selects listed model and ti
   }
 });
 
+test("given additional installed OMO agent when user opts in then appends override section", async () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-models-"));
+  try {
+    const configPath = path.join(root, "overrides.toml");
+    writeFileSync(path.join(root, "metis.toml"), agentText("metis", "gpt-5.5", "fast"));
+    writeFileSync(path.join(root, "artistry.toml"), agentText("artistry", "gpt-5.5", "default"));
+    writeFileSync(
+      configPath,
+      [
+        "[source]",
+        `agents_dir = "${root}"`,
+        "",
+        "[agents.explorer]",
+        'model = "grok-4.3"',
+        'model_reasoning_effort = "low"',
+        'service_tier = "default"',
+        ""
+      ].join("\n")
+    );
+
+    const config = await configureAgentModelOverrides(configPath, {
+      models: ["gpt-5.4-mini", "grok-4.3"],
+      readline: fakeReadline(["", "", "y", "1", "2"]),
+      output: silentOutput()
+    });
+    const updated = readFileSync(configPath, "utf8");
+
+    assert.equal(config.overrides.metis.model, "gpt-5.4-mini");
+    assert.equal(config.overrides.metis.service_tier, "fast");
+    assert.match(updated, /\[agents\.metis]\nmodel = "gpt-5\.4-mini"\nservice_tier = "fast"/);
+    assert.doesNotMatch(updated, /\[agents\.artistry]/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("given additional installed OMO agent when user declines then does not append override section", async () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-models-"));
+  try {
+    const configPath = path.join(root, "overrides.toml");
+    writeFileSync(path.join(root, "momus.toml"), agentText("momus", "gpt-5.5", "fast"));
+    writeFileSync(
+      configPath,
+      [
+        "[source]",
+        `agents_dir = "${root}"`,
+        "",
+        "[agents.explorer]",
+        'model = "grok-4.3"',
+        'service_tier = "default"',
+        ""
+      ].join("\n")
+    );
+
+    const config = await configureAgentModelOverrides(configPath, {
+      models: ["gpt-5.4-mini", "grok-4.3"],
+      readline: fakeReadline(["", "", "n"]),
+      output: silentOutput()
+    });
+
+    assert.equal(config.overrides.momus, undefined);
+    assert.doesNotMatch(readFileSync(configPath, "utf8"), /\[agents\.momus]/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("given noninteractive OMO override setup when called then keeps configured model", async () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-models-"));
   try {
@@ -158,4 +225,8 @@ function fakeReadline(answers) {
 
 function silentOutput() {
   return { log() {} };
+}
+
+function agentText(name, model, tier) {
+  return [`name = "${name}"`, `model = "${model}"`, 'model_reasoning_effort = "high"', `service_tier = "${tier}"`, ""].join("\n");
 }
