@@ -76,7 +76,7 @@ test("given provider models endpoint when fetching available models then returns
   }
 });
 
-test("given interactive OMO override setup when user selects listed model and tier then writes both to TOML", async () => {
+test("given interactive OMO override setup when user selects listed model tier and reasoning then writes all to TOML", async () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-models-"));
   try {
     const configPath = path.join(root, "overrides.toml");
@@ -101,19 +101,21 @@ test("given interactive OMO override setup when user selects listed model and ti
 
     const config = await configureAgentModelOverrides(configPath, {
       models: ["gpt-5.4-mini", "grok-4.3"],
-      readline: fakeReadline(["1", "2", "2", "1"]),
+      readline: fakeReadline(["1", "2", "4", "2", "1", "1"]),
       output: silentOutput()
     });
     const updated = readFileSync(configPath, "utf8");
 
     assert.equal(config.overrides.explorer.model, "gpt-5.4-mini");
     assert.equal(config.overrides.explorer.service_tier, "fast");
+    assert.equal(config.overrides.explorer.model_reasoning_effort, "xhigh");
     assert.equal(config.overrides.librarian.model, "grok-4.3");
     assert.equal(config.overrides.librarian.service_tier, "default");
+    assert.equal(config.overrides.librarian.model_reasoning_effort, "low");
     assert.match(updated, /model = "gpt-5\.4-mini"/);
     assert.match(updated, /service_tier = "fast"/);
+    assert.match(updated, /model_reasoning_effort = "xhigh"/);
     assert.match(updated, /\[agents\.librarian]\nmodel = "grok-4\.3"\nmodel_reasoning_effort = "low"\nservice_tier = "default"/);
-    assert.match(updated, /model_reasoning_effort = "low"/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -141,14 +143,16 @@ test("given additional installed OMO agent when user opts in then appends overri
 
     const config = await configureAgentModelOverrides(configPath, {
       models: ["gpt-5.4-mini", "grok-4.3"],
-      readline: fakeReadline(["", "", "y", "1", "2"]),
-      output: silentOutput()
+      readline: fakeReadline(["", "", "", "y", "1", "2", "3"]),
+      output: captureOutput()
     });
     const updated = readFileSync(configPath, "utf8");
 
     assert.equal(config.overrides.metis.model, "gpt-5.4-mini");
     assert.equal(config.overrides.metis.service_tier, "fast");
-    assert.match(updated, /\[agents\.metis]\nmodel = "gpt-5\.4-mini"\nservice_tier = "fast"/);
+    assert.equal(config.overrides.metis.model_reasoning_effort, "high");
+    assert.match(updated, /\[agents\.metis]\nmodel = "gpt-5\.4-mini"\nmodel_reasoning_effort = "high"\nservice_tier = "fast"/);
+    assert.ok(configOutput.questions.some((question) => /metis \(current: gpt-5\.5\)/.test(question)));
     assert.doesNotMatch(updated, /\[agents\.artistry]/);
   } finally {
     rmSync(root, { recursive: true, force: true });
@@ -175,7 +179,7 @@ test("given additional installed OMO agent when user declines then does not appe
 
     const config = await configureAgentModelOverrides(configPath, {
       models: ["gpt-5.4-mini", "grok-4.3"],
-      readline: fakeReadline(["", "", "n"]),
+      readline: fakeReadline(["", "", "", "n"]),
       output: silentOutput()
     });
 
@@ -215,15 +219,23 @@ test("given mixed model payload shapes when normalizing then extracts unique ids
   assert.deepEqual(normalizeModelsPayload({ models: ["zeta", { id: "alpha" }, { id: "" }, {}] }), ["alpha", "zeta"]);
 });
 
+let configOutput = { questions: [] };
+
 function fakeReadline(answers) {
   return {
-    question(_question, resolve) {
+    question(question, resolve) {
+      configOutput.questions.push(question);
       resolve(answers.shift() ?? "");
     }
   };
 }
 
 function silentOutput() {
+  return { log() {} };
+}
+
+function captureOutput() {
+  configOutput = { questions: [] };
   return { log() {} };
 }
 

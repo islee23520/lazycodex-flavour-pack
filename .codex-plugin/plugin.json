@@ -1,10 +1,10 @@
 {
   "name": "@islee23520/lfp",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "LazyCodex flavour pack with art team agents.",
   "author": "islee23520",
   "homepage": "https://linalab.io",
-  "repository": "https://github.com/islee23520/lazycodex-flavour-pack",
+  "repository": "https://github.com/islee23520/lfp",
   "license": "MIT",
   "keywords": [
     "lazycodex",

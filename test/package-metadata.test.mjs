@@ -82,7 +82,7 @@ test("given publish workflow when validating release automation then it publishe
 test("given publish automation docs when validating operator guidance then readme explains trusted publishing setup", () => {
   assert.match(readmeText, /## Publish/);
   assert.match(readmeText, /Trusted Publishing/);
-  assert.match(readmeText, /islee23520\/lazycodex-flavour-pack/);
+  assert.match(readmeText, /islee23520\/lfp/);
   assert.match(readmeText, /release published/);
 });
 

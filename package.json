@@ -1,6 +1,6 @@
 {
   "name": "@islee23520/lfp",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "LazyCodex flavour pack with lightweight agent override sync.",
   "type": "module",
   "license": "MIT",
@@ -8,10 +8,10 @@
   "homepage": "https://linalab.io",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/islee23520/lazycodex-flavour-pack.git"
+    "url": "git+https://github.com/islee23520/lfp.git"
   },
   "bugs": {
-    "url": "https://github.com/islee23520/lazycodex-flavour-pack/issues"
+    "url": "https://github.com/islee23520/lfp/issues"
   },
   "publishConfig": {
     "access": "public",

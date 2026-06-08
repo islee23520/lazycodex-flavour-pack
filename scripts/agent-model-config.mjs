@@ -3,14 +3,18 @@ import os from "node:os";
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
+import {
+  logAgentGuide,
+  printModelChoices,
+  promptForModel,
+  promptForReasoningEffort,
+  promptForServiceTier,
+  promptForYesNo
+} from "./model-config-prompts.mjs";
 import { readOverrideConfig } from "./sync-agent-overrides.mjs";
 
 const MODEL_FIELD = "model";
-const WRITABLE_FIELDS = new Set(["model", "service_tier"]);
-const SERVICE_TIERS = [
-  { value: "default", label: "default (non-fast)" },
-  { value: "fast", label: "fast" }
-];
+const WRITABLE_FIELDS = ["model", "model_reasoning_effort", "service_tier"];
 const LFP_AGENT_NAMES = new Set(["artistry", "artistry-gen", "artistry-qa", "visual-engineering", "visual-looker"]);
 const DEFAULT_CONFIG_NAME = "config.toml";
 
@@ -38,6 +42,12 @@ export async function configureAgentModelOverrides(configPath, options = {}) {
   for (const agentName of agentNames) {
     const fields = config.overrides[agentName] ?? {};
     const current = typeof fields.model === "string" ? fields.model : models[0];
+    const currentReasoning = typeof fields.model_reasoning_effort === "string" ? fields.model_reasoning_effort : "low";
+    logAgentGuide(options.output, agentName, {
+      model: current,
+      reasoning: currentReasoning,
+      tier: typeof fields.service_tier === "string" ? fields.service_tier : "default"
+    });
     const selected = await promptForModel(rl, {
       agentName,
       current,
@@ -50,13 +60,26 @@ export async function configureAgentModelOverrides(configPath, options = {}) {
       current: typeof fields.service_tier === "string" ? fields.service_tier : "default",
       output: options.output
     });
+    fields.model_reasoning_effort = await promptForReasoningEffort(rl, {
+      agentName,
+      current: currentReasoning,
+      output: options.output
+    });
     config.overrides[agentName] = fields;
   }
 
   for (const agent of additionalAgents) {
-    const shouldChange = await promptForYesNo(rl, `  Change ${agent.name} model/tier too? [y/N]: `);
+    const shouldChange = await promptForYesNo(
+      rl,
+      `  Change ${agent.name} (current: ${agent.model ?? "unknown"}) model/tier/reasoning too? [y/N]: `
+    );
     if (!shouldChange) continue;
 
+    logAgentGuide(options.output, agent.name, {
+      model: agent.model,
+      reasoning: agent.model_reasoning_effort,
+      tier: agent.service_tier
+    });
     config.overrides[agent.name] = {
       model: await promptForModel(rl, {
         agentName: agent.name,
@@ -67,6 +90,11 @@ export async function configureAgentModelOverrides(configPath, options = {}) {
       service_tier: await promptForServiceTier(rl, {
         agentName: agent.name,
         current: agent.service_tier ?? "default",
+        output: options.output
+      }),
+      model_reasoning_effort: await promptForReasoningEffort(rl, {
+        agentName: agent.name,
+        current: agent.model_reasoning_effort ?? "medium",
         output: options.output
       })
     };
@@ -91,6 +119,7 @@ export function discoverAdditionalAgents(sourceDir, overrides) {
     agents.push({
       name,
       model: readTomlString(text, "model"),
+      model_reasoning_effort: readTomlString(text, "model_reasoning_effort"),
       service_tier: readTomlString(text, "service_tier")
     });
   }
@@ -172,7 +201,7 @@ export function writeOverrideFields(configPath, overrides) {
 
     const agentName = section?.startsWith("agents.") ? section.slice("agents.".length) : null;
     const key = line.includes("=") ? line.split("=", 1)[0].trim() : "";
-    if (agentName !== null && WRITABLE_FIELDS.has(key) && overrides[agentName]?.[key]) {
+    if (agentName !== null && WRITABLE_FIELDS.includes(key) && overrides[agentName]?.[key]) {
       output.push(`${key} = ${JSON.stringify(String(overrides[agentName][key]))}`);
       continue;
     }
@@ -192,76 +221,12 @@ export function writeOverrideFields(configPath, overrides) {
 }
 
 export const writeOverrideModels = writeOverrideFields;
-
-async function promptForModel(rl, { agentName, current, models, output }) {
-  const defaultIndex = models.includes(current) ? models.indexOf(current) + 1 : null;
-  const suffix = defaultIndex === null ? `[${current}]` : `[${defaultIndex}]`;
-
-  while (true) {
-    const answer = (await prompt(rl, `  ${agentName} model ${suffix}: `)).trim();
-    if (answer.length === 0) return current;
-
-    const selected = parseModelSelection(answer, models);
-    if (selected !== null) return selected;
-
-    output?.log?.("  Choose a listed number or model id.");
-  }
-}
-
-async function promptForServiceTier(rl, { agentName, current, output }) {
-  printServiceTierChoices(output);
-  const defaultIndex = SERVICE_TIERS.findIndex((tier) => tier.value === current) + 1;
-  const suffix = defaultIndex > 0 ? `[${defaultIndex}]` : `[${current}]`;
-
-  while (true) {
-    const answer = (await prompt(rl, `  ${agentName} service tier ${suffix}: `)).trim();
-    if (answer.length === 0) return current;
-
-    const selected = parseServiceTierSelection(answer);
-    if (selected !== null) return selected;
-
-    output?.log?.("  Choose 1 for default/non-fast or 2 for fast.");
-  }
-}
-
-function parseServiceTierSelection(answer) {
-  if (/^[0-9]+$/.test(answer)) return SERVICE_TIERS[Number(answer) - 1]?.value ?? null;
-  return SERVICE_TIERS.some((tier) => tier.value === answer) ? answer : null;
-}
-
-function printServiceTierChoices(output) {
-  for (const [index, tier] of SERVICE_TIERS.entries()) {
-    output?.log?.(`  ${index + 1}. ${tier.label}`);
-  }
-}
-
-async function promptForYesNo(rl, question) {
-  const answer = (await prompt(rl, question)).trim().toLowerCase();
-  return ["y", "yes"].includes(answer);
-}
-
-function parseModelSelection(answer, models) {
-  if (/^[0-9]+$/.test(answer)) {
-    const index = Number(answer) - 1;
-    return models[index] ?? null;
-  }
-
-  return models.includes(answer) ? answer : null;
-}
-
 function safeReadDir(sourceDir) {
   try {
     return readdirSync(sourceDir);
   } catch {
     return [];
   }
-}
-
-function printModelChoices(models, output) {
-  for (const [index, model] of models.entries()) {
-    output?.log?.(`  ${index + 1}. ${model}`);
-  }
-  output?.log?.("");
 }
 
 function readBearerTokenFromEnv(provider, env) {
@@ -288,10 +253,6 @@ function readTopLevelTomlString(text, key) {
 function readTomlString(text, key) {
   const match = new RegExp(`^${escapeRegExp(key)}\\s*=\\s*"([^"]*)"\\s*$`, "m").exec(text);
   return match?.[1] ?? null;
-}
-
-function prompt(rl, question) {
-  return new Promise((resolve) => rl.question(question, resolve));
 }
 
 function escapeRegExp(value) {
