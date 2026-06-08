@@ -47,6 +47,36 @@ test("given npx-style CLI setup when upstream agent exists then updates configur
   }
 });
 
+test("given Korean postposition is attached to setup flag when CLI runs then accepts the intended flag", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-cli-"));
+  try {
+    const codexHome = path.join(root, "codex-home");
+    const sourceDir = path.join(root, "agents");
+    const configPath = path.join(root, "config.json");
+    const agentPath = path.join(sourceDir, "explorer.toml");
+    mkdirSync(sourceDir);
+    writeFileSync(agentPath, 'name = "explorer"\nmodel = "gpt-5.4-mini"\n');
+    writeFileSync(
+      configPath,
+      JSON.stringify({
+        source: { agentsDir: sourceDir },
+        overrides: { explorer: { model: "grok-4.3" } }
+      })
+    );
+
+    const result = spawnSync(process.execPath, [CLI, "setup", "--config", configPath, "--skip-art-prompt를"], {
+      env: { ...process.env, CODEX_HOME: codexHome },
+      encoding: "utf8"
+    });
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /installed lfp@linalab/);
+    assert.doesNotMatch(result.stderr, /Unknown sync option/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("given npx-style CLI dry-setup when changes are pending then exits nonzero without writing", () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-cli-"));
   try {

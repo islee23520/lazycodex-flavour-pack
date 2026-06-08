@@ -15,6 +15,8 @@ import { configureArtTeam, readCurrentConfig } from "./art-team-config.mjs";
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const DEFAULT_CONFIG = path.join(ROOT, "agent-configs", "omo-agent-model-overrides.toml");
+const SYNC_OPTIONS = new Set(["--check", "--config", "--skip-art-prompt"]);
+const KOREAN_POSTPOSITIONS = ["으로", "부터", "까지", "에게", "에서", "처럼", "보다", "만큼", "은", "는", "이", "가", "을", "를", "와", "과", "도", "만", "로"];
 
 const HELP = `lfp
 
@@ -230,7 +232,7 @@ function printArtTeamConfig() {
 function parseSyncArgs(argv) {
   const parsed = {};
   for (let index = 0; index < argv.length; index += 1) {
-    const item = argv[index];
+    const item = normalizeSyncOption(argv[index]);
     if (item === "--check") {
       parsed.check = true;
       continue;
@@ -249,6 +251,19 @@ function parseSyncArgs(argv) {
     throw new Error(`Unknown sync option: ${item}`);
   }
   return parsed;
+}
+
+function normalizeSyncOption(item) {
+  if (SYNC_OPTIONS.has(item)) return item;
+  if (!item.startsWith("--")) return item;
+
+  for (const postposition of KOREAN_POSTPOSITIONS) {
+    if (!item.endsWith(postposition)) continue;
+    const normalized = item.slice(0, -postposition.length);
+    if (SYNC_OPTIONS.has(normalized)) return normalized;
+  }
+
+  return item;
 }
 
 function isDirectRun() {
