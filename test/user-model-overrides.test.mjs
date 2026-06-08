@@ -6,12 +6,12 @@ import assert from "node:assert/strict";
 
 import { configureAgentModelOverrides, getUserOverrideConfigPath } from "../scripts/agent-model-config.mjs";
 
-test("given saved user override config when setup runs again then can restore it before prompting for models", async () => {
+test("given saved user override config when setup runs again then restores model fields without stale agents dir", async () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-user-models-"));
   try {
     const codexHome = path.join(root, "codex-home");
     const configPath = path.join(root, "overrides.toml");
-    writeFileSync(configPath, overrideText(root, "grok-4.3", "low", "default"));
+    writeFileSync(configPath, overrideText("${CODEX_HOME}/agents", "grok-4.3", "low", "default"));
 
     await configureAgentModelOverrides(configPath, {
       env: { ...process.env, CODEX_HOME: codexHome },
@@ -20,10 +20,13 @@ test("given saved user override config when setup runs again then can restore it
       output: silentOutput()
     });
     const savedPath = getUserOverrideConfigPath({ env: { CODEX_HOME: codexHome } });
-    assert.match(readFileSync(savedPath, "utf8"), /model = "gpt-5\.4-mini"/);
-    assert.match(readFileSync(savedPath, "utf8"), /model_reasoning_effort = "xhigh"/);
+    const savedText = readFileSync(savedPath, "utf8");
+    assert.match(savedText, /model = "gpt-5\.4-mini"/);
+    assert.match(savedText, /model_reasoning_effort = "xhigh"/);
+    assert.doesNotMatch(savedText, /\[source]/);
 
-    writeFileSync(configPath, overrideText(root, "grok-4.3", "low", "default"));
+    writeFileSync(savedPath, overrideText(root, "gpt-5.4-mini", "xhigh", "fast"));
+    writeFileSync(configPath, overrideText("${CODEX_HOME}/agents", "grok-4.3", "low", "default"));
     const output = captureOutput();
     const restored = await configureAgentModelOverrides(configPath, {
       env: { ...process.env, CODEX_HOME: codexHome },
@@ -34,7 +37,10 @@ test("given saved user override config when setup runs again then can restore it
 
     assert.equal(restored.overrides.explorer.model, "gpt-5.4-mini");
     assert.equal(restored.overrides.explorer.model_reasoning_effort, "xhigh");
-    assert.match(readFileSync(configPath, "utf8"), /model = "gpt-5\.4-mini"/);
+    const restoredText = readFileSync(configPath, "utf8");
+    assert.match(restoredText, /agents_dir = "\$\{CODEX_HOME}\/agents"/);
+    assert.match(restoredText, /model = "gpt-5\.4-mini"/);
+    assert.doesNotMatch(restoredText, new RegExp(escapeRegExp(root)));
     assert.ok(output.questions.some((question) => /Apply saved LFP model override config/.test(question)));
   } finally {
     rmSync(root, { recursive: true, force: true });
@@ -72,4 +78,8 @@ function overrideText(root, model, reasoning, tier) {
     `service_tier = "${tier}"`,
     ""
   ].join("\n");
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

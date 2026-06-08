@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import os from "node:os";
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import {
@@ -12,12 +12,19 @@ import {
   promptForYesNo
 } from "./model-config-prompts.mjs";
 import { readOverrideConfig } from "./sync-agent-overrides.mjs";
+import {
+  getUserOverrideConfigPath,
+  hasSavedUserOverrideConfig,
+  restoreUserOverrideConfig,
+  saveUserOverrideConfig
+} from "./user-model-overrides.mjs";
 
 const MODEL_FIELD = "model";
 const WRITABLE_FIELDS = ["model", "model_reasoning_effort", "service_tier"];
 const LFP_AGENT_NAMES = new Set(["artistry", "artistry-gen", "artistry-qa", "visual-engineering", "visual-looker"]);
 const DEFAULT_CONFIG_NAME = "config.toml";
-const USER_OVERRIDE_CONFIG_NAME = "omo-agent-model-overrides.toml";
+
+export { getUserOverrideConfigPath };
 
 export async function configureAgentModelOverrides(configPath, options = {}) {
   if (options.interactive === false) return readOverrideConfig(configPath, options);
@@ -228,14 +235,10 @@ export function writeOverrideFields(configPath, overrides) {
 
 export const writeOverrideModels = writeOverrideFields;
 
-export function getUserOverrideConfigPath(options = {}) {
-  const env = options.env ?? process.env;
-  const codexHome = env.CODEX_HOME?.trim() || path.join(os.homedir(), ".codex");
-  return options.userOverrideConfigPath ?? path.join(codexHome, "lfp", USER_OVERRIDE_CONFIG_NAME);
-}
-
 async function maybeRestoreUserOverrideConfig(configPath, userConfigPath, options) {
-  if (options.persistUserOverrides === false || !configPath.endsWith(".toml") || !existsSync(userConfigPath)) return null;
+  if (options.persistUserOverrides === false || !configPath.endsWith(".toml") || !hasSavedUserOverrideConfig(userConfigPath)) {
+    return null;
+  }
 
   const shouldApply = await promptForYesNo(
     options.readline,
@@ -243,15 +246,9 @@ async function maybeRestoreUserOverrideConfig(configPath, userConfigPath, option
   );
   if (!shouldApply) return null;
 
-  writeFileSync(configPath, readFileSync(userConfigPath, "utf8"));
+  restoreUserOverrideConfig(configPath, userConfigPath);
   options.output?.log?.("Applied saved LFP model override config.\n");
   return readOverrideConfig(configPath, options);
-}
-
-function saveUserOverrideConfig(configPath, userConfigPath) {
-  if (!configPath.endsWith(".toml")) return;
-  mkdirSync(path.dirname(userConfigPath), { recursive: true });
-  writeFileSync(userConfigPath, readFileSync(configPath, "utf8"));
 }
 
 function safeReadDir(sourceDir) {
