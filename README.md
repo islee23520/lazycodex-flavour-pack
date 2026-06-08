@@ -44,11 +44,13 @@ The packaged override configs resolve `${CODEX_HOME}` at runtime, so the same re
 
 GitHub Actions publish automation lives at `.github/workflows/publish.yml`. It runs when a GitHub `release published` event fires and can also be started manually with `workflow_dispatch`.
 
-The workflow verifies the package with `npm test` and `npm pack --dry-run`, then publishes with `npm publish --provenance --access public` through npm Trusted Publishing.
+The workflow verifies the package with `npm test` and `npm pack --dry-run`, then publishes with `npm publish --provenance --access public`.
 
-### Required npm Trusted Publishing setup
+### Required npm publishing setup
 
-Configure npm Trusted Publishing once for:
+Configure GitHub Actions secret `NPM_TOKEN` with an npm token that can publish `@islee23520/lfp`.
+
+If using npm Trusted Publishing instead of a token, configure npm for:
 
 - Package: `@islee23520/lfp`
 - Repository: `islee23520/lazycodex-flavour-pack`
@@ -58,4 +60,4 @@ Configure npm Trusted Publishing once for:
 npm trust github @islee23520/lfp --repo islee23520/lazycodex-flavour-pack --file publish.yml
 ```
 
-After the trust relationship exists, publish by creating a GitHub release or manually running the workflow. No `NPM_TOKEN` secret is required.
+After auth is configured, publish by creating a GitHub release or manually running the workflow.
