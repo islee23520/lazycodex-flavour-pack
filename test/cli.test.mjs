@@ -24,7 +24,7 @@ test("given npx-style CLI setup when upstream agent exists then updates configur
       })
     );
 
-    const result = spawnSync(process.execPath, [CLI, "setup", "--config", configPath], {
+    const result = spawnSync(process.execPath, [CLI, "setup", "--config", configPath, "--skip-art-prompt"], {
       env: { ...process.env, CODEX_HOME: codexHome },
       encoding: "utf8"
     });
@@ -97,7 +97,7 @@ test("given setup config is missing when setup runs then leaves Codex home unmod
     const codexHome = path.join(root, "codex-home");
     const configPath = path.join(root, "missing.json");
 
-    const result = spawnSync(process.execPath, [CLI, "setup", "--config", configPath], {
+    const result = spawnSync(process.execPath, [CLI, "setup", "--config", configPath, "--skip-art-prompt"], {
       env: { ...process.env, CODEX_HOME: codexHome },
       encoding: "utf8"
     });
@@ -126,7 +126,7 @@ test("given upstream agents dir is missing when setup runs then leaves Codex hom
       })
     );
 
-    const result = spawnSync(process.execPath, [CLI, "setup", "--config", configPath], {
+    const result = spawnSync(process.execPath, [CLI, "setup", "--config", configPath, "--skip-art-prompt"], {
       env: { ...process.env, CODEX_HOME: codexHome },
       encoding: "utf8"
     });
@@ -156,7 +156,7 @@ test("given required upstream agent is missing when setup runs then leaves Codex
       })
     );
 
-    const result = spawnSync(process.execPath, [CLI, "setup", "--config", configPath], {
+    const result = spawnSync(process.execPath, [CLI, "setup", "--config", configPath, "--skip-art-prompt"], {
       env: { ...process.env, CODEX_HOME: codexHome },
       encoding: "utf8"
     });
@@ -223,7 +223,7 @@ test("given setup has run when doctor runs then reports lfp installed in Codex",
       })
     );
 
-    const setup = spawnSync(process.execPath, [CLI, "setup", "--config", configPath], {
+    const setup = spawnSync(process.execPath, [CLI, "setup", "--config", configPath, "--skip-art-prompt"], {
       env: { ...process.env, CODEX_HOME: codexHome },
       encoding: "utf8"
     });

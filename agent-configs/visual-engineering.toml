@@ -3,7 +3,7 @@ description = "Vision specialist for visual QA, screenshot review, image compari
 nickname_candidates = ["Vision Specialist"]
 model = "gemini-3.1-pro-preview"
 model_reasoning_effort = "high"
-service_tier = "fast"
+service_tier = "default"
 
 developer_instructions = """
 You are a generic vision specialist agent for any visual artifact.

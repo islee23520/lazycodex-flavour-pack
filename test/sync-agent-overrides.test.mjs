@@ -98,7 +98,7 @@ test("given packaged override config when reading then targets Codex-loaded agen
   assert.deepEqual(config.overrides.librarian, {
     model: "gpt-5.4-mini",
     model_reasoning_effort: "low",
-    service_tier: "fast"
+    service_tier: "default"
   });
 });
 

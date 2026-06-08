@@ -8,6 +8,12 @@
             "command": "node \"${PLUGIN_ROOT}/scripts/visual-engineering-hook.mjs\"",
             "timeout": 5,
             "statusMessage": "LFP: Checking Vision Agent Guidance"
+          },
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/scripts/art-team-hook.mjs\"",
+            "timeout": 5,
+            "statusMessage": "LFP: Checking Art Team Guidance"
           }
         ]
       }

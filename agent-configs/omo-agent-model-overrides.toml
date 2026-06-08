@@ -4,9 +4,9 @@ agents_dir = "${CODEX_HOME}/agents"
 [agents.explorer]
 model = "grok-4.20-0309-non-reasoning"
 model_reasoning_effort = "low"
-service_tier = "fast"
+service_tier = "default"
 
 [agents.librarian]
 model = "gpt-5.4-mini"
 model_reasoning_effort = "low"
-service_tier = "fast"
+service_tier = "default"

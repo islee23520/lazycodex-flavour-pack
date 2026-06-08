@@ -2,7 +2,7 @@ name = "visual-looker"
 description = "Multimodal vision evidence agent for screenshots, images, documents, diagrams, charts, game assets, photos, illustrations, and any visual artifact inspection and evidence extraction."
 nickname_candidates = ["Vision Looker"]
 model = "gemini-3.1-pro-preview"
-model_reasoning_effort = "medium"
+model_reasoning_effort = "high"
 service_tier = "fast"
 
 developer_instructions = """

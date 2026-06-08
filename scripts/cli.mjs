@@ -11,6 +11,7 @@ import {
   PLUGIN_REF
 } from "./codex-plugin-install.mjs";
 import { syncAgentOverrides } from "./sync-agent-overrides.mjs";
+import { configureArtTeam, readCurrentConfig } from "./art-team-config.mjs";
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const DEFAULT_CONFIG = path.join(ROOT, "agent-configs", "omo-agent-model-overrides.toml");
@@ -18,15 +19,29 @@ const DEFAULT_CONFIG = path.join(ROOT, "agent-configs", "omo-agent-model-overrid
 const HELP = `lfp
 
 Usage:
-  lfp setup [--config <path>]
+  lfp setup [--config <path>] [--skip-art-prompt]
   lfp dry-setup [--config <path>]
   lfp doctor [--config <path>]
+  lfp art-config
   lfp help
 
 npx:
   npx @islee23520/lfp@latest setup
   npx @islee23520/lfp@latest dry-setup
   npx @islee23520/lfp@latest doctor
+  npx @islee23520/lfp@latest art-config
+
+Commands:
+  setup            Install LFP plugin, agents, and overrides into Codex.
+                   Interactive: prompts for art team model selection.
+  dry-setup        Preview what setup would do without writing.
+  doctor           Check LFP install status, agent models, and overrides.
+  art-config       Reconfigure art team models (interactive prompt).
+  help             Show this help.
+
+Flags:
+  --config <path>  Use a specific override config file.
+  --skip-art-prompt  Skip the interactive art team model prompt during setup.
 
 This package is a lightweight overlay. setup installs/enables this pack in Codex, checks that LazyCodex/OMO is already installed, then applies configured overrides to existing agents. It does not install or update LazyCodex/OMO.`;
 
@@ -62,10 +77,15 @@ export function runCli(argv) {
     return;
   }
 
+  if (command === "art-config") {
+    runArtConfig(args);
+    return;
+  }
+
   throw new Error(`Unknown command: ${command}\n\n${HELP}`);
 }
 
-function runSetup(argv, { check }) {
+async function runSetup(argv, { check }) {
   const args = parseSyncArgs(argv);
   const configPath = args.config ?? DEFAULT_CONFIG;
   const pending = getPendingCodexPluginActions();
@@ -86,6 +106,10 @@ function runSetup(argv, { check }) {
     console.log(`enabled ${PLUGIN_REF} in ${installed.configPath}`);
     printOpenAiCompatProviderState(installed);
     printInstallSmokeState();
+
+    if (!args.skipArtPrompt) {
+      await configureArtTeam();
+    }
   }
 
   const result = check ? pendingOverrides : syncAgentOverrides(configPath, { check: false });
@@ -119,6 +143,8 @@ function runDoctor(argv) {
   const visualSmokeOk = printVisualSmokeState();
   hasIssue ||= !visualSmokeOk;
 
+  printArtTeamConfig();
+
   try {
     const result = syncAgentOverrides(configPath, { check: true });
     if (result.changed.length === 0) {
@@ -133,6 +159,12 @@ function runDoctor(argv) {
   }
 
   if (hasIssue) process.exitCode = 1;
+}
+
+async function runArtConfig() {
+  console.log("Reconfiguring art team models...\n");
+  await configureArtTeam();
+  console.log("Run 'lfp setup' to reinstall agents with updated models.");
 }
 
 function printOpenAiCompatProviderState(state) {
@@ -187,6 +219,14 @@ function printVisualSmokeState() {
   return false;
 }
 
+function printArtTeamConfig() {
+  const config = readCurrentConfig();
+  console.log("lfp doctor: art team config:");
+  for (const [name, fields] of Object.entries(config)) {
+    console.log(`  ${name}: model=${fields.model}, reasoning=${fields.model_reasoning_effort}, tier=${fields.service_tier}`);
+  }
+}
+
 function parseSyncArgs(argv) {
   const parsed = {};
   for (let index = 0; index < argv.length; index += 1) {
@@ -200,6 +240,10 @@ function parseSyncArgs(argv) {
       if (value === undefined) throw new Error("--config requires a value");
       parsed.config = value;
       index += 1;
+      continue;
+    }
+    if (item === "--skip-art-prompt") {
+      parsed.skipArtPrompt = true;
       continue;
     }
     throw new Error(`Unknown sync option: ${item}`);

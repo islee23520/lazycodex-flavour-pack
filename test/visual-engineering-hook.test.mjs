@@ -109,7 +109,7 @@ test("given LFP and LazyCodex hooks when manifests are inspected then they coexi
   const lfpUserPromptSubmit = lfpHooks.hooks.UserPromptSubmit;
 
   assert.equal(lfpUserPromptSubmit.length, 1);
-  assert.equal(lfpUserPromptSubmit[0].hooks.length, 1);
+  assert.equal(lfpUserPromptSubmit[0].hooks.length, 2);
   assert.equal(lfpUserPromptSubmit[0].hooks[0].type, "command");
   assert.match(lfpUserPromptSubmit[0].hooks[0].command, /\$\{PLUGIN_ROOT\}\/scripts\/visual-engineering-hook\.mjs/);
   assert.equal(lfpUserPromptSubmit[0].hooks[0].timeout, 5);
