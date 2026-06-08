@@ -6,6 +6,11 @@ import path from "node:path";
 import { readOverrideConfig } from "./sync-agent-overrides.mjs";
 
 const MODEL_FIELD = "model";
+const WRITABLE_FIELDS = new Set(["model", "service_tier"]);
+const SERVICE_TIERS = [
+  { value: "default", label: "default (non-fast)" },
+  { value: "fast", label: "fast" }
+];
 const DEFAULT_CONFIG_NAME = "config.toml";
 
 export async function configureAgentModelOverrides(configPath, options = {}) {
@@ -38,10 +43,15 @@ export async function configureAgentModelOverrides(configPath, options = {}) {
       output: options.output
     });
     fields.model = selected;
+    fields.service_tier = await promptForServiceTier(rl, {
+      agentName,
+      current: typeof fields.service_tier === "string" ? fields.service_tier : "default",
+      output: options.output
+    });
     config.overrides[agentName] = fields;
   }
 
-  writeOverrideModels(configPath, config.overrides);
+  writeOverrideFields(configPath, config.overrides);
   options.output?.log?.("OMO override model configuration written.\n");
   return config;
 }
@@ -103,7 +113,7 @@ export function normalizeModelsPayload(payload) {
   return [...new Set(models)].sort((a, b) => a.localeCompare(b));
 }
 
-export function writeOverrideModels(configPath, overrides) {
+export function writeOverrideFields(configPath, overrides) {
   if (!configPath.endsWith(".toml")) return;
 
   const lines = readFileSync(configPath, "utf8").split(/\r?\n/);
@@ -116,8 +126,8 @@ export function writeOverrideModels(configPath, overrides) {
 
     const agentName = section?.startsWith("agents.") ? section.slice("agents.".length) : null;
     const key = line.includes("=") ? line.split("=", 1)[0].trim() : "";
-    if (agentName !== null && key === MODEL_FIELD && overrides[agentName]?.model) {
-      output.push(`${MODEL_FIELD} = ${JSON.stringify(String(overrides[agentName].model))}`);
+    if (agentName !== null && WRITABLE_FIELDS.has(key) && overrides[agentName]?.[key]) {
+      output.push(`${key} = ${JSON.stringify(String(overrides[agentName][key]))}`);
       continue;
     }
 
@@ -126,6 +136,8 @@ export function writeOverrideModels(configPath, overrides) {
 
   writeFileSync(configPath, `${output.join("\n").replace(/\n*$/, "")}\n`);
 }
+
+export const writeOverrideModels = writeOverrideFields;
 
 async function promptForModel(rl, { agentName, current, models, output }) {
   const defaultIndex = models.includes(current) ? models.indexOf(current) + 1 : null;
@@ -139,6 +151,33 @@ async function promptForModel(rl, { agentName, current, models, output }) {
     if (selected !== null) return selected;
 
     output?.log?.("  Choose a listed number or model id.");
+  }
+}
+
+async function promptForServiceTier(rl, { agentName, current, output }) {
+  printServiceTierChoices(output);
+  const defaultIndex = SERVICE_TIERS.findIndex((tier) => tier.value === current) + 1;
+  const suffix = defaultIndex > 0 ? `[${defaultIndex}]` : `[${current}]`;
+
+  while (true) {
+    const answer = (await prompt(rl, `  ${agentName} service tier ${suffix}: `)).trim();
+    if (answer.length === 0) return current;
+
+    const selected = parseServiceTierSelection(answer);
+    if (selected !== null) return selected;
+
+    output?.log?.("  Choose 1 for default/non-fast or 2 for fast.");
+  }
+}
+
+function parseServiceTierSelection(answer) {
+  if (/^[0-9]+$/.test(answer)) return SERVICE_TIERS[Number(answer) - 1]?.value ?? null;
+  return SERVICE_TIERS.some((tier) => tier.value === answer) ? answer : null;
+}
+
+function printServiceTierChoices(output) {
+  for (const [index, tier] of SERVICE_TIERS.entries()) {
+    output?.log?.(`  ${index + 1}. ${tier.label}`);
   }
 }
 

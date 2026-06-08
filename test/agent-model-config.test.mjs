@@ -76,7 +76,7 @@ test("given provider models endpoint when fetching available models then returns
   }
 });
 
-test("given interactive OMO override setup when user selects listed model then writes selected model to TOML", async () => {
+test("given interactive OMO override setup when user selects listed model and tier then writes both to TOML", async () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-models-"));
   try {
     const configPath = path.join(root, "overrides.toml");
@@ -89,19 +89,30 @@ test("given interactive OMO override setup when user selects listed model then w
         "[agents.explorer]",
         'model = "grok-4.3"',
         'model_reasoning_effort = "low"',
+        'service_tier = "default"',
+        "",
+        "[agents.librarian]",
+        'model = "gpt-5.4-mini"',
+        'model_reasoning_effort = "low"',
+        'service_tier = "default"',
         ""
       ].join("\n")
     );
 
     const config = await configureAgentModelOverrides(configPath, {
       models: ["gpt-5.4-mini", "grok-4.3"],
-      readline: fakeReadline(["1"]),
+      readline: fakeReadline(["1", "2", "2", "1"]),
       output: silentOutput()
     });
     const updated = readFileSync(configPath, "utf8");
 
     assert.equal(config.overrides.explorer.model, "gpt-5.4-mini");
+    assert.equal(config.overrides.explorer.service_tier, "fast");
+    assert.equal(config.overrides.librarian.model, "grok-4.3");
+    assert.equal(config.overrides.librarian.service_tier, "default");
     assert.match(updated, /model = "gpt-5\.4-mini"/);
+    assert.match(updated, /service_tier = "fast"/);
+    assert.match(updated, /\[agents\.librarian]\nmodel = "grok-4\.3"\nmodel_reasoning_effort = "low"\nservice_tier = "default"/);
     assert.match(updated, /model_reasoning_effort = "low"/);
   } finally {
     rmSync(root, { recursive: true, force: true });
