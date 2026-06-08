@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import path from "node:path";
+import { createInterface } from "node:readline";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import {
@@ -12,16 +13,17 @@ import {
 } from "./codex-plugin-install.mjs";
 import { syncAgentOverrides } from "./sync-agent-overrides.mjs";
 import { configureArtTeam, readCurrentConfig } from "./art-team-config.mjs";
+import { configureAgentModelOverrides } from "./agent-model-config.mjs";
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const DEFAULT_CONFIG = path.join(ROOT, "agent-configs", "omo-agent-model-overrides.toml");
-const SYNC_OPTIONS = new Set(["--check", "--config", "--skip-art-prompt"]);
+const SYNC_OPTIONS = new Set(["--check", "--config", "--skip-art-prompt", "--skip-model-prompt"]);
 const KOREAN_POSTPOSITIONS = ["으로", "부터", "까지", "에게", "에서", "처럼", "보다", "만큼", "은", "는", "이", "가", "을", "를", "와", "과", "도", "만", "로"];
 
 const HELP = `lfp
 
 Usage:
-  lfp setup [--config <path>] [--skip-art-prompt]
+  lfp setup [--config <path>] [--skip-art-prompt] [--skip-model-prompt]
   lfp dry-setup [--config <path>]
   lfp doctor [--config <path>]
   lfp art-config
@@ -35,7 +37,7 @@ npx:
 
 Commands:
   setup            Install LFP plugin, agents, and overrides into Codex.
-                   Interactive: prompts for art team model selection.
+                   Interactive: prompts for art team and OMO override model selection.
   dry-setup        Preview what setup would do without writing.
   doctor           Check LFP install status, agent models, and overrides.
   art-config       Reconfigure art team models (interactive prompt).
@@ -44,6 +46,7 @@ Commands:
 Flags:
   --config <path>  Use a specific override config file.
   --skip-art-prompt  Skip the interactive art team model prompt during setup.
+  --skip-model-prompt  Skip the interactive OMO override model prompt during setup.
 
 This package is a lightweight overlay. setup installs/enables this pack in Codex, checks that LazyCodex/OMO is already installed, then applies configured overrides to existing agents. It does not install or update LazyCodex/OMO.`;
 
@@ -89,7 +92,7 @@ export function runCli(argv) {
 
 async function runSetup(argv, { check }) {
   const args = parseSyncArgs(argv);
-  const configPath = args.config ?? DEFAULT_CONFIG;
+  let configPath = args.config ?? DEFAULT_CONFIG;
   const pending = getPendingCodexPluginActions();
   const pendingOverrides = syncAgentOverrides(configPath, { check: true });
 
@@ -103,6 +106,9 @@ async function runSetup(argv, { check }) {
     }
 
     const installed = installCodexPlugin(ROOT);
+    if (args.config === undefined) {
+      configPath = path.join(installed.pluginRoot, "agent-configs", "omo-agent-model-overrides.toml");
+    }
     console.log(`installed ${PLUGIN_REF} to ${installed.pluginRoot}`);
     console.log(`installed LFP agents to ${path.join(installed.codexHome, "agents")}`);
     console.log(`enabled ${PLUGIN_REF} in ${installed.configPath}`);
@@ -111,6 +117,15 @@ async function runSetup(argv, { check }) {
 
     if (!args.skipArtPrompt) {
       await configureArtTeam();
+    }
+
+    if (!args.skipModelPrompt && process.stdin.isTTY) {
+      const rl = createInterface({ input: process.stdin, output: process.stdout });
+      try {
+        await configureAgentModelOverrides(configPath, { readline: rl, output: console });
+      } finally {
+        rl.close();
+      }
     }
   }
 
@@ -246,6 +261,10 @@ function parseSyncArgs(argv) {
     }
     if (item === "--skip-art-prompt") {
       parsed.skipArtPrompt = true;
+      continue;
+    }
+    if (item === "--skip-model-prompt") {
+      parsed.skipModelPrompt = true;
       continue;
     }
     throw new Error(`Unknown sync option: ${item}`);
