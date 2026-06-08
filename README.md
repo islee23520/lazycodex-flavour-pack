@@ -4,7 +4,7 @@ LazyCodex Flavour Pack. A small overlay for LazyCodex/Codex.
 
 LFP assumes LazyCodex/OMO is already installed. It registers this plugin in Codex, installs LFP-owned helper agents, configures the optional `cliproxyapi` provider when safe, and syncs only model-related fields on existing upstream agent TOMLs.
 
-Repository and LFP-owned issues live at <https://github.com/islee23520/lfp>. If a failure is caused by upstream LazyCodex/OMO behavior rather than this flavour pack, register that issue on the upstream LazyCodex tracker instead.
+Repository and LFP-owned issues live at <https://github.com/islee23520/lazycodex-flavour-pack>. If a failure is caused by upstream LazyCodex/OMO behavior rather than this flavour pack, register that issue on the upstream LazyCodex tracker instead.
 
 Run `npx lazycodex-ai@latest install` first when the upstream plugin is missing or stale. LFP setup validates the configured `agentsDir` before writing its own install files.
 
@@ -49,11 +49,11 @@ The workflow verifies the package with `npm test` and `npm pack --dry-run`, then
 Configure npm Trusted Publishing once for:
 
 - Package: `@islee23520/lfp`
-- Repository: `islee23520/lfp`
+- Repository: `islee23520/lazycodex-flavour-pack`
 - Workflow file: `publish.yml`
 
 ```sh
-npm trust github @islee23520/lfp --repo islee23520/lfp --file publish.yml
+npm trust github @islee23520/lfp --repo islee23520/lazycodex-flavour-pack --file publish.yml
 ```
 
 After the trust relationship exists, publish by creating a GitHub release or manually running the workflow. No `NPM_TOKEN` secret is required.

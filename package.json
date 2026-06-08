@@ -8,10 +8,10 @@
   "homepage": "https://linalab.io",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/islee23520/lfp.git"
+    "url": "git+https://github.com/islee23520/lazycodex-flavour-pack.git"
   },
   "bugs": {
-    "url": "https://github.com/islee23520/lfp/issues"
+    "url": "https://github.com/islee23520/lazycodex-flavour-pack/issues"
   },
   "publishConfig": {
     "access": "public",
