@@ -66,20 +66,23 @@ test("given release automation when validating repository metadata then publish 
   assert.equal(existsSync(publishWorkflowPath), true, "publish workflow must exist at .github/workflows/publish.yml");
 });
 
-test("given publish workflow when validating release automation then it publishes from release and manual dispatch with npm token", () => {
+test("given publish workflow when validating release automation then it publishes from release and manual dispatch with trusted publishing", () => {
   const workflowText = readFileSync(publishWorkflowPath, "utf8");
 
   assert.match(workflowText, /^name:\s+Publish Package$/m);
   assert.match(workflowText, /^on:\n(?:.+\n)*\s+release:\n(?:.+\n)*\s+types:\s*\[published\]/m);
   assert.match(workflowText, /^on:\n(?:.+\n)*\s+workflow_dispatch:\s*$/m);
+  assert.match(workflowText, /id-token:\s+write/);
+  assert.match(workflowText, /node-version:\s+24/);
   assert.match(workflowText, /npm publish --provenance --access public/);
-  assert.match(workflowText, /NODE_AUTH_TOKEN:\s+\$\{\{\s*secrets\.NPM_TOKEN\s*\}\}/);
+  assert.doesNotMatch(workflowText, /NODE_AUTH_TOKEN/);
+  assert.doesNotMatch(workflowText, /secrets\.NPM_TOKEN/);
 });
 
-test("given publish automation docs when validating operator guidance then readme explains GitHub secret setup", () => {
+test("given publish automation docs when validating operator guidance then readme explains trusted publishing setup", () => {
   assert.match(readmeText, /## Publish/);
-  assert.match(readmeText, /NPM_TOKEN/);
-  assert.match(readmeText, /Settings -> Secrets and variables -> Actions/);
+  assert.match(readmeText, /Trusted Publishing/);
+  assert.match(readmeText, /islee23520\/lazycodex-flavour-pack/);
   assert.match(readmeText, /release published/);
 });
 

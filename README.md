@@ -4,7 +4,7 @@ LazyCodex Flavour Pack. A small overlay for LazyCodex/Codex.
 
 LFP assumes LazyCodex/OMO is already installed. It registers this plugin in Codex, installs LFP-owned helper agents, configures the optional `cliproxyapi` provider when safe, and syncs only model-related fields on existing upstream agent TOMLs.
 
-Repository and LFP-owned issues live at <https://github.com/islee23520/lfp>. If a failure is caused by upstream LazyCodex/OMO behavior rather than this flavour pack, register that issue on the upstream LazyCodex tracker instead.
+Repository and LFP-owned issues live at <https://github.com/islee23520/lazycodex-flavour-pack>. If a failure is caused by upstream LazyCodex/OMO behavior rather than this flavour pack, register that issue on the upstream LazyCodex tracker instead.
 
 Run `npx lazycodex-ai@latest install` first when the upstream plugin is missing or stale. LFP setup validates the configured `agentsDir` before writing its own install files.
 
@@ -42,27 +42,18 @@ The packaged override configs resolve `${CODEX_HOME}` at runtime, so the same re
 
 GitHub Actions publish automation lives at `.github/workflows/publish.yml`. It runs when a GitHub `release published` event fires and can also be started manually with `workflow_dispatch`.
 
-The workflow verifies the package with `npm test` and `npm pack --dry-run`, then publishes with `npm publish --provenance --access public`.
+The workflow verifies the package with `npm test` and `npm pack --dry-run`, then publishes with `npm publish --provenance --access public` through npm Trusted Publishing.
 
-### Required GitHub secret
+### Required npm Trusted Publishing setup
 
-Create one repository secret named `NPM_TOKEN`.
+Configure npm Trusted Publishing once for:
 
-**CLI (recommended):**
+- Package: `@islee23520/lfp`
+- Repository: `islee23520/lazycodex-flavour-pack`
+- Workflow file: `publish.yml`
 
 ```sh
-gh secret set NPM_TOKEN
+npm trust github @islee23520/lfp --repo islee23520/lazycodex-flavour-pack --file publish.yml
 ```
 
-Paste the npm automation token when prompted and press Enter.
-
-**Web UI:**
-
-1. In GitHub, open the repository.
-2. Go to `Settings -> Secrets and variables -> Actions`.
-3. Click `New repository secret`.
-4. Set `Name` to `NPM_TOKEN`.
-5. Paste an npm automation token with publish permission as the value.
-6. Save the secret, then publish by creating a GitHub release or manually running the workflow.
-
-If the token changes or is revoked, replace the same `NPM_TOKEN` secret with the new value before the next publish.
+After the trust relationship exists, publish by creating a GitHub release or manually running the workflow. No `NPM_TOKEN` secret is required.
