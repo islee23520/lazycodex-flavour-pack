@@ -1,7 +1,7 @@
 {
   "name": "@islee23520/lfp",
-  "version": "0.2.0",
-  "description": "LazyCodex flavour pack.",
+  "version": "0.3.0",
+  "description": "LazyCodex flavour pack with art team agents.",
   "author": "islee23520",
   "homepage": "https://linalab.io",
   "repository": "https://github.com/islee23520/lfp",
@@ -11,13 +11,14 @@
     "flavour-pack",
     "codex",
     "hooks",
-    "agents"
+    "agents",
+    "art-team"
   ],
   "hooks": "./hooks/hooks.json",
   "interface": {
     "displayName": "LazyCodex Flavour Pack",
     "shortDescription": "LFP hooks, agents, and model overrides layered on LazyCodex.",
-    "longDescription": "Adds LFP Codex hooks, agent role files, and vanilla LazyCodex/OMO model override sync without editing upstream plugin cache files.",
+    "longDescription": "Adds LFP Codex hooks, agent role files, and vanilla LazyCodex/OMO model override sync without editing upstream plugin cache files. Includes art team agent group for Computer Use-driven creative tool production.",
     "developerName": "islee23520",
     "category": "Developer Tools",
     "capabilities": ["Hooks", "Agents", "Workflow"],
@@ -28,7 +29,8 @@
       "Run UI work with visual QA.",
       "Sync LazyCodex agent model overrides.",
       "Use visual-engineering for screenshot-backed review.",
-      "Use visual-looker for Gemini multimodal visual evidence inspection."
+      "Use visual-looker for Gemini multimodal visual evidence inspection.",
+      "Use artistry for art direction, artistry-gen for Computer Use production, artistry-qa for visual inspection."
     ],
     "brandColor": "#2563EB",
     "screenshots": []
@@ -38,7 +40,10 @@
     "modelOverrideSource": "./agent-configs/omo-agent-model-overrides.toml",
     "additionalAgents": [
       "./agent-configs/visual-engineering.toml",
-      "./agent-configs/visual-looker.toml"
+      "./agent-configs/visual-looker.toml",
+      "./agent-configs/artistry.toml",
+      "./agent-configs/artistry-gen.toml",
+      "./agent-configs/artistry-qa.toml"
     ]
   }
 }
