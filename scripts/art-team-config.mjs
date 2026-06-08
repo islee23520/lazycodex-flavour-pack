@@ -4,8 +4,14 @@ import { createInterface } from "node:readline";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
+import { fetchAvailableModels } from "./agent-model-config.mjs";
+
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const ART_AGENT_CONFIGS_DIR = path.join(ROOT, "agent-configs");
+const SERVICE_TIERS = [
+  { value: "default", label: "default (non-fast)" },
+  { value: "fast", label: "fast" }
+];
 
 const ART_AGENTS = [
   {
@@ -38,52 +44,73 @@ if (isDirectRun()) {
   configureArtTeam();
 }
 
-export async function configureArtTeam(options = {}) {
-  const config = options.config ?? readCurrentConfig();
+export async function configureArtTeamIfWanted(options = {}) {
   const rl = options.readline ?? createReadline();
+  const output = options.output ?? console;
 
   try {
-    console.log("\n=== Art Team Model Configuration ===");
-    console.log("Configure the models for each art team agent.");
-    console.log("Press Enter to accept the default, or type a model name.\n");
+    const answer = (await prompt(rl, "Configure art team models now? [y/N]: ")).trim().toLowerCase();
+    if (!["y", "yes"].includes(answer)) {
+      output.log("Keeping existing art team model configuration.");
+      return null;
+    }
+
+    return await configureArtTeam({ ...options, readline: rl, output });
+  } finally {
+    if (!options.readline) rl.close();
+  }
+}
+
+export async function configureArtTeam(options = {}) {
+  const output = options.output ?? console;
+  const configDir = options.configDir ?? ART_AGENT_CONFIGS_DIR;
+  const config = options.config ?? readCurrentConfig({ configDir });
+  const rl = options.readline ?? createReadline();
+  const models = options.models ?? (await safeFetchAvailableModels({ ...options, output }));
+
+  try {
+    output.log("\n=== Art Team Model Configuration ===");
+    output.log("Choose models and fast/non-fast tiers for each art team agent.\n");
+    if (models.length > 0) printModelChoices(models, output);
 
     for (const agent of ART_AGENTS) {
       const current = config[agent.name] ?? { model: agent.defaultModel };
 
-      console.log(`${agent.label}`);
-      console.log(`  Role: ${agent.description}`);
-      console.log(`  Default: ${agent.defaultModel}`);
+      output.log(`${agent.label}`);
+      output.log(`  Role: ${agent.description}`);
+      output.log(`  Default: ${agent.defaultModel}`);
 
-      const modelAnswer = await prompt(rl, `  Model [${current.model}]: `);
-      const model = modelAnswer.trim() || current.model;
-
-      const reasoningAnswer = await prompt(rl, `  Reasoning effort [${agent.defaultReasoning}]: `);
-      const reasoning = reasoningAnswer.trim() || agent.defaultReasoning;
-
-      const tierAnswer = await prompt(rl, `  Service tier [${agent.defaultServiceTier}]: `);
-      const tier = tierAnswer.trim() || agent.defaultServiceTier;
+      const model =
+        models.length > 0
+          ? await promptForModel(rl, { current: current.model, models, output })
+          : await promptForText(rl, `  Model [${current.model}]: `, current.model);
+      const tier = await promptForServiceTier(rl, {
+        current: current.service_tier ?? agent.defaultServiceTier,
+        output
+      });
 
       config[agent.name] = {
         model,
-        model_reasoning_effort: reasoning,
+        model_reasoning_effort: current.model_reasoning_effort ?? agent.defaultReasoning,
         service_tier: tier
       };
 
-      console.log(`  -> ${model} (reasoning: ${reasoning}, tier: ${tier})\n`);
+      output.log(`  -> ${model} (reasoning: ${config[agent.name].model_reasoning_effort}, tier: ${tier})\n`);
     }
   } finally {
     if (!options.readline) rl.close();
   }
 
-  writeArtTeamConfigs(config);
-  console.log("Art team configuration written to agent-configs/.\n");
+  writeArtTeamConfigs(config, { configDir });
+  output.log("Art team configuration written to agent-configs/.\n");
   return config;
 }
 
-export function readCurrentConfig() {
+export function readCurrentConfig(options = {}) {
+  const configDir = options.configDir ?? ART_AGENT_CONFIGS_DIR;
   const config = {};
   for (const agent of ART_AGENTS) {
-    const tomlPath = path.join(ART_AGENT_CONFIGS_DIR, `${agent.name}.toml`);
+    const tomlPath = path.join(configDir, `${agent.name}.toml`);
     try {
       const text = readFileSync(tomlPath, "utf8");
       config[agent.name] = {
@@ -102,9 +129,10 @@ export function readCurrentConfig() {
   return config;
 }
 
-export function writeArtTeamConfigs(config) {
+export function writeArtTeamConfigs(config, options = {}) {
+  const configDir = options.configDir ?? ART_AGENT_CONFIGS_DIR;
   for (const agent of ART_AGENTS) {
-    const tomlPath = path.join(ART_AGENT_CONFIGS_DIR, `${agent.name}.toml`);
+    const tomlPath = path.join(configDir, `${agent.name}.toml`);
     const text = readFileSync(tomlPath, "utf8");
     const updated = applyModelFields(text, config[agent.name]);
     writeFileSync(tomlPath, updated);
@@ -155,6 +183,69 @@ function applyModelFields(text, values) {
 function readTomlField(text, key) {
   const match = new RegExp(`^${key}\\s*=\\s*"([^"]*)"\\s*$`, "m").exec(text);
   return match?.[1] ?? null;
+}
+
+async function safeFetchAvailableModels(options) {
+  try {
+    return await fetchAvailableModels(options);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    options.output?.log?.(`Could not discover available models: ${message}`);
+    return [];
+  }
+}
+
+async function promptForModel(rl, { current, models, output }) {
+  const defaultIndex = models.includes(current) ? models.indexOf(current) + 1 : null;
+  const suffix = defaultIndex === null ? `[${current}]` : `[${defaultIndex}]`;
+
+  while (true) {
+    const answer = (await prompt(rl, `  Model ${suffix}: `)).trim();
+    if (answer.length === 0) return current;
+
+    const selected = parseListedSelection(answer, models);
+    if (selected !== null) return selected;
+
+    output.log("  Choose a listed number or model id.");
+  }
+}
+
+async function promptForServiceTier(rl, { current, output }) {
+  printServiceTierChoices(output);
+  const defaultIndex = SERVICE_TIERS.findIndex((tier) => tier.value === current) + 1;
+  const suffix = defaultIndex > 0 ? `[${defaultIndex}]` : `[${current}]`;
+
+  while (true) {
+    const answer = (await prompt(rl, `  Service tier ${suffix}: `)).trim();
+    if (answer.length === 0) return current;
+
+    const selected = parseListedSelection(
+      answer,
+      SERVICE_TIERS.map((tier) => tier.value)
+    );
+    if (selected !== null) return selected;
+
+    output.log("  Choose 1 for default/non-fast or 2 for fast.");
+  }
+}
+
+function parseListedSelection(answer, values) {
+  if (/^[0-9]+$/.test(answer)) return values[Number(answer) - 1] ?? null;
+  return values.includes(answer) ? answer : null;
+}
+
+function printModelChoices(models, output) {
+  for (const [index, model] of models.entries()) output.log(`  ${index + 1}. ${model}`);
+  output.log("");
+}
+
+function printServiceTierChoices(output) {
+  for (const [index, tier] of SERVICE_TIERS.entries()) output.log(`  ${index + 1}. ${tier.label}`);
+}
+
+async function promptForText(rl, question, defaultValue) {
+  const answer = (await prompt(rl, question)).trim();
+  return answer || defaultValue;
 }
 
 function createReadline() {

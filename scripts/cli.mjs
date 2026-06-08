@@ -12,7 +12,7 @@ import {
   PLUGIN_REF
 } from "./codex-plugin-install.mjs";
 import { syncAgentOverrides } from "./sync-agent-overrides.mjs";
-import { configureArtTeam, readCurrentConfig } from "./art-team-config.mjs";
+import { configureArtTeam, configureArtTeamIfWanted, readCurrentConfig } from "./art-team-config.mjs";
 import { configureAgentModelOverrides } from "./agent-model-config.mjs";
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -115,8 +115,8 @@ async function runSetup(argv, { check }) {
     printOpenAiCompatProviderState(installed);
     printInstallSmokeState();
 
-    if (!args.skipArtPrompt) {
-      await configureArtTeam();
+    if (!args.skipArtPrompt && process.stdin.isTTY) {
+      await configureArtTeamIfWanted();
     }
 
     if (!args.skipModelPrompt && process.stdin.isTTY) {
