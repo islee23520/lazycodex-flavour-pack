@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import os from "node:os";
-import { readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import {
@@ -17,9 +17,17 @@ const MODEL_FIELD = "model";
 const WRITABLE_FIELDS = ["model", "model_reasoning_effort", "service_tier"];
 const LFP_AGENT_NAMES = new Set(["artistry", "artistry-gen", "artistry-qa", "visual-engineering", "visual-looker"]);
 const DEFAULT_CONFIG_NAME = "config.toml";
+const USER_OVERRIDE_CONFIG_NAME = "omo-agent-model-overrides.toml";
 
 export async function configureAgentModelOverrides(configPath, options = {}) {
   if (options.interactive === false) return readOverrideConfig(configPath, options);
+
+  const rl = options.readline;
+  if (rl === undefined) throw new TypeError("readline is required for interactive model override configuration");
+
+  const userConfigPath = getUserOverrideConfigPath(options);
+  const restored = await maybeRestoreUserOverrideConfig(configPath, userConfigPath, { ...options, readline: rl });
+  if (restored !== null) return restored;
 
   const config = readOverrideConfig(configPath, options);
   const agentNames = Object.keys(config.overrides ?? {});
@@ -31,9 +39,6 @@ export async function configureAgentModelOverrides(configPath, options = {}) {
     options.output?.log?.("No available models were discovered; keeping configured OMO override models.");
     return config;
   }
-
-  const rl = options.readline;
-  if (rl === undefined) throw new TypeError("readline is required for interactive model override configuration");
 
   options.output?.log?.("\n=== OMO Agent Model Overrides ===");
   options.output?.log?.("Choose models for existing non-art LazyCodex/OMO agents.\n");
@@ -101,6 +106,7 @@ export async function configureAgentModelOverrides(configPath, options = {}) {
   }
 
   writeOverrideFields(configPath, config.overrides);
+  saveUserOverrideConfig(configPath, userConfigPath);
   options.output?.log?.("OMO override model configuration written.\n");
   return config;
 }
@@ -221,6 +227,33 @@ export function writeOverrideFields(configPath, overrides) {
 }
 
 export const writeOverrideModels = writeOverrideFields;
+
+export function getUserOverrideConfigPath(options = {}) {
+  const env = options.env ?? process.env;
+  const codexHome = env.CODEX_HOME?.trim() || path.join(os.homedir(), ".codex");
+  return options.userOverrideConfigPath ?? path.join(codexHome, "lfp", USER_OVERRIDE_CONFIG_NAME);
+}
+
+async function maybeRestoreUserOverrideConfig(configPath, userConfigPath, options) {
+  if (options.persistUserOverrides === false || !configPath.endsWith(".toml") || !existsSync(userConfigPath)) return null;
+
+  const shouldApply = await promptForYesNo(
+    options.readline,
+    `  Apply saved LFP model override config from ${userConfigPath}? [y/N]: `
+  );
+  if (!shouldApply) return null;
+
+  writeFileSync(configPath, readFileSync(userConfigPath, "utf8"));
+  options.output?.log?.("Applied saved LFP model override config.\n");
+  return readOverrideConfig(configPath, options);
+}
+
+function saveUserOverrideConfig(configPath, userConfigPath) {
+  if (!configPath.endsWith(".toml")) return;
+  mkdirSync(path.dirname(userConfigPath), { recursive: true });
+  writeFileSync(userConfigPath, readFileSync(configPath, "utf8"));
+}
+
 function safeReadDir(sourceDir) {
   try {
     return readdirSync(sourceDir);

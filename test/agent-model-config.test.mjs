@@ -102,7 +102,8 @@ test("given interactive OMO override setup when user selects listed model tier a
     const config = await configureAgentModelOverrides(configPath, {
       models: ["gpt-5.4-mini", "grok-4.3"],
       readline: fakeReadline(["1", "2", "4", "2", "1", "1"]),
-      output: silentOutput()
+      output: silentOutput(),
+      persistUserOverrides: false
     });
     const updated = readFileSync(configPath, "utf8");
 
@@ -144,7 +145,8 @@ test("given additional installed OMO agent when user opts in then appends overri
     const config = await configureAgentModelOverrides(configPath, {
       models: ["gpt-5.4-mini", "grok-4.3"],
       readline: fakeReadline(["", "", "", "y", "1", "2", "3"]),
-      output: captureOutput()
+      output: captureOutput(),
+      persistUserOverrides: false
     });
     const updated = readFileSync(configPath, "utf8");
 
@@ -180,7 +182,8 @@ test("given additional installed OMO agent when user declines then does not appe
     const config = await configureAgentModelOverrides(configPath, {
       models: ["gpt-5.4-mini", "grok-4.3"],
       readline: fakeReadline(["", "", "", "n"]),
-      output: silentOutput()
+      output: silentOutput(),
+      persistUserOverrides: false
     });
 
     assert.equal(config.overrides.momus, undefined);

@@ -34,6 +34,8 @@ npm run doctor
 
 `setup` installs/enables LFP under `CODEX_HOME/local-marketplaces/linalab/plugins/lfp`, installs helper agents under `CODEX_HOME/agents`, and applies configured model-field overrides.
 
+When interactive OMO model setup changes override values, LFP also saves a user copy at `${CODEX_HOME}/lfp/omo-agent-model-overrides.toml`. On later `setup` runs after an npx/package patch, LFP asks whether to apply that saved user copy before showing the model selection prompts.
+
 `dry-setup` previews pending writes. `doctor` reports plugin install state, upstream LazyCodex/OMO readiness, provider status, visual-agent smoke checks, and pending override work.
 
 The packaged override configs resolve `${CODEX_HOME}` at runtime, so the same release works across different user home directories and custom Codex homes without editing the shipped files.
