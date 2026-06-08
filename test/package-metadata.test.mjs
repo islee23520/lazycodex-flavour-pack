@@ -7,6 +7,7 @@ const packageJson = JSON.parse(readFileSync(path.resolve("package.json"), "utf8"
 const pluginJson = JSON.parse(readFileSync(path.resolve(".codex-plugin", "plugin.json"), "utf8"));
 const cliText = readFileSync(path.resolve("scripts/cli.mjs"), "utf8");
 const readmeText = readFileSync(path.resolve("README.md"), "utf8");
+const publishWorkflowPath = path.resolve(".github", "workflows", "publish.yml");
 
 test("given npm package metadata when validating publish settings then package is public", () => {
   assert.notEqual(packageJson.private, true);
@@ -59,6 +60,27 @@ test("given npm package metadata when validating internal files then code maps a
   assert.equal(publishedFiles.has("ROADMAP.md"), false);
   assert.equal(publishedFiles.has("test"), false);
   assert.equal(existsSync(path.resolve(".npmignore")), true);
+});
+
+test("given release automation when validating repository metadata then publish workflow exists", () => {
+  assert.equal(existsSync(publishWorkflowPath), true, "publish workflow must exist at .github/workflows/publish.yml");
+});
+
+test("given publish workflow when validating release automation then it publishes from release and manual dispatch with npm token", () => {
+  const workflowText = readFileSync(publishWorkflowPath, "utf8");
+
+  assert.match(workflowText, /^name:\s+Publish Package$/m);
+  assert.match(workflowText, /^on:\n(?:.+\n)*\s+release:\n(?:.+\n)*\s+types:\s*\[published\]/m);
+  assert.match(workflowText, /^on:\n(?:.+\n)*\s+workflow_dispatch:\s*$/m);
+  assert.match(workflowText, /npm publish --provenance --access public/);
+  assert.match(workflowText, /NODE_AUTH_TOKEN:\s+\$\{\{\s*secrets\.NPM_TOKEN\s*\}\}/);
+});
+
+test("given publish automation docs when validating operator guidance then readme explains GitHub secret setup", () => {
+  assert.match(readmeText, /## Publish/);
+  assert.match(readmeText, /NPM_TOKEN/);
+  assert.match(readmeText, /Settings -> Secrets and variables -> Actions/);
+  assert.match(readmeText, /release published/);
 });
 
 function escapeRegExp(value) {

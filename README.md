@@ -35,3 +35,34 @@ npm run doctor
 `setup` installs/enables LFP under `CODEX_HOME/local-marketplaces/linalab/plugins/lfp`, installs helper agents under `CODEX_HOME/agents`, and applies configured model-field overrides.
 
 `dry-setup` previews pending writes. `doctor` reports plugin install state, upstream LazyCodex/OMO readiness, provider status, visual-agent smoke checks, and pending override work.
+
+The packaged override configs resolve `${CODEX_HOME}` at runtime, so the same release works across different user home directories and custom Codex homes without editing the shipped files.
+
+## Publish
+
+GitHub Actions publish automation lives at `.github/workflows/publish.yml`. It runs when a GitHub `release published` event fires and can also be started manually with `workflow_dispatch`.
+
+The workflow verifies the package with `npm test` and `npm pack --dry-run`, then publishes with `npm publish --provenance --access public`.
+
+### Required GitHub secret
+
+Create one repository secret named `NPM_TOKEN`.
+
+**CLI (recommended):**
+
+```sh
+gh secret set NPM_TOKEN
+```
+
+Paste the npm automation token when prompted and press Enter.
+
+**Web UI:**
+
+1. In GitHub, open the repository.
+2. Go to `Settings -> Secrets and variables -> Actions`.
+3. Click `New repository secret`.
+4. Set `Name` to `NPM_TOKEN`.
+5. Paste an npm automation token with publish permission as the value.
+6. Save the secret, then publish by creating a GitHub release or manually running the workflow.
+
+If the token changes or is revoked, replace the same `NPM_TOKEN` secret with the new value before the next publish.
