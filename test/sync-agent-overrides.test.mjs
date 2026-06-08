@@ -88,15 +88,42 @@ test("given TOML override config when reading then maps agents dir and model fie
 });
 
 test("given packaged override config when reading then targets Codex-loaded agents directory", () => {
-  const config = readOverrideConfig(path.resolve("agent-configs/omo-agent-model-overrides.toml"));
+  const codexHome = path.join(tmpdir(), "lfp-codex-home");
+  const config = readOverrideConfig(path.resolve("agent-configs/omo-agent-model-overrides.toml"), {
+    env: { ...process.env, CODEX_HOME: codexHome }
+  });
 
-  assert.equal(config.source.agentsDir, "/Users/ilseoblee/.codex/agents");
+  assert.equal(config.source.agentsDir, path.join(codexHome, "agents"));
   assert.equal(config.overrides.explorer.model, "grok-4.20-0309-non-reasoning");
   assert.deepEqual(config.overrides.librarian, {
     model: "gpt-5.4-mini",
     model_reasoning_effort: "low",
     service_tier: "fast"
   });
+});
+
+test("given legacy JSON override config with CODEX_HOME token when reading then resolves the active Codex agents directory", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-agent-sync-"));
+  try {
+    const configPath = path.join(root, "overrides.json");
+    const codexHome = path.join(root, "codex-home");
+    writeFileSync(
+      configPath,
+      JSON.stringify({
+        source: { agentsDir: "${CODEX_HOME}/agents" },
+        overrides: { explorer: { model: "grok-4.3" } }
+      })
+    );
+
+    const config = readOverrideConfig(configPath, {
+      env: { ...process.env, CODEX_HOME: codexHome }
+    });
+
+    assert.equal(config.source.agentsDir, path.join(codexHome, "agents"));
+    assert.deepEqual(config.overrides.explorer, { model: "grok-4.3" });
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test("given check mode when syncing then reports pending changes without writing", () => {

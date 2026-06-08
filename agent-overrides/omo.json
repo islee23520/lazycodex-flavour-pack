@@ -1,6 +1,6 @@
 {
   "source": {
-    "agentsDir": "/Users/ilseoblee/.codex/agents"
+    "agentsDir": "${CODEX_HOME}/agents"
   },
   "overrides": {
     "explorer": {

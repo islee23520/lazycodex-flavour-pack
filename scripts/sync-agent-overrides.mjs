@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import os from "node:os";
 import { readFileSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -24,7 +25,7 @@ if (isDirectRun()) {
 }
 
 export function syncAgentOverrides(configPath, options = {}) {
-  const config = readOverrideConfig(configPath);
+  const config = readOverrideConfig(configPath, options);
   const sourceDir = config.source?.agentsDir;
   const overrides = config.overrides ?? {};
   if (typeof sourceDir !== "string") throw new TypeError("source.agentsDir must be a string");
@@ -45,10 +46,11 @@ export function syncAgentOverrides(configPath, options = {}) {
   return { changed };
 }
 
-export function readOverrideConfig(configPath) {
+export function readOverrideConfig(configPath, options = {}) {
   const text = readOverrideConfigText(configPath);
-  if (configPath.endsWith(".json")) return JSON.parse(text);
-  if (configPath.endsWith(".toml")) return parseOverrideToml(text);
+  const env = options.env ?? process.env;
+  if (configPath.endsWith(".json")) return normalizeOverrideConfig(JSON.parse(text), env);
+  if (configPath.endsWith(".toml")) return normalizeOverrideConfig(parseOverrideToml(text), env);
   throw new TypeError(`Unsupported override config format: ${configPath}`);
 }
 
@@ -146,6 +148,27 @@ function parseOverrideToml(text) {
   }
 
   return config;
+}
+
+function normalizeOverrideConfig(config, env) {
+  return {
+    ...config,
+    source: {
+      ...config.source,
+      agentsDir: expandConfigPath(config.source?.agentsDir, env)
+    }
+  };
+}
+
+function expandConfigPath(value, env) {
+  if (typeof value !== "string") return value;
+  const codexHome = env.CODEX_HOME?.trim() || path.join(os.homedir(), ".codex");
+  const replacements = {
+    CODEX_HOME: codexHome,
+    HOME: env.HOME?.trim() || os.homedir()
+  };
+
+  return value.replace(/\$\{([A-Z_]+)\}/g, (match, key) => replacements[key] ?? match);
 }
 
 function assertInstalledAgentDir(sourceDir, overrides) {

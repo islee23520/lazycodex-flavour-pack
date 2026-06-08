@@ -1,5 +1,5 @@
 [source]
-agents_dir = "/Users/ilseoblee/.codex/agents"
+agents_dir = "${CODEX_HOME}/agents"
 
 [agents.explorer]
 model = "grok-4.20-0309-non-reasoning"
