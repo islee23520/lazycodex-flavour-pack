@@ -38,15 +38,16 @@ export function logAgentGuide(output, agentName, current) {
 }
 
 export async function promptForModel(rl, { agentName, current, models, output }) {
-  const defaultIndex = models.includes(current) ? models.indexOf(current) + 1 : null;
-  const suffix = defaultIndex === null ? `[${current}]` : `[${defaultIndex}]`;
+  const choices = groupModelAliases(models);
+  const defaultIndex = choices.findIndex((choice) => choice.aliases.includes(current) || choice.key === current) + 1;
+  const suffix = defaultIndex > 0 ? `[${defaultIndex}]` : `[${current}]`;
   const prefix = agentName ? `${agentName} model` : "Model";
 
   while (true) {
     const answer = (await prompt(rl, `  ${prefix} ${suffix}: `)).trim();
     if (answer.length === 0) return current;
 
-    const selected = parseListedSelection(answer, models);
+    const selected = parseModelSelection(answer, choices);
     if (selected !== null) return selected;
 
     output?.log?.("  Choose a listed number or model id.");
@@ -91,7 +92,9 @@ export async function promptForReasoningEffort(rl, { agentName, current, output 
 }
 
 export function printModelChoices(models, output) {
-  printChoices(models, output);
+  for (const [index, choice] of groupModelAliases(models).entries()) {
+    output?.log?.(`  ${index + 1}. ${formatModelChoice(choice)}`);
+  }
   output?.log?.("");
 }
 
@@ -103,6 +106,44 @@ export async function promptForYesNo(rl, question) {
 export function parseListedSelection(answer, values) {
   if (/^[0-9]+$/.test(answer)) return values[Number(answer) - 1] ?? null;
   return values.includes(answer) ? answer : null;
+}
+
+export function groupModelAliases(models) {
+  const groups = new Map();
+  for (const model of models) {
+    const key = canonicalModelName(model);
+    const aliases = groups.get(key) ?? [];
+    aliases.push(model);
+    groups.set(key, aliases);
+  }
+
+  return [...groups.entries()]
+    .map(([key, aliases]) => {
+      const uniqueAliases = [...new Set(aliases)].sort((a, b) => a.localeCompare(b));
+      return { key, aliases: uniqueAliases, value: chooseRepresentative(key, uniqueAliases) };
+    });
+}
+
+function parseModelSelection(answer, choices) {
+  if (/^[0-9]+$/.test(answer)) return choices[Number(answer) - 1]?.value ?? null;
+  for (const choice of choices) {
+    if (choice.aliases.includes(answer)) return answer;
+    if (choice.key === answer) return choice.value;
+  }
+  return null;
+}
+
+function formatModelChoice(choice) {
+  if (choice.aliases.length === 1) return choice.aliases[0];
+  return `${choice.key} (aliases: ${choice.aliases.join(", ")})`;
+}
+
+function canonicalModelName(model) {
+  return model.split("/").at(-1) ?? model;
+}
+
+function chooseRepresentative(key, aliases) {
+  return aliases.find((alias) => alias === key) ?? aliases.find((alias) => alias === `openai/${key}`) ?? aliases[0];
 }
 
 function printChoices(values, output) {
