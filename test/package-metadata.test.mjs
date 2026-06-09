@@ -87,6 +87,7 @@ test("given publish workflow when validating release automation then it publishe
   assert.match(workflowText, /^on:\n(?:.+\n)*\s+workflow_dispatch:\s*$/m);
   assert.match(workflowText, /id-token:\s+write/);
   assert.match(workflowText, /node-version:\s+24/);
+  assert.doesNotMatch(workflowText, /registry-url/);
   assert.match(workflowText, /npm publish --provenance --access public/);
   assert.doesNotMatch(workflowText, /NODE_AUTH_TOKEN/);
   assert.doesNotMatch(workflowText, /secrets\.NPM_TOKEN/);
