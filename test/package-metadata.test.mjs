@@ -88,12 +88,14 @@ test("given publish workflow when validating release automation then it publishe
   assert.match(workflowText, /id-token:\s+write/);
   assert.match(workflowText, /node-version:\s+24/);
   assert.match(workflowText, /npm publish --provenance --access public/);
-  assert.match(workflowText, /NODE_AUTH_TOKEN:\s*\$\{\{\s*secrets\.NPM_TOKEN\s*}}/);
+  assert.doesNotMatch(workflowText, /NODE_AUTH_TOKEN/);
+  assert.doesNotMatch(workflowText, /secrets\.NPM_TOKEN/);
 });
 
 test("given publish automation docs when validating operator guidance then readme explains npm auth setup", () => {
   assert.match(readmeText, /## Publish/);
-  assert.match(readmeText, /NPM_TOKEN/);
+  assert.match(readmeText, /trusted publishing/);
+  assert.doesNotMatch(readmeText, /NPM_TOKEN/);
   assert.match(readmeText, /islee23520\/lazycodex-flavour-pack/);
   assert.match(readmeText, /release published/);
 });

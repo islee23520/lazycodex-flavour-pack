@@ -58,7 +58,7 @@ The workflow verifies the package with `npm test` and `npm pack --dry-run`, then
 
 ### Required npm publishing setup
 
-Configure GitHub Actions secret `NPM_TOKEN` with an npm token that can publish `@islee23520/lfp`.
+Configure npm trusted publishing for `@islee23520/lfp` against this GitHub Actions workflow. Token-based publishing is intentionally not used, so the workflow can publish with provenance without an OTP prompt.
 
 If using npm Trusted Publishing instead of a token, configure npm for:
 
