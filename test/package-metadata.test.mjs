@@ -34,7 +34,17 @@ test("given npm package metadata when validating release files then package incl
     "agent-configs",
     "agent-overrides",
     "hooks",
-    "scripts",
+    "scripts/agent-model-config.mjs",
+    "scripts/art-team-config.mjs",
+    "scripts/art-team-hook.mjs",
+    "scripts/cli.mjs",
+    "scripts/codex-apps-cache.mjs",
+    "scripts/codex-plugin-install.mjs",
+    "scripts/codex-provider-config.mjs",
+    "scripts/model-config-prompts.mjs",
+    "scripts/sync-agent-overrides.mjs",
+    "scripts/user-model-overrides.mjs",
+    "scripts/visual-engineering-hook.mjs",
     "README.md"
   ]);
 });
@@ -59,6 +69,7 @@ test("given npm package metadata when validating internal files then code maps a
   assert.equal(publishedFiles.has("AGENTS.md"), false);
   assert.equal(publishedFiles.has("ROADMAP.md"), false);
   assert.equal(publishedFiles.has("test"), false);
+  assert.equal(publishedFiles.has("scripts/isolated-smoke.mjs"), false);
   assert.equal(existsSync(path.resolve(".npmignore")), true);
 });
 

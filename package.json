@@ -32,7 +32,17 @@
     "agent-configs",
     "agent-overrides",
     "hooks",
-    "scripts",
+    "scripts/agent-model-config.mjs",
+    "scripts/art-team-config.mjs",
+    "scripts/art-team-hook.mjs",
+    "scripts/cli.mjs",
+    "scripts/codex-apps-cache.mjs",
+    "scripts/codex-plugin-install.mjs",
+    "scripts/codex-provider-config.mjs",
+    "scripts/model-config-prompts.mjs",
+    "scripts/sync-agent-overrides.mjs",
+    "scripts/user-model-overrides.mjs",
+    "scripts/visual-engineering-hook.mjs",
     "README.md"
   ],
   "scripts": {
@@ -41,6 +51,7 @@
     "dry-setup": "node scripts/cli.mjs dry-setup",
     "doctor": "node scripts/cli.mjs doctor",
     "agent-config": "node scripts/cli.mjs agent-config",
+    "smoke:isolated": "node scripts/isolated-smoke.mjs",
     "pack:check": "npm pack --dry-run"
   },
   "engines": {

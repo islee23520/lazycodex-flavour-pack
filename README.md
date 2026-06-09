@@ -33,6 +33,7 @@ npm run setup
 npm run dry-setup
 npm run doctor
 npm run agent-config
+npm run smoke:isolated
 ```
 
 `setup` installs/enables LFP under `CODEX_HOME/local-marketplaces/islee23520/plugins/lfp`, installs helper agents under `CODEX_HOME/agents`, and applies configured model-field overrides.
@@ -42,6 +43,8 @@ When interactive OMO model setup changes override values, LFP also saves a user 
 `agent-config` runs the same OMO override selector without reinstalling the LFP-owned helper agents. It lists already-configured override targets and can opt additional installed upstream agent TOMLs into the override file. Only `model`, `model_reasoning_effort`, and `service_tier` are written.
 
 `dry-setup` previews pending writes. `doctor` reports plugin install state, upstream LazyCodex/OMO readiness, provider status, visual-agent smoke checks, and pending override work.
+
+`smoke:isolated` runs setup, saved user override restore, override sync, doctor, and Codex Apps cache cleanup against a temporary `CODEX_HOME`; it does not touch the real Codex install.
 
 LFP UserPromptSubmit hooks are guidance-only. They do not install plugins, sync overrides, or touch LazyCodex/OMO main hooks during prompt submission.
 
