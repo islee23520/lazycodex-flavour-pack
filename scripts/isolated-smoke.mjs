@@ -11,6 +11,7 @@ import { syncAgentOverrides } from "./sync-agent-overrides.mjs";
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const CLI = path.join(ROOT, "scripts", "cli.mjs");
+const LAZYCODEX_INSTALL_STUB = path.join(ROOT, "test", "fixtures", "lazycodex-install-stub.mjs");
 let outputForReadline = null;
 
 const root = mkdtempSync(path.join(tmpdir(), "lfp-isolated-smoke-"));
@@ -27,10 +28,10 @@ mkdirSync(path.join(codexHome, "cache", "codex_apps_tools"), { recursive: true }
 writeFileSync(
   path.join(codexHome, "config.toml"),
   [
-    'model_provider = "cliproxyapi"',
+    'model_provider = "openai-compatible"',
     "",
-    "[model_providers.cliproxyapi]",
-    'base_url = "https://cliproxy.linalab.io/v1"',
+    "[model_providers.openai-compatible]",
+    'base_url = "https://api.openai.com/v1"',
     'wire_api = "responses"',
     "requires_openai_auth = true",
     ""
@@ -99,7 +100,12 @@ console.log(`isolated smoke: updated agents=${sync.changed.map((filePath) => pat
 function runCli(args) {
   return spawnSync(process.execPath, [CLI, ...args], {
     cwd: ROOT,
-    env: { ...process.env, CODEX_HOME: codexHome },
+    env: {
+      ...process.env,
+      CODEX_HOME: codexHome,
+      LFP_LAZYCODEX_INSTALL_BIN: process.execPath,
+      LFP_LAZYCODEX_INSTALL_ARGS: JSON.stringify([LAZYCODEX_INSTALL_STUB])
+    },
     encoding: "utf8"
   });
 }

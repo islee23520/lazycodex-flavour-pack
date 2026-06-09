@@ -16,6 +16,7 @@ export const PLUGIN_REF = `${PLUGIN_ID}@${MARKETPLACE_ID}`;
 const DEFAULT_PACKAGE_ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const ADDITIONAL_AGENT_CONFIGS = ["visual-engineering.toml", "visual-looker.toml", "artistry.toml", "artistry-gen.toml", "artistry-qa.toml"];
 const PROTECTED_UPSTREAM_AGENT_CONFIGS = ["explorer.toml"];
+const LAZYCODEX_PLUGIN_REFS = new Set(["omo@sisyphuslabs", "lazycodex-ai"]);
 const VISUAL_AGENT_EXPECTATIONS = [
   { name: "artistry", fileName: "artistry.toml", model: "gemini-3.1-pro-preview" },
   { name: "artistry-gen", fileName: "artistry-gen.toml", model: "glm-5v-turbo" },
@@ -162,16 +163,66 @@ function getProviderConfig(options) {
 function upsertCodexConfig(state) {
   mkdirSync(path.dirname(state.configPath), { recursive: true });
   const current = readTextIfExists(state.configPath);
-  const pluginConfig = upsertTable(
-    upsertTable(current, `marketplaces.${MARKETPLACE_ID}`, [
-      'source_type = "local"',
-      `source = ${JSON.stringify(state.marketplaceRoot)}`
-    ]),
-    `plugins."${PLUGIN_REF}"`,
-    ["enabled = true"]
+  const pluginConfig = upsertTable(current, `marketplaces.${MARKETPLACE_ID}`, [
+    'source_type = "local"',
+    `source = ${JSON.stringify(state.marketplaceRoot)}`
+  ]);
+  const orderedPluginConfig = ensureLfpPluginAfterLazyCodex(
+    upsertTable(pluginConfig, `plugins."${PLUGIN_REF}"`, ["enabled = true"])
   );
-  const next = upsertOpenAiCompatProvider(pluginConfig, state.openAiCompatProvider.config);
+  const next = upsertOpenAiCompatProvider(orderedPluginConfig, state.openAiCompatProvider.config);
   writeFileSync(state.configPath, next);
+}
+
+function ensureLfpPluginAfterLazyCodex(text) {
+  const lfpMatch = findTopLevelPluginTable(text, PLUGIN_REF);
+  const lazyCodexEnd = findLastLazyCodexPluginEnd(text);
+  if (lfpMatch === null || lazyCodexEnd === null || lfpMatch.start > lazyCodexEnd) return text;
+
+  const withoutLfp = `${text.slice(0, lfpMatch.start)}${text.slice(lfpMatch.end)}`;
+  const insertAfter = findLastLazyCodexPluginEnd(withoutLfp);
+  if (insertAfter === null) return text;
+
+  const before = withoutLfp.slice(0, insertAfter).replace(/\n*$/, "");
+  const after = withoutLfp.slice(insertAfter).replace(/^\n*/, "");
+  const lfpBlock = lfpMatch.block.trimEnd();
+  return `${before}\n\n${lfpBlock}\n${after.length > 0 ? `\n${after}` : ""}`;
+}
+
+function findLastLazyCodexPluginEnd(text) {
+  let lastEnd = null;
+  for (const table of findTopLevelPluginTables(text)) {
+    if (isLazyCodexPluginRef(table.pluginRef)) lastEnd = table.end;
+  }
+  return lastEnd;
+}
+
+function findTopLevelPluginTable(text, pluginRef) {
+  for (const table of findTopLevelPluginTables(text)) {
+    if (table.pluginRef === pluginRef) return table;
+  }
+  return null;
+}
+
+function findTopLevelPluginTables(text) {
+  const pattern = /(^|\n)(\[plugins\."([^"]+)"\]\n[\s\S]*?)(?=\n\[[^\n]+]|$)/g;
+  const tables = [];
+  for (const match of text.matchAll(pattern)) {
+    const separator = match[1];
+    const block = match[2];
+    const start = match.index + separator.length;
+    tables.push({
+      pluginRef: match[3],
+      block,
+      start,
+      end: start + block.length
+    });
+  }
+  return tables;
+}
+
+function isLazyCodexPluginRef(pluginRef) {
+  return LAZYCODEX_PLUGIN_REFS.has(pluginRef) || pluginRef.includes("lazycodex");
 }
 
 function upsertTable(text, tableName, lines) {

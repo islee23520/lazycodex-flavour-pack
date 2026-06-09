@@ -6,6 +6,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 const CLI = path.resolve("scripts/cli.mjs");
+const LAZYCODEX_INSTALL_STUB = path.resolve("test/fixtures/lazycodex-install-stub.mjs");
 
 test("given setup has run when doctor runs then reports vision agent gemini smoke verification", () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-visual-smoke-"));
@@ -101,9 +102,9 @@ test("given dry setup when visual smoke is pending then remains a lightweight LF
     const drySetup = runCli(["dry-setup", "--config", fixture.configPath], fixture.codexHome);
 
     assert.equal(drySetup.status, 1);
+    assert.match(drySetup.stdout, /would run .* before applying LFP/);
     assert.match(drySetup.stdout, /would install plugin files/);
     assert.match(drySetup.stdout, /would install LFP agents/);
-    assert.doesNotMatch(drySetup.stdout, /install LazyCodex|update LazyCodex|install OMO|update OMO/i);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -127,7 +128,12 @@ function createFixture(root) {
 
 function runCli(args, codexHome) {
   return spawnSync(process.execPath, [CLI, ...args], {
-    env: { ...process.env, CODEX_HOME: codexHome },
+    env: {
+      ...process.env,
+      CODEX_HOME: codexHome,
+      LFP_LAZYCODEX_INSTALL_BIN: process.execPath,
+      LFP_LAZYCODEX_INSTALL_ARGS: JSON.stringify([LAZYCODEX_INSTALL_STUB])
+    },
     encoding: "utf8"
   });
 }

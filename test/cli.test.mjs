@@ -6,6 +6,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 const CLI = path.resolve("scripts/cli.mjs");
+const LAZYCODEX_INSTALL_STUB = path.resolve("test/fixtures/lazycodex-install-stub.mjs");
 
 test("given npx-style CLI setup when upstream agent exists then updates configured fields", () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-cli-"));
@@ -25,14 +26,16 @@ test("given npx-style CLI setup when upstream agent exists then updates configur
     );
 
     const result = spawnSync(process.execPath, [CLI, "setup", "--config", configPath, "--skip-art-prompt"], {
-      env: { ...process.env, CODEX_HOME: codexHome },
+      env: cliEnv(codexHome),
       encoding: "utf8"
     });
     const updated = readFileSync(agentPath, "utf8");
     const codexConfig = readFileSync(path.join(codexHome, "config.toml"), "utf8");
 
     assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /lazycodex-ai@latest install stub/);
     assert.match(result.stdout, /installed lfp@islee23520/);
+    assert.equal(result.stdout.indexOf("lazycodex-ai@latest install stub") < result.stdout.indexOf("installed lfp@islee23520"), true);
     assert.match(result.stdout, /updated .*explorer\.toml/);
     assert.match(updated, /model = "grok-4\.3"/);
     assert.match(updated, /developer_instructions = """keep me"""/);
@@ -65,7 +68,7 @@ test("given Korean postposition is attached to setup flag when CLI runs then acc
     );
 
     const result = spawnSync(process.execPath, [CLI, "setup", "--config", configPath, "--skip-art-prompt를"], {
-      env: { ...process.env, CODEX_HOME: codexHome },
+      env: cliEnv(codexHome),
       encoding: "utf8"
     });
 
@@ -95,7 +98,7 @@ test("given npx-style CLI dry-setup when changes are pending then exits nonzero 
     );
 
     const result = spawnSync(process.execPath, [CLI, "dry-setup", "--config", configPath], {
-      env: { ...process.env, CODEX_HOME: codexHome },
+      env: cliEnv(codexHome),
       encoding: "utf8"
     });
     const unchanged = readFileSync(agentPath, "utf8");
@@ -119,7 +122,7 @@ test("given CLI help when invoked then documents npx usage", () => {
   assert.match(result.stdout, /npx @islee23520\/lfp@latest dry-setup/);
   assert.match(result.stdout, /npx @islee23520\/lfp@latest doctor/);
   assert.match(result.stdout, /npx @islee23520\/lfp@latest agent-config/);
-  assert.match(result.stdout, /does not install or update LazyCodex\/OMO/);
+  assert.match(result.stdout, /runs npx lazycodex-ai@latest install before applying LFP/);
 });
 
 test("given setup config is missing when setup runs then leaves Codex home unmodified", () => {
@@ -129,7 +132,7 @@ test("given setup config is missing when setup runs then leaves Codex home unmod
     const configPath = path.join(root, "missing.json");
 
     const result = spawnSync(process.execPath, [CLI, "setup", "--config", configPath, "--skip-art-prompt"], {
-      env: { ...process.env, CODEX_HOME: codexHome },
+      env: cliEnv(codexHome),
       encoding: "utf8"
     });
 
@@ -158,7 +161,7 @@ test("given upstream agents dir is missing when setup runs then leaves Codex hom
     );
 
     const result = spawnSync(process.execPath, [CLI, "setup", "--config", configPath, "--skip-art-prompt"], {
-      env: { ...process.env, CODEX_HOME: codexHome },
+      env: cliEnv(codexHome),
       encoding: "utf8"
     });
 
@@ -188,7 +191,7 @@ test("given required upstream agent is missing when setup runs then leaves Codex
     );
 
     const result = spawnSync(process.execPath, [CLI, "setup", "--config", configPath, "--skip-art-prompt"], {
-      env: { ...process.env, CODEX_HOME: codexHome },
+      env: cliEnv(codexHome),
       encoding: "utf8"
     });
 
@@ -220,7 +223,7 @@ test("given CLI doctor when changes are pending then reports setup work without 
     );
 
     const result = spawnSync(process.execPath, [CLI, "doctor", "--config", configPath], {
-      env: { ...process.env, CODEX_HOME: codexHome },
+      env: cliEnv(codexHome),
       encoding: "utf8"
     });
     const unchanged = readFileSync(agentPath, "utf8");
@@ -255,7 +258,7 @@ test("given setup has run when doctor runs then reports lfp installed in Codex",
     );
 
     const setup = spawnSync(process.execPath, [CLI, "setup", "--config", configPath, "--skip-art-prompt"], {
-      env: { ...process.env, CODEX_HOME: codexHome },
+      env: cliEnv(codexHome),
       encoding: "utf8"
     });
     const doctor = spawnSync(process.execPath, [CLI, "doctor", "--config", configPath], {
@@ -274,3 +277,12 @@ test("given setup has run when doctor runs then reports lfp installed in Codex",
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+function cliEnv(codexHome) {
+  return {
+    ...process.env,
+    CODEX_HOME: codexHome,
+    LFP_LAZYCODEX_INSTALL_BIN: process.execPath,
+    LFP_LAZYCODEX_INSTALL_ARGS: JSON.stringify([LAZYCODEX_INSTALL_STUB])
+  };
+}

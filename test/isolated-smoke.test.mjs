@@ -6,6 +6,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 const SMOKE_SCRIPT = path.resolve("scripts", "isolated-smoke.mjs");
+const LAZYCODEX_INSTALL_STUB = path.resolve("test/fixtures/lazycodex-install-stub.mjs");
 
 test("given isolated smoke command when run then setup and doctor pass without real Codex home", () => {
   const sentinelRoot = mkdtempSync(path.join(tmpdir(), "lfp-sentinel-"));
@@ -13,7 +14,12 @@ test("given isolated smoke command when run then setup and doctor pass without r
   try {
     const result = spawnSync(process.execPath, [SMOKE_SCRIPT], {
       cwd: path.resolve("."),
-      env: { ...process.env, CODEX_HOME: sentinelCodexHome },
+      env: {
+        ...process.env,
+        CODEX_HOME: sentinelCodexHome,
+        LFP_LAZYCODEX_INSTALL_BIN: process.execPath,
+        LFP_LAZYCODEX_INSTALL_ARGS: JSON.stringify([LAZYCODEX_INSTALL_STUB])
+      },
       encoding: "utf8"
     });
 

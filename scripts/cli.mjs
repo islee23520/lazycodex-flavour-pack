@@ -3,18 +3,20 @@ import path from "node:path";
 import { createInterface } from "node:readline";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-import {
-  getCodexPluginState,
-  getInstallSmokeState,
-  getPendingCodexPluginActions,
-  getVisualSmokeState,
-  installCodexPlugin,
-  PLUGIN_REF
-} from "./codex-plugin-install.mjs";
+import { getCodexPluginState, getPendingCodexPluginActions, installCodexPlugin, PLUGIN_REF } from "./codex-plugin-install.mjs";
 import { syncAgentOverrides } from "./sync-agent-overrides.mjs";
-import { configureArtTeam, configureArtTeamIfWanted, readCurrentConfig } from "./art-team-config.mjs";
+import { configureArtTeam, configureArtTeamIfWanted } from "./art-team-config.mjs";
 import { configureAgentModelOverrides } from "./agent-model-config.mjs";
-import { getCodexAppsToolCacheState, quarantineDuplicateCodexAppsToolCaches } from "./codex-apps-cache.mjs";
+import { getCodexAppsToolCacheState } from "./codex-apps-cache.mjs";
+import { formatLazyCodexInstallCommand, runLazyCodexInstall } from "./lazycodex-install.mjs";
+import {
+  printArtTeamConfig,
+  printCodexAppsCacheQuarantine,
+  printCodexAppsCacheState,
+  printInstallSmokeState,
+  printOpenAiCompatProviderState,
+  printVisualSmokeState
+} from "./cli-reporting.mjs";
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const DEFAULT_CONFIG = path.join(ROOT, "agent-configs", "omo-agent-model-overrides.toml");
@@ -52,7 +54,7 @@ Flags:
   --skip-art-prompt  Skip the interactive art team model prompt during setup.
   --skip-model-prompt  Skip the interactive OMO override model prompt during setup.
 
-This package is a lightweight overlay. setup installs/enables this pack in Codex, checks that LazyCodex/OMO is already installed, then applies configured overrides to existing agents. It does not install or update LazyCodex/OMO.`;
+This package is a lightweight overlay. setup runs npx lazycodex-ai@latest install before applying LFP, then installs/enables this pack in Codex and applies configured overrides to existing agents.`;
 
 if (isDirectRun()) {
   try {
@@ -102,6 +104,13 @@ export async function runCli(argv) {
 async function runSetup(argv, { check }) {
   const args = parseSyncArgs(argv);
   let configPath = args.config ?? DEFAULT_CONFIG;
+
+  if (check) {
+    console.log(`would run ${formatLazyCodexInstallCommand()} before applying LFP`);
+  } else {
+    runLazyCodexInstall();
+  }
+
   const pending = getPendingCodexPluginActions();
   const pendingOverrides = syncAgentOverrides(configPath, { check: true });
 
@@ -200,36 +209,6 @@ function runDoctor(argv) {
   if (hasIssue) process.exitCode = 1;
 }
 
-function printCodexAppsCacheQuarantine() {
-  const result = quarantineDuplicateCodexAppsToolCaches();
-  if (result.quarantined.length === 0) {
-    console.log("lfp setup: Codex Apps tool cache: ok");
-    return true;
-  }
-
-  for (const item of result.quarantined) {
-    console.log(
-      `lfp setup: quarantined duplicate Codex Apps tool cache ${item.filePath} -> ${item.targetPath} (${item.duplicateToolNames.join(", ")})`
-    );
-  }
-  return false;
-}
-
-function printCodexAppsCacheState() {
-  const state = getCodexAppsToolCacheState();
-  if (state.healthy) {
-    console.log("lfp doctor: Codex Apps tool cache: ok");
-    return true;
-  }
-
-  console.log("lfp doctor: Codex Apps tool cache: duplicate tool names found");
-  for (const item of state.duplicateFiles) {
-    console.log(`lfp doctor: Codex Apps tool cache: ${item.filePath} duplicates ${item.duplicateToolNames.join(", ")}`);
-  }
-  console.log("lfp doctor: Codex Apps tool cache: run 'lfp setup' to quarantine stale duplicate cache files");
-  return false;
-}
-
 async function runArtConfig() {
   console.log("Reconfiguring art team models...\n");
   await configureArtTeam();
@@ -259,66 +238,6 @@ function getDefaultInstalledOverrideConfigPath() {
     return path.join(state.pluginRoot, "agent-configs", "omo-agent-model-overrides.toml");
   }
   return DEFAULT_CONFIG;
-}
-
-function printOpenAiCompatProviderState(state) {
-  const provider = state.openAiCompatProvider;
-  console.log(`lfp doctor: OpenAI-compatible provider: ${provider.status} (${provider.id})`);
-
-  if (provider.activeStatus === "user-managed") {
-    console.log(`lfp doctor: active model provider: user-managed (${provider.activeProvider})`);
-  } else if (provider.activeStatus === "configured") {
-    console.log(`lfp doctor: active model provider: ${provider.id}`);
-  } else {
-    console.log("lfp doctor: active model provider: missing");
-  }
-
-  return provider.status === "configured";
-}
-
-function printInstallSmokeState() {
-  const smoke = getInstallSmokeState();
-  if (smoke.explorerPreserved) {
-    console.log(`lfp install smoke: explorer preserved (${smoke.explorerPath})`);
-    return true;
-  }
-
-  console.log(`lfp install smoke: explorer overwrite risk (${smoke.collisions.join(", ")})`);
-  return false;
-}
-
-function printVisualSmokeState() {
-  const smoke = getVisualSmokeState();
-  if (smoke.verified) {
-    const summary = smoke.checks.map((check) => `${check.name}: ${check.actualModel}`).join(", ");
-    console.log(`lfp doctor: visual smoke: verified (${summary})`);
-    return true;
-  }
-
-  console.log("lfp doctor: visual smoke: failed");
-  for (const check of smoke.checks) {
-    if (check.status === "verified") continue;
-    if (check.status === "missing") {
-      console.log(`lfp doctor: visual smoke: ${check.name} missing (${check.filePath})`);
-      continue;
-    }
-    if (check.status === "malformed") {
-      console.log(`lfp doctor: visual smoke: ${check.name} missing model (${check.filePath})`);
-      continue;
-    }
-    console.log(
-      `lfp doctor: visual smoke: ${check.name} model mismatch: expected ${check.model}, got ${check.actualModel}`
-    );
-  }
-  return false;
-}
-
-function printArtTeamConfig() {
-  const config = readCurrentConfig();
-  console.log("lfp doctor: art team config:");
-  for (const [name, fields] of Object.entries(config)) {
-    console.log(`  ${name}: model=${fields.model}, reasoning=${fields.model_reasoning_effort}, tier=${fields.service_tier}`);
-  }
 }
 
 function parseSyncArgs(argv) {

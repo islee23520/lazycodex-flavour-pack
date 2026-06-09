@@ -29,7 +29,7 @@ For QA sessions, reviewer passes, final verdicts, and ULW completion involving a
 
 For screenshot, image, document, or diagram inspection where the main need is to describe visible evidence, use the LFP vision looker. Spawn it with agent_type="visual-looker"; its role config is ${VISUAL_LOOKER_CONFIG}. Keep root-agent ownership of integration and final verification.
 
-These vision agents default to Gemini models (gemini-3.1-pro-preview and equivalents) in their role configs because Gemini provides superior detailed visual understanding, evidence extraction from screenshots/diagrams/charts, layout analysis, and verification tasks. Your active model_provider (e.g. cliproxyapi or a Google-compatible provider) must be configured to route the Gemini model name. 
+These vision agents default to Gemini models (gemini-3.1-pro-preview and equivalents) in their role configs because Gemini provides superior detailed visual understanding, evidence extraction from screenshots/diagrams/charts, layout analysis, and verification tasks. Your active model_provider must be configured to route the Gemini model name.
 
 If your provider does not support Gemini routing, install and configure the codex-xai-oauth@linalab plugin (run its setup) to enable Grok vision models as fallback, and point the vision agent configs at suitable Grok models. Run \`lfp setup\` or \`lfp doctor\` to install LFP-owned agents and apply model overrides; this hook only adds guidance and does not mutate LazyCodex/OMO state.
 

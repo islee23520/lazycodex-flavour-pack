@@ -2,11 +2,11 @@
 
 LazyCodex Flavour Pack. A small overlay for LazyCodex/Codex.
 
-LFP assumes LazyCodex/OMO is already installed. It registers this plugin in Codex, installs LFP-owned helper agents, configures the optional `cliproxyapi` provider when safe, and syncs only model-related fields on existing upstream agent TOMLs.
+LFP runs the upstream `lazycodex-ai@latest install` first, then registers this plugin in Codex, installs LFP-owned helper agents, configures a generic OpenAI-compatible provider when safe, and syncs only model-related fields on existing upstream agent TOMLs.
 
 Repository and LFP-owned issues live at <https://github.com/islee23520/lazycodex-flavour-pack>. If a failure is caused by upstream LazyCodex/OMO behavior rather than this flavour pack, register that issue on the upstream LazyCodex tracker instead.
 
-Run `npx lazycodex-ai@latest install` first when the upstream plugin is missing or stale. LFP setup validates the configured `agentsDir` before writing its own install files.
+`lfp setup` runs `npx lazycodex-ai@latest install` before applying LFP. It validates the configured `agentsDir` before writing its own install files.
 
 ## Contents
 
