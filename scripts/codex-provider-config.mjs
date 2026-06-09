@@ -39,6 +39,10 @@ export function upsertOpenAiCompatProvider(text, provider) {
   ]);
 }
 
+export function hasAnyModelProvider(text) {
+  return readTopLevelTomlString(text, "model_provider") !== null || /^\[model_providers\.[^\n\]]+]/m.test(text);
+}
+
 function parseOpenAiCompatProviderConfig(text, filePath) {
   const block = getTableBlock(text, "provider");
   const provider = {

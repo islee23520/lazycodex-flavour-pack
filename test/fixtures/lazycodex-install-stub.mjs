@@ -1,2 +1,2 @@
 #!/usr/bin/env node
-console.log("lazycodex-ai@latest install stub");
+console.log("lazycodex-ai install stub");

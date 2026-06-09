@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 
-const DEFAULT_LAZYCODEX_INSTALL_BIN = "npx";
-const DEFAULT_LAZYCODEX_INSTALL_ARGS = ["lazycodex-ai@latest", "install"];
+const NPX_LAZYCODEX_INSTALL_BIN = "npx";
+const NPX_LAZYCODEX_INSTALL_ARGS = ["lazycodex-ai", "install"];
 
 export function formatLazyCodexInstallCommand(env = process.env) {
   const command = getLazyCodexInstallCommand(env);
@@ -25,14 +25,22 @@ export function runLazyCodexInstall(env = process.env) {
 }
 
 function getLazyCodexInstallCommand(env) {
+  const explicitBin = env.LFP_LAZYCODEX_INSTALL_BIN?.trim();
+  if (explicitBin !== undefined && explicitBin.length > 0) {
+    return {
+      bin: explicitBin,
+      args: parseInstallArgs(env.LFP_LAZYCODEX_INSTALL_ARGS, NPX_LAZYCODEX_INSTALL_ARGS)
+    };
+  }
+
   return {
-    bin: env.LFP_LAZYCODEX_INSTALL_BIN?.trim() || DEFAULT_LAZYCODEX_INSTALL_BIN,
-    args: parseInstallArgs(env.LFP_LAZYCODEX_INSTALL_ARGS)
+    bin: NPX_LAZYCODEX_INSTALL_BIN,
+    args: parseInstallArgs(env.LFP_LAZYCODEX_INSTALL_ARGS, NPX_LAZYCODEX_INSTALL_ARGS)
   };
 }
 
-function parseInstallArgs(value) {
-  if (value === undefined || value.trim().length === 0) return DEFAULT_LAZYCODEX_INSTALL_ARGS;
+function parseInstallArgs(value, defaultArgs) {
+  if (value === undefined || value.trim().length === 0) return defaultArgs;
   const trimmed = value.trim();
   if (trimmed.startsWith("[")) {
     const parsed = JSON.parse(trimmed);

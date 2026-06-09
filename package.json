@@ -1,6 +1,6 @@
 {
   "name": "@islee23520/lfp",
-  "version": "0.3.6",
+  "version": "0.3.7",
   "description": "LazyCodex flavour pack with lightweight agent override sync.",
   "type": "module",
   "license": "MIT",
@@ -42,6 +42,7 @@
     "scripts/codex-provider-config.mjs",
     "scripts/lazycodex-install.mjs",
     "scripts/model-config-prompts.mjs",
+    "scripts/provider-consent.mjs",
     "scripts/sync-agent-overrides.mjs",
     "scripts/user-model-overrides.mjs",
     "scripts/visual-engineering-hook.mjs",

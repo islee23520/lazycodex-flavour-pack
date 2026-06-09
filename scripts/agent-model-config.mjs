@@ -15,6 +15,7 @@ import { readOverrideConfig } from "./sync-agent-overrides.mjs";
 import {
   getUserOverrideConfigPath,
   hasSavedUserOverrideConfig,
+  migrateLegacyUserOverrideConfig,
   restoreUserOverrideConfig,
   saveUserOverrideConfig
 } from "./user-model-overrides.mjs";
@@ -32,7 +33,7 @@ export async function configureAgentModelOverrides(configPath, options = {}) {
   const rl = options.readline;
   if (rl === undefined) throw new TypeError("readline is required for interactive model override configuration");
 
-  const userConfigPath = getUserOverrideConfigPath(options);
+  const userConfigPath = migrateLegacyUserOverrideConfig(options);
   const restoredUserConfig = await maybeRestoreUserOverrideConfig(configPath, userConfigPath, { ...options, readline: rl });
   if (restoredUserConfig) options.output?.log?.("Continuing with editable model override prompts.\n");
 

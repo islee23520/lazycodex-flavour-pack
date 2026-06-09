@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 
 import {
   getOpenAiCompatProviderState,
+  hasAnyModelProvider,
   readOpenAiCompatProviderConfig,
   upsertOpenAiCompatProvider
 } from "./codex-provider-config.mjs";
@@ -17,13 +18,7 @@ const DEFAULT_PACKAGE_ROOT = path.dirname(path.dirname(fileURLToPath(import.meta
 const ADDITIONAL_AGENT_CONFIGS = ["visual-engineering.toml", "visual-looker.toml", "artistry.toml", "artistry-gen.toml", "artistry-qa.toml"];
 const PROTECTED_UPSTREAM_AGENT_CONFIGS = ["explorer.toml"];
 const LAZYCODEX_PLUGIN_REFS = new Set(["omo@sisyphuslabs", "lazycodex-ai"]);
-const VISUAL_AGENT_EXPECTATIONS = [
-  { name: "artistry", fileName: "artistry.toml", model: "gpt-5.5" },
-  { name: "artistry-gen", fileName: "artistry-gen.toml", model: "gpt-5.4-mini" },
-  { name: "artistry-qa", fileName: "artistry-qa.toml", model: "gpt-5.5" },
-  { name: "visual-engineering", fileName: "visual-engineering.toml", model: "gemini-3.1-pro-preview" },
-  { name: "visual-looker", fileName: "visual-looker.toml", model: "gemini-3.1-pro-preview" }
-];
+const VISUAL_AGENT_CONFIGS = ["artistry.toml", "artistry-gen.toml", "artistry-qa.toml", "visual-engineering.toml", "visual-looker.toml"];
 
 const RUNTIME_ENTRIES = [
   ".codex-plugin",
@@ -46,6 +41,7 @@ export function getCodexPluginState(options = {}) {
   const marketplaceBlock = getTableBlock(configText, `marketplaces.${MARKETPLACE_ID}`);
   const pluginBlock = getTableBlock(configText, `plugins."${PLUGIN_REF}"`);
   const openAiCompatProvider = getOpenAiCompatProviderState(configText, provider);
+  const anyModelProviderConfigured = hasAnyModelProvider(configText);
 
   return {
     codexHome,
@@ -58,6 +54,7 @@ export function getCodexPluginState(options = {}) {
       marketplaceBlock.includes(`source = ${JSON.stringify(marketplaceRoot)}`),
     pluginEnabled: pluginBlock.includes("enabled = true"),
     openAiCompatProvider,
+    anyModelProviderConfigured,
     additionalAgentsInstalled: ADDITIONAL_AGENT_CONFIGS.every((fileName) =>
       existsSync(path.join(agentsRoot, fileName))
     ),
@@ -68,7 +65,7 @@ export function getCodexPluginState(options = {}) {
 export function getVisualSmokeState(options = {}) {
   const codexHome = getCodexHome(options.env);
   const agentsRoot = path.join(codexHome, "agents");
-  const checks = VISUAL_AGENT_EXPECTATIONS.map((expected) => {
+  const checks = getVisualAgentExpectations(options.packageRoot ?? DEFAULT_PACKAGE_ROOT).map((expected) => {
     const filePath = path.join(agentsRoot, expected.fileName);
     const text = readTextIfExists(filePath);
     if (text.length === 0) return { ...expected, filePath, status: "missing" };
@@ -86,6 +83,17 @@ export function getVisualSmokeState(options = {}) {
     verified: checks.every((check) => check.status === "verified"),
     checks
   };
+}
+
+function getVisualAgentExpectations(packageRoot) {
+  return VISUAL_AGENT_CONFIGS.map((fileName) => {
+    const sourcePath = path.join(packageRoot, "agent-configs", fileName);
+    return {
+      name: path.basename(fileName, ".toml"),
+      fileName,
+      model: readTomlString(readTextIfExists(sourcePath), "model")
+    };
+  });
 }
 
 export function getInstallSmokeState(options = {}) {
@@ -114,7 +122,7 @@ export function installCodexPlugin(packageRoot, options = {}) {
   }
 
   installAdditionalAgents(packageRoot, state);
-  upsertCodexConfig(state);
+  upsertCodexConfig(state, { installOpenAiCompatProvider: options.installOpenAiCompatProvider === true });
   return getCodexPluginState(pluginOptions);
 }
 
@@ -125,7 +133,7 @@ export function getPendingCodexPluginActions(options = {}) {
   if (!state.additionalAgentsInstalled) actions.push(`install LFP agents to ${path.join(state.codexHome, "agents")}`);
   if (!state.marketplaceConfigured) actions.push(`configure marketplace ${MARKETPLACE_ID} in ${state.configPath}`);
   if (!state.pluginEnabled) actions.push(`enable plugin ${PLUGIN_REF} in ${state.configPath}`);
-  if (state.openAiCompatProvider.status === "missing") {
+  if (options.installOpenAiCompatProvider === true && state.openAiCompatProvider.status === "missing") {
     actions.push(`configure OpenAI-compatible provider ${state.openAiCompatProvider.id} in ${state.configPath}`);
   }
   if (state.openAiCompatProvider.status === "drifted") {
@@ -160,7 +168,7 @@ function getProviderConfig(options) {
   return options.providerConfig ?? readOpenAiCompatProviderConfig(options.packageRoot ?? DEFAULT_PACKAGE_ROOT);
 }
 
-function upsertCodexConfig(state) {
+function upsertCodexConfig(state, options = {}) {
   mkdirSync(path.dirname(state.configPath), { recursive: true });
   const current = readTextIfExists(state.configPath);
   const pluginConfig = upsertTable(current, `marketplaces.${MARKETPLACE_ID}`, [
@@ -170,7 +178,10 @@ function upsertCodexConfig(state) {
   const orderedPluginConfig = ensureLfpPluginAfterLazyCodex(
     upsertTable(pluginConfig, `plugins."${PLUGIN_REF}"`, ["enabled = true"])
   );
-  const next = upsertOpenAiCompatProvider(orderedPluginConfig, state.openAiCompatProvider.config);
+  const next =
+    options.installOpenAiCompatProvider === true
+      ? upsertOpenAiCompatProvider(orderedPluginConfig, state.openAiCompatProvider.config)
+      : orderedPluginConfig;
   writeFileSync(state.configPath, next);
 }
 

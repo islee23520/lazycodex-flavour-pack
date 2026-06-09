@@ -9,6 +9,8 @@ import { configureArtTeam, configureArtTeamIfWanted } from "./art-team-config.mj
 import { configureAgentModelOverrides } from "./agent-model-config.mjs";
 import { getCodexAppsToolCacheState } from "./codex-apps-cache.mjs";
 import { formatLazyCodexInstallCommand, runLazyCodexInstall } from "./lazycodex-install.mjs";
+import { promptForYesNo } from "./model-config-prompts.mjs";
+import { getProviderConsentPath, readProviderConsent, saveProviderConsent } from "./provider-consent.mjs";
 import {
   printArtTeamConfig,
   printCodexAppsCacheQuarantine,
@@ -54,7 +56,7 @@ Flags:
   --skip-art-prompt  Skip the interactive art team model prompt during setup.
   --skip-model-prompt  Skip the interactive OMO override model prompt during setup.
 
-This package is a lightweight overlay. setup runs npx lazycodex-ai@latest install before applying LFP, then installs/enables this pack in Codex and applies configured overrides to existing agents.`;
+This package is a lightweight overlay. setup runs npx lazycodex-ai install before applying LFP, then installs/enables this pack in Codex and applies configured overrides to existing agents.`;
 
 if (isDirectRun()) {
   try {
@@ -111,7 +113,9 @@ async function runSetup(argv, { check }) {
     runLazyCodexInstall();
   }
 
-  const pending = getPendingCodexPluginActions();
+  const basePending = getPendingCodexPluginActions();
+  const installOpenAiCompatProvider = check ? false : await shouldInstallOpenAiCompatProvider(basePending.state);
+  const pending = getPendingCodexPluginActions({ installOpenAiCompatProvider });
   const pendingOverrides = syncAgentOverrides(configPath, { check: true });
 
   if (check) {
@@ -129,7 +133,7 @@ async function runSetup(argv, { check }) {
       return;
     }
 
-    const installed = installCodexPlugin(ROOT);
+    const installed = installCodexPlugin(ROOT, { installOpenAiCompatProvider });
     if (args.config === undefined) {
       configPath = path.join(installed.pluginRoot, "agent-configs", "omo-agent-model-overrides.toml");
     }
@@ -167,6 +171,39 @@ async function runSetup(argv, { check }) {
   }
 }
 
+async function shouldInstallOpenAiCompatProvider(state) {
+  if (state.anyModelProviderConfigured) {
+    console.log("lfp setup: model provider already configured; leaving existing provider untouched.");
+    return false;
+  }
+
+  const savedConsent = readProviderConsent();
+  if (savedConsent !== null) {
+    console.log(
+      `lfp setup: model provider install consent recorded as ${savedConsent ? "yes" : "no"} in ${getProviderConsentPath()}.`
+    );
+    return savedConsent;
+  }
+
+  if (!process.stdin.isTTY) {
+    console.log("lfp setup: model provider missing; skipping provider install in non-interactive mode.");
+    return false;
+  }
+
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  try {
+    const answer = await promptForYesNo(
+      rl,
+      `Install OpenAI-compatible model provider ${state.openAiCompatProvider.id} in ${state.configPath}? [y/N]: `
+    );
+    const consentPath = saveProviderConsent(answer);
+    console.log(`lfp setup: recorded model provider install consent in ${consentPath}.`);
+    return answer;
+  } finally {
+    rl.close();
+  }
+}
+
 function runDoctor(argv) {
   const args = parseSyncArgs(argv);
   if (args.check !== undefined) throw new Error("doctor does not accept --check; use dry-setup instead");
@@ -182,8 +219,8 @@ function runDoctor(argv) {
   console.log(`lfp doctor: marketplace config: ${state.marketplaceConfigured ? "configured" : "missing"} (${state.configPath})`);
   console.log(`lfp doctor: plugin config: ${state.pluginEnabled ? "enabled" : "missing"} (${PLUGIN_REF})`);
   hasIssue ||= !state.pluginFilesInstalled || !state.additionalAgentsInstalled || !state.marketplaceConfigured || !state.pluginEnabled;
-  const openAiCompatProviderOk = printOpenAiCompatProviderState(state);
-  hasIssue ||= !openAiCompatProviderOk;
+  printOpenAiCompatProviderState(state);
+  hasIssue ||= state.openAiCompatProvider.status === "drifted";
   const installSmokeOk = printInstallSmokeState();
   hasIssue ||= !installSmokeOk;
   const visualSmokeOk = printVisualSmokeState();

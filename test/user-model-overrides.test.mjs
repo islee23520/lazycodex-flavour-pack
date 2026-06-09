@@ -1,10 +1,11 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 import assert from "node:assert/strict";
 
 import { configureAgentModelOverrides, getUserOverrideConfigPath } from "../scripts/agent-model-config.mjs";
+import { getLegacyUserOverrideConfigPath } from "../scripts/user-model-overrides.mjs";
 
 test("given saved user override config when setup runs again then restores model fields without stale agents dir", async () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-user-models-"));
@@ -20,6 +21,7 @@ test("given saved user override config when setup runs again then restores model
       output: silentOutput()
     });
     const savedPath = getUserOverrideConfigPath({ env: { CODEX_HOME: codexHome } });
+    assert.equal(savedPath, path.join(codexHome, ".ledger", "lfp", "omo-agent-model-overrides.toml"));
     const savedText = readFileSync(savedPath, "utf8");
     assert.match(savedText, /model = "gpt-5\.4-mini"/);
     assert.match(savedText, /model_reasoning_effort = "xhigh"/);
@@ -45,6 +47,32 @@ test("given saved user override config when setup runs again then restores model
     assert.doesNotMatch(restoredText, new RegExp(escapeRegExp(root)));
     assert.ok(output.questions.some((question) => /Apply saved LFP model override config/.test(question)));
     assert.ok(output.questions.some((question) => /explorer model/.test(question)));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("given legacy saved user override exists when configuring then migrates it into Codex ledger", async () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-user-models-"));
+  try {
+    const codexHome = path.join(root, "codex-home");
+    const configPath = path.join(root, "overrides.toml");
+    const legacyPath = getLegacyUserOverrideConfigPath({ env: { CODEX_HOME: codexHome } });
+    writeFileSync(configPath, overrideText("${CODEX_HOME}/agents", "grok-4.3", "low", "default"));
+    mkdirSync(path.dirname(legacyPath), { recursive: true });
+    writeFileSync(legacyPath, overrideText(root, "gpt-5.4-mini", "xhigh", "fast"));
+
+    const output = captureOutput();
+    await configureAgentModelOverrides(configPath, {
+      env: { ...process.env, CODEX_HOME: codexHome },
+      models: ["gpt-5.4-mini", "grok-4.3"],
+      readline: fakeReadline(["y", "2", "1", "2"]),
+      output
+    });
+
+    const savedPath = getUserOverrideConfigPath({ env: { CODEX_HOME: codexHome } });
+    assert.match(readFileSync(savedPath, "utf8"), /model = "grok-4\.3"/);
+    assert.ok(output.questions.some((question) => question.includes(path.join(codexHome, ".ledger", "lfp"))));
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

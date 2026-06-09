@@ -10,7 +10,7 @@ import { installCodexPlugin } from "../scripts/codex-plugin-install.mjs";
 const CLI = path.resolve("scripts/cli.mjs");
 const LAZYCODEX_INSTALL_STUB = path.resolve("test/fixtures/lazycodex-install-stub.mjs");
 
-test("given setup runs with empty Codex config when OpenAI-compatible provider setup applies then writes generic provider table", () => {
+test("given setup runs noninteractively with empty Codex config when provider is missing then skips provider install", () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-provider-"));
   try {
     const fixture = createFixture(root);
@@ -19,11 +19,9 @@ test("given setup runs with empty Codex config when OpenAI-compatible provider s
     const codexConfig = readFileSync(path.join(fixture.codexHome, "config.toml"), "utf8");
 
     assert.equal(result.status, 0, result.stderr);
-    assert.match(codexConfig, /^model_provider = "openai-compatible"$/m);
-    assert.match(codexConfig, /^\[model_providers\.openai-compatible\]$/m);
-    assert.match(codexConfig, /^base_url = "https:\/\/api\.openai\.com\/v1"$/m);
-    assert.match(codexConfig, /^wire_api = "responses"$/m);
-    assert.match(codexConfig, /^requires_openai_auth = true$/m);
+    assert.match(result.stdout, /model provider missing; skipping provider install in non-interactive mode/);
+    assert.doesNotMatch(codexConfig, /^model_provider = "openai-compatible"$/m);
+    assert.doesNotMatch(codexConfig, /^\[model_providers\.openai-compatible\]$/m);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -40,7 +38,10 @@ test("given package provider config changes when setup runs then OpenAI-compatib
       requiresOpenAiAuth: false
     });
 
-    const state = installCodexPlugin(packageRoot, { env: { ...process.env, CODEX_HOME: codexHome } });
+    const state = installCodexPlugin(packageRoot, {
+      env: { ...process.env, CODEX_HOME: codexHome },
+      installOpenAiCompatProvider: true
+    });
     const codexConfig = readFileSync(path.join(codexHome, "config.toml"), "utf8");
 
     assert.equal(state.openAiCompatProvider.id, "localproxy");
@@ -55,7 +56,7 @@ test("given package provider config changes when setup runs then OpenAI-compatib
   }
 });
 
-test("given Codex config has user model provider when OpenAI-compatible provider setup runs then does not replace active provider", () => {
+test("given Codex config has user model provider when setup runs then leaves provider config untouched", () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-provider-"));
   try {
     const fixture = createFixture(root);
@@ -71,7 +72,7 @@ test("given Codex config has user model provider when OpenAI-compatible provider
     assert.equal(result.status, 0, result.stderr);
     assert.match(codexConfig, /^model_provider = "custom-local"$/m);
     assert.doesNotMatch(codexConfig, /^model_provider = "openai-compatible"$/m);
-    assert.match(codexConfig, /^\[model_providers\.openai-compatible\]$/m);
+    assert.doesNotMatch(codexConfig, /^\[model_providers\.openai-compatible\]$/m);
     assert.match(codexConfig, /^\[projects\."\/tmp\/example"\]$/m);
     assert.match(codexConfig, /^trust_level = "trusted"$/m);
   } finally {
@@ -79,7 +80,7 @@ test("given Codex config has user model provider when OpenAI-compatible provider
   }
 });
 
-test("given doctor sees configured OpenAI-compatible provider when run then reports active generic provider", () => {
+test("given doctor sees missing optional OpenAI-compatible provider when run then exits cleanly", () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-provider-"));
   try {
     const fixture = createFixture(root);
@@ -89,8 +90,8 @@ test("given doctor sees configured OpenAI-compatible provider when run then repo
 
     assert.equal(setup.status, 0, setup.stderr);
     assert.equal(doctor.status, 0, doctor.stderr);
-    assert.match(doctor.stdout, /OpenAI-compatible provider: configured \(openai-compatible\)/);
-    assert.match(doctor.stdout, /active model provider: openai-compatible/);
+    assert.match(doctor.stdout, /OpenAI-compatible provider: missing \(openai-compatible\)/);
+    assert.match(doctor.stdout, /active model provider: missing/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -108,14 +109,14 @@ test("given doctor sees configured OpenAI-compatible provider with user active p
 
     assert.equal(setup.status, 0, setup.stderr);
     assert.equal(doctor.status, 0, doctor.stderr);
-    assert.match(doctor.stdout, /OpenAI-compatible provider: configured \(openai-compatible\)/);
+    assert.match(doctor.stdout, /OpenAI-compatible provider: missing \(openai-compatible\)/);
     assert.match(doctor.stdout, /active model provider: user-managed \(custom-local\)/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
 });
 
-test("given dry setup sees missing OpenAI-compatible provider when run then reports pending provider action without writing", () => {
+test("given dry setup sees missing OpenAI-compatible provider when run then does not schedule provider install", () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-provider-"));
   try {
     const fixture = createFixture(root);
@@ -123,7 +124,7 @@ test("given dry setup sees missing OpenAI-compatible provider when run then repo
     const result = runCli(["dry-setup", "--config", fixture.configPath], fixture.codexHome);
 
     assert.equal(result.status, 1);
-    assert.match(result.stdout, /would configure OpenAI-compatible provider openai-compatible/);
+    assert.doesNotMatch(result.stdout, /would configure OpenAI-compatible provider openai-compatible/);
     assert.equal(existsSync(path.join(fixture.codexHome, "config.toml")), false);
   } finally {
     rmSync(root, { recursive: true, force: true });
@@ -147,23 +148,17 @@ test("given doctor sees OpenAI-compatible provider drift when run then reports p
   }
 });
 
-test("given doctor sees missing OpenAI-compatible provider when run then reports provider setup issue", () => {
+test("given doctor sees missing optional OpenAI-compatible provider when run then reports it without failing", () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-provider-"));
   try {
     const fixture = createFixture(root);
     const setup = runCli(["setup", "--config", fixture.configPath], fixture.codexHome);
-    const configPath = path.join(fixture.codexHome, "config.toml");
-    const withoutProvider = readFileSync(configPath, "utf8")
-      .replace(/^model_provider = "openai-compatible"\n\n/m, "")
-      .replace(/\n\[model_providers\.openai-compatible\]\nbase_url = "https:\/\/api\.openai\.com\/v1"\nwire_api = "responses"\nrequires_openai_auth = true\n/m, "\n");
-    writeFileSync(configPath, withoutProvider);
-
     const doctor = runCli(["doctor", "--config", fixture.configPath], fixture.codexHome);
 
     assert.equal(setup.status, 0, setup.stderr);
-    assert.equal(doctor.status, 1);
+    assert.equal(doctor.status, 0);
     assert.match(doctor.stdout, /OpenAI-compatible provider: missing \(openai-compatible\)/);
-    assert.match(doctor.stdout, /active model provider: openai-compatible/);
+    assert.match(doctor.stdout, /active model provider: missing/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

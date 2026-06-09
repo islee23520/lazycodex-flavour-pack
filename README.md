@@ -2,11 +2,13 @@
 
 LazyCodex Flavour Pack. A small overlay for LazyCodex/Codex.
 
-LFP runs the upstream `lazycodex-ai@latest install` first, then registers this plugin in Codex, installs LFP-owned helper agents, configures a generic OpenAI-compatible provider when safe, and syncs only model-related fields on existing upstream agent TOMLs.
+LFP runs `npx lazycodex-ai install` first, then registers this plugin in Codex, installs LFP-owned helper agents, optionally configures a generic OpenAI-compatible provider only after operator consent, and syncs only model-related fields on existing upstream agent TOMLs.
 
 Repository and LFP-owned issues live at <https://github.com/islee23520/lazycodex-flavour-pack>. If a failure is caused by upstream LazyCodex/OMO behavior rather than this flavour pack, register that issue on the upstream LazyCodex tracker instead.
 
-`lfp setup` runs `npx lazycodex-ai@latest install` before applying LFP. It validates the configured `agentsDir` before writing its own install files.
+`lfp setup` runs `npx lazycodex-ai install` before applying LFP. It validates the configured `agentsDir` before writing its own install files.
+
+OpenAI-compatible provider setup is consent-gated. In interactive setup, LFP asks before writing a model provider into Codex config and records the answer under `CODEX_HOME/.ledger/lfp/`. Non-interactive setup skips provider installation unless consent has already been recorded.
 
 ## Contents
 
@@ -38,7 +40,7 @@ npm run smoke:isolated
 
 `setup` installs/enables LFP under `CODEX_HOME/local-marketplaces/islee23520/plugins/lfp`, installs helper agents under `CODEX_HOME/agents`, and applies configured model-field overrides.
 
-When interactive OMO model setup changes override values, LFP also saves a user copy at `${CODEX_HOME}/lfp/omo-agent-model-overrides.toml`. On later `setup` runs after an npx/package patch, LFP asks whether to apply that saved user copy before showing the model selection prompts.
+When interactive OMO model setup changes override values, LFP also saves a user copy at `${CODEX_HOME}/.ledger/lfp/omo-agent-model-overrides.toml`. On later `setup` runs after an npx/package patch, LFP asks whether to apply that saved user copy before showing the model selection prompts. Older `${CODEX_HOME}/lfp/omo-agent-model-overrides.toml` copies are migrated into the ledger path.
 
 `agent-config` runs the same OMO override selector without reinstalling the LFP-owned helper agents. It lists already-configured override targets and can opt additional installed upstream agent TOMLs into the override file. Only `model`, `model_reasoning_effort`, and `service_tier` are written.
 

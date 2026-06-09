@@ -33,9 +33,9 @@ test("given npx-style CLI setup when upstream agent exists then updates configur
     const codexConfig = readFileSync(path.join(codexHome, "config.toml"), "utf8");
 
     assert.equal(result.status, 0, result.stderr);
-    assert.match(result.stdout, /lazycodex-ai@latest install stub/);
+    assert.match(result.stdout, /lazycodex-ai install stub/);
     assert.match(result.stdout, /installed lfp@islee23520/);
-    assert.equal(result.stdout.indexOf("lazycodex-ai@latest install stub") < result.stdout.indexOf("installed lfp@islee23520"), true);
+    assert.equal(result.stdout.indexOf("lazycodex-ai install stub") < result.stdout.indexOf("installed lfp@islee23520"), true);
     assert.match(result.stdout, /updated .*explorer\.toml/);
     assert.match(updated, /model = "grok-4\.3"/);
     assert.match(updated, /developer_instructions = """keep me"""/);
@@ -122,7 +122,7 @@ test("given CLI help when invoked then documents npx usage", () => {
   assert.match(result.stdout, /npx @islee23520\/lfp@latest dry-setup/);
   assert.match(result.stdout, /npx @islee23520\/lfp@latest doctor/);
   assert.match(result.stdout, /npx @islee23520\/lfp@latest agent-config/);
-  assert.match(result.stdout, /runs npx lazycodex-ai@latest install before applying LFP/);
+  assert.match(result.stdout, /runs npx lazycodex-ai install before applying LFP/);
 });
 
 test("given setup config is missing when setup runs then leaves Codex home unmodified", () => {
