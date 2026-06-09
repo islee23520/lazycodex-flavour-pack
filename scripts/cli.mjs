@@ -14,6 +14,7 @@ import {
 import { syncAgentOverrides } from "./sync-agent-overrides.mjs";
 import { configureArtTeam, configureArtTeamIfWanted, readCurrentConfig } from "./art-team-config.mjs";
 import { configureAgentModelOverrides } from "./agent-model-config.mjs";
+import { getCodexAppsToolCacheState, quarantineDuplicateCodexAppsToolCaches } from "./codex-apps-cache.mjs";
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const DEFAULT_CONFIG = path.join(ROOT, "agent-configs", "omo-agent-model-overrides.toml");
@@ -26,6 +27,7 @@ Usage:
   lfp setup [--config <path>] [--skip-art-prompt] [--skip-model-prompt]
   lfp dry-setup [--config <path>]
   lfp doctor [--config <path>]
+  lfp agent-config [--config <path>]
   lfp art-config
   lfp help
 
@@ -33,6 +35,7 @@ npx:
   npx @islee23520/lfp@latest setup
   npx @islee23520/lfp@latest dry-setup
   npx @islee23520/lfp@latest doctor
+  npx @islee23520/lfp@latest agent-config
   npx @islee23520/lfp@latest art-config
 
 Commands:
@@ -40,6 +43,7 @@ Commands:
                    Interactive: prompts for art team and OMO override model selection.
   dry-setup        Preview what setup would do without writing.
   doctor           Check LFP install status, agent models, and overrides.
+  agent-config     Reconfigure LazyCodex/OMO agent model overrides and apply them.
   art-config       Reconfigure art team models (interactive prompt).
   help             Show this help.
 
@@ -52,14 +56,14 @@ This package is a lightweight overlay. setup installs/enables this pack in Codex
 
 if (isDirectRun()) {
   try {
-    runCli(process.argv.slice(2));
+    await runCli(process.argv.slice(2));
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));
     process.exitCode = 1;
   }
 }
 
-export function runCli(argv) {
+export async function runCli(argv) {
   const [command = "help", ...args] = argv;
 
   if (command === "help" || command === "--help" || command === "-h") {
@@ -68,12 +72,12 @@ export function runCli(argv) {
   }
 
   if (command === "setup") {
-    runSetup(args, { check: false });
+    await runSetup(args, { check: false });
     return;
   }
 
   if (command === "dry-setup") {
-    runSetup(args, { check: true });
+    await runSetup(args, { check: true });
     return;
   }
 
@@ -82,8 +86,13 @@ export function runCli(argv) {
     return;
   }
 
+  if (command === "agent-config") {
+    await runAgentConfig(args);
+    return;
+  }
+
   if (command === "art-config") {
-    runArtConfig(args);
+    await runArtConfig(args);
     return;
   }
 
@@ -98,7 +107,13 @@ async function runSetup(argv, { check }) {
 
   if (check) {
     for (const action of pending.actions) console.log(`would ${action}`);
+    const appCacheState = getCodexAppsToolCacheState();
+    for (const item of appCacheState.duplicateFiles) {
+      console.log(`would quarantine duplicate Codex Apps tool cache ${item.filePath} (${item.duplicateToolNames.join(", ")})`);
+    }
   } else {
+    printCodexAppsCacheQuarantine();
+
     if (pending.state.openAiCompatProvider.status === "drifted") {
       printOpenAiCompatProviderState(pending.state);
       process.exitCode = 1;
@@ -135,7 +150,12 @@ async function runSetup(argv, { check }) {
     console.log(`${check ? "would update" : "updated"} ${item}`);
   }
 
-  if (check && (pending.actions.length > 0 || result.changed.length > 0)) process.exitCode = 1;
+  if (check) {
+    const appCacheState = getCodexAppsToolCacheState();
+    if (pending.actions.length > 0 || result.changed.length > 0 || appCacheState.duplicateFiles.length > 0) {
+      process.exitCode = 1;
+    }
+  }
 }
 
 function runDoctor(argv) {
@@ -159,6 +179,8 @@ function runDoctor(argv) {
   hasIssue ||= !installSmokeOk;
   const visualSmokeOk = printVisualSmokeState();
   hasIssue ||= !visualSmokeOk;
+  const appCacheOk = printCodexAppsCacheState();
+  hasIssue ||= !appCacheOk;
 
   printArtTeamConfig();
 
@@ -178,10 +200,65 @@ function runDoctor(argv) {
   if (hasIssue) process.exitCode = 1;
 }
 
+function printCodexAppsCacheQuarantine() {
+  const result = quarantineDuplicateCodexAppsToolCaches();
+  if (result.quarantined.length === 0) {
+    console.log("lfp setup: Codex Apps tool cache: ok");
+    return true;
+  }
+
+  for (const item of result.quarantined) {
+    console.log(
+      `lfp setup: quarantined duplicate Codex Apps tool cache ${item.filePath} -> ${item.targetPath} (${item.duplicateToolNames.join(", ")})`
+    );
+  }
+  return false;
+}
+
+function printCodexAppsCacheState() {
+  const state = getCodexAppsToolCacheState();
+  if (state.healthy) {
+    console.log("lfp doctor: Codex Apps tool cache: ok");
+    return true;
+  }
+
+  console.log("lfp doctor: Codex Apps tool cache: duplicate tool names found");
+  for (const item of state.duplicateFiles) {
+    console.log(`lfp doctor: Codex Apps tool cache: ${item.filePath} duplicates ${item.duplicateToolNames.join(", ")}`);
+  }
+  console.log("lfp doctor: Codex Apps tool cache: run 'lfp setup' to quarantine stale duplicate cache files");
+  return false;
+}
+
 async function runArtConfig() {
   console.log("Reconfiguring art team models...\n");
   await configureArtTeam();
   console.log("Run 'lfp setup' to reinstall agents with updated models.");
+}
+
+async function runAgentConfig(argv) {
+  const args = parseSyncArgs(argv);
+  const configPath = args.config ?? getDefaultInstalledOverrideConfigPath();
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+
+  try {
+    console.log("Reconfiguring LazyCodex/OMO agent model overrides...\n");
+    await configureAgentModelOverrides(configPath, { readline: rl, output: console });
+  } finally {
+    rl.close();
+  }
+
+  const result = syncAgentOverrides(configPath, { check: false });
+  for (const item of result.changed) console.log(`updated ${item}`);
+  if (result.changed.length === 0) console.log("agent overrides already applied");
+}
+
+function getDefaultInstalledOverrideConfigPath() {
+  const state = getCodexPluginState();
+  if (state.pluginFilesInstalled) {
+    return path.join(state.pluginRoot, "agent-configs", "omo-agent-model-overrides.toml");
+  }
+  return DEFAULT_CONFIG;
 }
 
 function printOpenAiCompatProviderState(state) {

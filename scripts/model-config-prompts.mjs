@@ -130,7 +130,7 @@ function parseModelSelection(answer, choices) {
     if (choice.aliases.includes(answer)) return answer;
     if (choice.key === answer) return choice.value;
   }
-  return null;
+  return answer;
 }
 
 function formatModelChoice(choice) {

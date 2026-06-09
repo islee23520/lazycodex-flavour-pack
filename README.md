@@ -26,16 +26,20 @@ Run `npx lazycodex-ai@latest install` first when the upstream plugin is missing 
 npx @islee23520/lfp@latest setup
 npx @islee23520/lfp@latest dry-setup
 npx @islee23520/lfp@latest doctor
+npx @islee23520/lfp@latest agent-config
 
 npm test
 npm run setup
 npm run dry-setup
 npm run doctor
+npm run agent-config
 ```
 
-`setup` installs/enables LFP under `CODEX_HOME/local-marketplaces/linalab/plugins/lfp`, installs helper agents under `CODEX_HOME/agents`, and applies configured model-field overrides.
+`setup` installs/enables LFP under `CODEX_HOME/local-marketplaces/islee23520/plugins/lfp`, installs helper agents under `CODEX_HOME/agents`, and applies configured model-field overrides.
 
 When interactive OMO model setup changes override values, LFP also saves a user copy at `${CODEX_HOME}/lfp/omo-agent-model-overrides.toml`. On later `setup` runs after an npx/package patch, LFP asks whether to apply that saved user copy before showing the model selection prompts.
+
+`agent-config` runs the same OMO override selector without reinstalling the LFP-owned helper agents. It lists already-configured override targets and can opt additional installed upstream agent TOMLs into the override file. Only `model`, `model_reasoning_effort`, and `service_tier` are written.
 
 `dry-setup` previews pending writes. `doctor` reports plugin install state, upstream LazyCodex/OMO readiness, provider status, visual-agent smoke checks, and pending override work.
 

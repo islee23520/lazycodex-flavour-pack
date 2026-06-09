@@ -216,7 +216,7 @@ function createPackageRoot(root, provider) {
   writeFileSync(path.join(packageRoot, "package.json"), "{}\n");
   writeFileSync(path.join(packageRoot, "agent-configs", "visual-engineering.toml"), 'name = "visual-engineering"\nmodel = "gemini-3.1-pro-preview"\n');
   writeFileSync(path.join(packageRoot, "agent-configs", "visual-looker.toml"), 'name = "visual-looker"\nmodel = "gemini-3.1-pro-preview"\n');
-  writeFileSync(path.join(packageRoot, "agent-configs", "artistry.toml"), 'name = "artistry"\nmodel = "gpt-5.5"\n');
+  writeFileSync(path.join(packageRoot, "agent-configs", "artistry.toml"), 'name = "artistry"\nmodel = "gemini-3.1-pro-preview"\n');
   writeFileSync(path.join(packageRoot, "agent-configs", "artistry-gen.toml"), 'name = "artistry-gen"\nmodel = "glm-5v-turbo"\n');
   writeFileSync(path.join(packageRoot, "agent-configs", "artistry-qa.toml"), 'name = "artistry-qa"\nmodel = "grok-4.3"\n');
   writeFileSync(

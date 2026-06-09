@@ -29,7 +29,7 @@ An art production request was detected. Use the LFP art team agent group for thi
 
 The art team uses a cost-efficient observe-decide-act loop pattern (reference: pss-mgba harness). Expensive models are called only at checkpoints; cheap models run the inner loop.
 
-1. **artistry** (GPT-5.5, high reasoning) — Art Director. Interprets requests into art briefs, defines production phases with checkpoint criteria, reviews QA results, and makes final completion judgments. Spawn with agent_type="artistry"; config at ${ARTISTRY_CONFIG}. Called 2-3 times total.
+1. **artistry** (Gemini 3.1 Pro, high reasoning) — Art Director. Interprets requests into art briefs, defines production phases with checkpoint criteria, reviews QA results, and makes final completion judgments. Spawn with agent_type="artistry"; config at ${ARTISTRY_CONFIG}. Called 2-3 times total.
 
 2. **artistry-gen** (GLM-5v-turbo, medium reasoning) — Production Worker. Operates the user's creative application via Computer Use. Learns tool UI, executes production directives, reports progress at checkpoints. Spawn with agent_type="artistry-gen"; config at ${ARTISTRY_GEN_CONFIG}. Called many times in the inner loop.
 
@@ -49,7 +49,7 @@ The art team uses a cost-efficient observe-decide-act loop pattern (reference: p
 
 ## Cost Discipline
 
-- GPT-5.5 (artistry): called ONLY for brief creation, checkpoint reviews, and final judgment. Never in the inner loop.
+- Gemini 3.1 Pro (artistry): called ONLY for brief creation, checkpoint reviews, and final judgment. Never in the inner loop.
 - GLM-5v-turbo (artistry-gen): runs the inner Computer Use loop. Cheap and fast.
 - Grok 4.3 (artistry-qa): called ONLY at phase checkpoints for structured inspection.
 
@@ -62,7 +62,7 @@ The art team uses a cost-efficient observe-decide-act loop pattern (reference: p
 - **Serial execution**: one action at a time, never queue uncertain actions.
 - **Evidence-bound checkpoints**: every QA verdict must include pixel coordinates, color values, or measurable proportions.
 
-These art team agents default to GLM-5v-turbo (worker), Grok 4.3 (QA), and GPT-5.5 (director) in their role configs. Your active model_provider must be configured to route these model names. If your provider does not support GLM routing, point artistry-gen at a suitable cheap vision model. If Grok is unavailable, point artistry-qa at a strong vision-capable model.
+These art team agents default to Gemini 3.1 Pro (director), GLM-5v-turbo (worker), and Grok 4.3 (QA) in their role configs. Your active model_provider must be configured to route these model names. If your provider does not support GLM routing, point artistry-gen at a suitable cheap vision model. If Grok is unavailable, point artistry-qa at a strong vision-capable model.
 
 Run \`lfp setup\` or \`lfp doctor\` to install LFP-owned agents and apply model overrides; this hook only adds guidance and does not mutate LazyCodex/OMO state.`;
 

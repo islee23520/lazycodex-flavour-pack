@@ -209,7 +209,7 @@ test("given stale explorer override when non-visual hook runs then it does not m
 
     assert.equal(output, "");
     assert.match(updated, /model = "gpt-5\.4-mini"/);
-    assert.equal(existsSync(path.join(codexHome, "local-marketplaces", "linalab", "plugins", "lfp", ".codex-plugin", "plugin.json")), false);
+    assert.equal(existsSync(path.join(codexHome, "local-marketplaces", "islee23520", "plugins", "lfp", ".codex-plugin", "plugin.json")), false);
     assert.equal(existsSync(path.join(codexHome, "agents", "visual-engineering.toml")), false);
   } finally {
     rmSync(root, { recursive: true, force: true });

@@ -33,8 +33,8 @@ export async function configureAgentModelOverrides(configPath, options = {}) {
   if (rl === undefined) throw new TypeError("readline is required for interactive model override configuration");
 
   const userConfigPath = getUserOverrideConfigPath(options);
-  const restored = await maybeRestoreUserOverrideConfig(configPath, userConfigPath, { ...options, readline: rl });
-  if (restored !== null) return restored;
+  const restoredUserConfig = await maybeRestoreUserOverrideConfig(configPath, userConfigPath, { ...options, readline: rl });
+  if (restoredUserConfig) options.output?.log?.("Continuing with editable model override prompts.\n");
 
   const config = readOverrideConfig(configPath, options);
   const agentNames = Object.keys(config.overrides ?? {});
@@ -43,13 +43,12 @@ export async function configureAgentModelOverrides(configPath, options = {}) {
 
   const models = options.models ?? (await safeFetchAvailableModels(options));
   if (models.length === 0) {
-    options.output?.log?.("No available models were discovered; keeping configured OMO override models.");
-    return config;
+    options.output?.log?.("No available models were discovered; enter model IDs manually.");
   }
 
   options.output?.log?.("\n=== OMO Agent Model Overrides ===");
   options.output?.log?.("Choose models for existing non-art LazyCodex/OMO agents.\n");
-  printModelChoices(models, options.output);
+  if (models.length > 0) printModelChoices(models, options.output);
 
   for (const agentName of agentNames) {
     const fields = config.overrides[agentName] ?? {};
@@ -248,7 +247,7 @@ async function maybeRestoreUserOverrideConfig(configPath, userConfigPath, option
 
   restoreUserOverrideConfig(configPath, userConfigPath);
   options.output?.log?.("Applied saved LFP model override config.\n");
-  return readOverrideConfig(configPath, options);
+  return true;
 }
 
 function safeReadDir(sourceDir) {

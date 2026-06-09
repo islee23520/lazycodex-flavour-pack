@@ -147,7 +147,7 @@ test("given art team guidance when emitted then contains loop protocol", () => {
   const ctx = parsed.hookSpecificOutput.additionalContext;
 
   // Cost discipline section
-  assert.match(ctx, /GPT-5\.5.*artistry.*brief creation.*checkpoint reviews/s);
+  assert.match(ctx, /Gemini 3\.1 Pro.*artistry.*brief creation.*checkpoint reviews/s);
   assert.match(ctx, /GLM-5v-turbo.*artistry-gen.*inner.*loop/s);
   assert.match(ctx, /Grok 4\.3.*artistry-qa.*checkpoint/s);
 

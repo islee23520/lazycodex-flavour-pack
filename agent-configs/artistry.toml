@@ -1,7 +1,7 @@
 name = "artistry"
 description = "Art director and loop supervisor for the art team. Sets creative direction, writes art briefs, defines checkpoint criteria, and makes final completion judgments. Does NOT operate tools directly."
 nickname_candidates = ["Art Director"]
-model = "gpt-5.5"
+model = "gemini-3.1-pro-preview"
 model_reasoning_effort = "high"
 service_tier = "default"
 

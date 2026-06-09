@@ -32,15 +32,15 @@ test("given npx-style CLI setup when upstream agent exists then updates configur
     const codexConfig = readFileSync(path.join(codexHome, "config.toml"), "utf8");
 
     assert.equal(result.status, 0, result.stderr);
-    assert.match(result.stdout, /installed lfp@linalab/);
+    assert.match(result.stdout, /installed lfp@islee23520/);
     assert.match(result.stdout, /updated .*explorer\.toml/);
     assert.match(updated, /model = "grok-4\.3"/);
     assert.match(updated, /developer_instructions = """keep me"""/);
-    assert.equal(existsSync(path.join(codexHome, "local-marketplaces", "linalab", "plugins", "lfp", ".codex-plugin", "plugin.json")), true);
+    assert.equal(existsSync(path.join(codexHome, "local-marketplaces", "islee23520", "plugins", "lfp", ".codex-plugin", "plugin.json")), true);
     assert.equal(existsSync(path.join(codexHome, "agents", "visual-engineering.toml")), true);
     assert.equal(existsSync(path.join(codexHome, "agents", "visual-looker.toml")), true);
-    assert.match(codexConfig, /\[marketplaces\.linalab\]/);
-    assert.match(codexConfig, /\[plugins\."lfp@linalab"\]/);
+    assert.match(codexConfig, /\[marketplaces\.islee23520\]/);
+    assert.match(codexConfig, /\[plugins\."lfp@islee23520"\]/);
     assert.match(codexConfig, /enabled = true/);
   } finally {
     rmSync(root, { recursive: true, force: true });
@@ -70,7 +70,7 @@ test("given Korean postposition is attached to setup flag when CLI runs then acc
     });
 
     assert.equal(result.status, 0, result.stderr);
-    assert.match(result.stdout, /installed lfp@linalab/);
+    assert.match(result.stdout, /installed lfp@islee23520/);
     assert.doesNotMatch(result.stderr, /Unknown sync option/);
   } finally {
     rmSync(root, { recursive: true, force: true });
@@ -105,7 +105,7 @@ test("given npx-style CLI dry-setup when changes are pending then exits nonzero 
     assert.match(result.stdout, /would install LFP agents/);
     assert.match(result.stdout, /would update .*explorer\.toml/);
     assert.match(unchanged, /model = "gpt-5\.4-mini"/);
-    assert.equal(existsSync(path.join(codexHome, "local-marketplaces", "linalab", "plugins", "lfp")), false);
+    assert.equal(existsSync(path.join(codexHome, "local-marketplaces", "islee23520", "plugins", "lfp")), false);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -118,6 +118,7 @@ test("given CLI help when invoked then documents npx usage", () => {
   assert.match(result.stdout, /npx @islee23520\/lfp@latest setup/);
   assert.match(result.stdout, /npx @islee23520\/lfp@latest dry-setup/);
   assert.match(result.stdout, /npx @islee23520\/lfp@latest doctor/);
+  assert.match(result.stdout, /npx @islee23520\/lfp@latest agent-config/);
   assert.match(result.stdout, /does not install or update LazyCodex\/OMO/);
 });
 
@@ -134,7 +135,7 @@ test("given setup config is missing when setup runs then leaves Codex home unmod
 
     assert.equal(result.status, 1);
     assert.match(result.stderr, /Override config does not exist/);
-    assert.equal(existsSync(path.join(codexHome, "local-marketplaces", "linalab", "plugins", "lfp")), false);
+    assert.equal(existsSync(path.join(codexHome, "local-marketplaces", "islee23520", "plugins", "lfp")), false);
     assert.equal(existsSync(path.join(codexHome, "agents", "visual-engineering.toml")), false);
     assert.equal(existsSync(path.join(codexHome, "config.toml")), false);
   } finally {
@@ -163,7 +164,7 @@ test("given upstream agents dir is missing when setup runs then leaves Codex hom
 
     assert.equal(result.status, 1);
     assert.match(result.stderr, /agents_dir does not exist/);
-    assert.equal(existsSync(path.join(codexHome, "local-marketplaces", "linalab", "plugins", "lfp")), false);
+    assert.equal(existsSync(path.join(codexHome, "local-marketplaces", "islee23520", "plugins", "lfp")), false);
     assert.equal(existsSync(path.join(codexHome, "agents", "visual-engineering.toml")), false);
     assert.equal(existsSync(path.join(codexHome, "config.toml")), false);
   } finally {
@@ -193,7 +194,7 @@ test("given required upstream agent is missing when setup runs then leaves Codex
 
     assert.equal(result.status, 1);
     assert.match(result.stderr, /Missing required agent TOML files/);
-    assert.equal(existsSync(path.join(codexHome, "local-marketplaces", "linalab", "plugins", "lfp")), false);
+    assert.equal(existsSync(path.join(codexHome, "local-marketplaces", "islee23520", "plugins", "lfp")), false);
     assert.equal(existsSync(path.join(codexHome, "agents", "visual-engineering.toml")), false);
     assert.equal(existsSync(path.join(codexHome, "config.toml")), false);
   } finally {

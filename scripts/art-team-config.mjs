@@ -17,7 +17,7 @@ const ART_AGENTS = [
   {
     name: "artistry",
     label: "Art Director (supervisor)",
-    defaultModel: "gpt-5.5",
+    defaultModel: "gemini-3.1-pro-preview",
     defaultReasoning: "high",
     defaultServiceTier: "default",
     description: "Sets creative direction, writes art briefs, manages the production loop. Called 2-3 times total."

@@ -31,17 +31,20 @@ test("given saved user override config when setup runs again then restores model
     const restored = await configureAgentModelOverrides(configPath, {
       env: { ...process.env, CODEX_HOME: codexHome },
       models: ["gpt-5.4-mini", "grok-4.3"],
-      readline: fakeReadline(["y"]),
+      readline: fakeReadline(["y", "2", "1", "2"]),
       output
     });
 
-    assert.equal(restored.overrides.explorer.model, "gpt-5.4-mini");
-    assert.equal(restored.overrides.explorer.model_reasoning_effort, "xhigh");
+    assert.equal(restored.overrides.explorer.model, "grok-4.3");
+    assert.equal(restored.overrides.explorer.model_reasoning_effort, "medium");
+    assert.equal(restored.overrides.explorer.service_tier, "default");
     const restoredText = readFileSync(configPath, "utf8");
     assert.match(restoredText, /agents_dir = "\$\{CODEX_HOME}\/agents"/);
-    assert.match(restoredText, /model = "gpt-5\.4-mini"/);
+    assert.match(restoredText, /model = "grok-4\.3"/);
+    assert.match(restoredText, /model_reasoning_effort = "medium"/);
     assert.doesNotMatch(restoredText, new RegExp(escapeRegExp(root)));
     assert.ok(output.questions.some((question) => /Apply saved LFP model override config/.test(question)));
+    assert.ok(output.questions.some((question) => /explorer model/.test(question)));
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

@@ -40,6 +40,7 @@
     "setup": "node scripts/cli.mjs setup",
     "dry-setup": "node scripts/cli.mjs dry-setup",
     "doctor": "node scripts/cli.mjs doctor",
+    "agent-config": "node scripts/cli.mjs agent-config",
     "pack:check": "npm pack --dry-run"
   },
   "engines": {

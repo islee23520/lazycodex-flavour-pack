@@ -218,6 +218,40 @@ test("given noninteractive OMO override setup when called then keeps configured 
   }
 });
 
+test("given no discovered model list when user types custom model then writes manual model id", async () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-models-"));
+  try {
+    const configPath = path.join(root, "overrides.toml");
+    writeFileSync(path.join(root, "metis.toml"), agentText("metis", "gpt-5.5", "fast"));
+    writeFileSync(
+      configPath,
+      [
+        "[source]",
+        `agents_dir = "${root}"`,
+        "",
+        "[agents.explorer]",
+        'model = "grok-4.3"',
+        'model_reasoning_effort = "low"',
+        'service_tier = "default"',
+        ""
+      ].join("\n")
+    );
+
+    const config = await configureAgentModelOverrides(configPath, {
+      models: [],
+      readline: fakeReadline(["", "", "", "y", "custom-metis-model", "1", "3"]),
+      output: silentOutput(),
+      persistUserOverrides: false
+    });
+    const updated = readFileSync(configPath, "utf8");
+
+    assert.equal(config.overrides.metis.model, "custom-metis-model");
+    assert.match(updated, /\[agents\.metis]\nmodel = "custom-metis-model"\nmodel_reasoning_effort = "high"\nservice_tier = "default"/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("given mixed model payload shapes when normalizing then extracts unique ids", () => {
   assert.deepEqual(normalizeModelsPayload({ models: ["zeta", { id: "alpha" }, { id: "" }, {}] }), ["alpha", "zeta"]);
 });

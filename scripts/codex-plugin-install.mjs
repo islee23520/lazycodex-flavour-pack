@@ -9,7 +9,7 @@ import {
   upsertOpenAiCompatProvider
 } from "./codex-provider-config.mjs";
 
-export const MARKETPLACE_ID = "linalab";
+export const MARKETPLACE_ID = "islee23520";
 export const PLUGIN_ID = "lfp";
 export const PLUGIN_REF = `${PLUGIN_ID}@${MARKETPLACE_ID}`;
 
@@ -17,7 +17,7 @@ const DEFAULT_PACKAGE_ROOT = path.dirname(path.dirname(fileURLToPath(import.meta
 const ADDITIONAL_AGENT_CONFIGS = ["visual-engineering.toml", "visual-looker.toml", "artistry.toml", "artistry-gen.toml", "artistry-qa.toml"];
 const PROTECTED_UPSTREAM_AGENT_CONFIGS = ["explorer.toml"];
 const VISUAL_AGENT_EXPECTATIONS = [
-  { name: "artistry", fileName: "artistry.toml", model: "gpt-5.5" },
+  { name: "artistry", fileName: "artistry.toml", model: "gemini-3.1-pro-preview" },
   { name: "artistry-gen", fileName: "artistry-gen.toml", model: "glm-5v-turbo" },
   { name: "artistry-qa", fileName: "artistry-qa.toml", model: "grok-4.3" },
   { name: "visual-engineering", fileName: "visual-engineering.toml", model: "gemini-3.1-pro-preview" },
