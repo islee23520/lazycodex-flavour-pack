@@ -18,9 +18,9 @@ const ADDITIONAL_AGENT_CONFIGS = ["visual-engineering.toml", "visual-looker.toml
 const PROTECTED_UPSTREAM_AGENT_CONFIGS = ["explorer.toml"];
 const LAZYCODEX_PLUGIN_REFS = new Set(["omo@sisyphuslabs", "lazycodex-ai"]);
 const VISUAL_AGENT_EXPECTATIONS = [
-  { name: "artistry", fileName: "artistry.toml", model: "gemini-3.1-pro-preview" },
-  { name: "artistry-gen", fileName: "artistry-gen.toml", model: "glm-5v-turbo" },
-  { name: "artistry-qa", fileName: "artistry-qa.toml", model: "grok-4.3" },
+  { name: "artistry", fileName: "artistry.toml", model: "gpt-5.5" },
+  { name: "artistry-gen", fileName: "artistry-gen.toml", model: "gpt-5.4-mini" },
+  { name: "artistry-qa", fileName: "artistry-qa.toml", model: "gpt-5.5" },
   { name: "visual-engineering", fileName: "visual-engineering.toml", model: "gemini-3.1-pro-preview" },
   { name: "visual-looker", fileName: "visual-looker.toml", model: "gemini-3.1-pro-preview" }
 ];

@@ -13,7 +13,7 @@ test("given art team setup when user selects listed models tiers and reasoning t
 
     const config = await configureArtTeam({
       configDir: root,
-      models: ["gemini-3.1-pro-preview", "glm-5v-turbo", "grok-4.3"],
+      models: ["gpt-5.5", "gpt-5.4-mini", "grok-4.3"],
       readline: fakeReadline(["3", "2", "4", "1", "1", "2", "2", "2", "3"]),
       output: silentOutput()
     });
@@ -29,10 +29,10 @@ test("given art team setup when user selects listed models tiers and reasoning t
     assert.match(director, /model = "grok-4\.3"/);
     assert.match(director, /model_reasoning_effort = "xhigh"/);
     assert.match(director, /service_tier = "fast"/);
-    assert.match(worker, /model = "gemini-3\.1-pro-preview"/);
+    assert.match(worker, /model = "gpt-5\.5"/);
     assert.match(worker, /model_reasoning_effort = "medium"/);
     assert.match(worker, /service_tier = "default"/);
-    assert.match(qa, /model = "glm-5v-turbo"/);
+    assert.match(qa, /model = "gpt-5\.4-mini"/);
     assert.match(qa, /model_reasoning_effort = "high"/);
     assert.match(qa, /service_tier = "fast"/);
   } finally {
@@ -48,7 +48,7 @@ test("given setup asks about art team when user declines then leaves art configs
 
     const result = await configureArtTeamIfWanted({
       configDir: root,
-      models: ["gemini-3.1-pro-preview", "glm-5v-turbo"],
+      models: ["gpt-5.5", "gpt-5.4-mini"],
       readline: fakeReadline(["n"]),
       output: silentOutput()
     });
@@ -62,9 +62,9 @@ test("given setup asks about art team when user declines then leaves art configs
 
 function writeArtAgentConfigs(root) {
   mkdirSync(root, { recursive: true });
-  writeFileSync(path.join(root, "artistry.toml"), artAgentText("artistry", "gemini-3.1-pro-preview", "default"));
-  writeFileSync(path.join(root, "artistry-gen.toml"), artAgentText("artistry-gen", "glm-5v-turbo", "fast"));
-  writeFileSync(path.join(root, "artistry-qa.toml"), artAgentText("artistry-qa", "grok-4.3", "default"));
+  writeFileSync(path.join(root, "artistry.toml"), artAgentText("artistry", "gpt-5.5", "default"));
+  writeFileSync(path.join(root, "artistry-gen.toml"), artAgentText("artistry-gen", "gpt-5.4-mini", "fast"));
+  writeFileSync(path.join(root, "artistry-qa.toml"), artAgentText("artistry-qa", "gpt-5.5", "default"));
 }
 
 function artAgentText(name, model, tier) {

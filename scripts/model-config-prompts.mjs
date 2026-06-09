@@ -6,9 +6,9 @@ export const SERVICE_TIERS = [
 export const REASONING_EFFORTS = ["low", "medium", "high", "xhigh", "max"];
 
 const GUIDE_BY_AGENT = {
-  artistry: { model: "google/gemini-3.1-pro", reasoning: "high", note: "creative direction" },
-  "artistry-gen": { model: "glm-5v-turbo", reasoning: "medium", service_tier: "fast", note: "cheap inner loop" },
-  "artistry-qa": { model: "grok-4.3", reasoning: "high", note: "visual QA checkpoints" },
+  artistry: { model: "gpt-5.5", reasoning: "high", note: "creative direction on the default Codex/OpenAI stack" },
+  "artistry-gen": { model: "gpt-5.4-mini", reasoning: "medium", service_tier: "fast", note: "cheap inner loop on the default Codex/OpenAI stack" },
+  "artistry-qa": { model: "gpt-5.5", reasoning: "high", note: "visual QA checkpoints on the default Codex/OpenAI stack" },
   "codex-ultrawork-reviewer": { model: "gpt-5.5", reasoning: "high", note: "reviewer/QA execution" },
   deep: { model: "gpt-5.5", reasoning: "medium", note: "deep coding" },
   explore: { model: "gpt-5.4-mini-fast", reasoning: "low", service_tier: "fast", note: "fast exploration" },

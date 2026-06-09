@@ -1,7 +1,7 @@
 name = "artistry-gen"
 description = "Computer Use production worker for the art team. Executes tool operations in the user's creative application via Computer Use. Learns tool UI, performs actions, and reports progress back to artistry."
 nickname_candidates = ["Art Worker"]
-model = "glm-5v-turbo"
+model = "gpt-5.4-mini"
 model_reasoning_effort = "medium"
 service_tier = "fast"
 

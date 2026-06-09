@@ -29,11 +29,11 @@ An art production request was detected. Use the LFP art team agent group for thi
 
 The art team uses a cost-efficient observe-decide-act loop pattern (reference: pss-mgba harness). Expensive models are called only at checkpoints; cheap models run the inner loop.
 
-1. **artistry** (Gemini 3.1 Pro, high reasoning) — Art Director. Interprets requests into art briefs, defines production phases with checkpoint criteria, reviews QA results, and makes final completion judgments. Spawn with agent_type="artistry"; config at ${ARTISTRY_CONFIG}. Called 2-3 times total.
+1. **artistry** (gpt-5.5, high reasoning) — Art Director. Interprets requests into art briefs, defines production phases with checkpoint criteria, reviews QA results, and makes final completion judgments. Spawn with agent_type="artistry"; config at ${ARTISTRY_CONFIG}. Called 2-3 times total.
 
-2. **artistry-gen** (GLM-5v-turbo, medium reasoning) — Production Worker. Operates the user's creative application via Computer Use. Learns tool UI, executes production directives, reports progress at checkpoints. Spawn with agent_type="artistry-gen"; config at ${ARTISTRY_GEN_CONFIG}. Called many times in the inner loop.
+2. **artistry-gen** (gpt-5.4-mini, medium reasoning, fast tier) — Production Worker. Operates the user's creative application via Computer Use. Learns tool UI, executes production directives, reports progress at checkpoints. Spawn with agent_type="artistry-gen"; config at ${ARTISTRY_GEN_CONFIG}. Called many times in the inner loop.
 
-3. **artistry-qa** (Grok 4.3, high reasoning) — Visual QA Inspector. Compares screenshots against art brief criteria, provides structured PASS/FAIL/STUCK verdicts with pixel-level evidence. Spawn with agent_type="artistry-qa"; config at ${ARTISTRY_QA_CONFIG}. Called at each checkpoint.
+3. **artistry-qa** (gpt-5.5, high reasoning) — Visual QA Inspector. Compares screenshots against art brief criteria, provides structured PASS/FAIL/STUCK verdicts with pixel-level evidence. Spawn with agent_type="artistry-qa"; config at ${ARTISTRY_QA_CONFIG}. Called at each checkpoint.
 
 ## Loop Protocol
 
@@ -49,9 +49,9 @@ The art team uses a cost-efficient observe-decide-act loop pattern (reference: p
 
 ## Cost Discipline
 
-- Gemini 3.1 Pro (artistry): called ONLY for brief creation, checkpoint reviews, and final judgment. Never in the inner loop.
-- GLM-5v-turbo (artistry-gen): runs the inner Computer Use loop. Cheap and fast.
-- Grok 4.3 (artistry-qa): called ONLY at phase checkpoints for structured inspection.
+- gpt-5.5 (artistry): called ONLY for brief creation, checkpoint reviews, and final judgment. Never in the inner loop.
+- gpt-5.4-mini (artistry-gen): runs the inner Computer Use loop. Keep it on the fast tier for cost discipline.
+- gpt-5.5 (artistry-qa): called ONLY at phase checkpoints for structured inspection.
 
 ## Key Patterns (from pss-mgba harness)
 
@@ -62,7 +62,7 @@ The art team uses a cost-efficient observe-decide-act loop pattern (reference: p
 - **Serial execution**: one action at a time, never queue uncertain actions.
 - **Evidence-bound checkpoints**: every QA verdict must include pixel coordinates, color values, or measurable proportions.
 
-These art team agents default to Gemini 3.1 Pro (director), GLM-5v-turbo (worker), and Grok 4.3 (QA) in their role configs. Your active model_provider must be configured to route these model names. If your provider does not support GLM routing, point artistry-gen at a suitable cheap vision model. If Grok is unavailable, point artistry-qa at a strong vision-capable model.
+These art team agents default to GPT models in their role configs so a standard LazyCodex/Codex OpenAI setup can run the workflow first: gpt-5.5 for director/QA and gpt-5.4-mini for the worker. If you have stronger or cheaper custom vision routes, run \`lfp art-config\` to point these agents at your preferred models.
 
 Run \`lfp setup\` or \`lfp doctor\` to install LFP-owned agents and apply model overrides; this hook only adds guidance and does not mutate LazyCodex/OMO state.`;
 

@@ -1,7 +1,7 @@
 name = "artistry-qa"
 description = "Visual QA inspector for the art team. Compares screenshots against art brief criteria, provides structured pass/fail verdicts with specific evidence, and detects when the production worker is stuck."
 nickname_candidates = ["Art QA"]
-model = "grok-4.3"
+model = "gpt-5.5"
 model_reasoning_effort = "high"
 service_tier = "default"
 

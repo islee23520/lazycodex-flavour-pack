@@ -1,6 +1,6 @@
 {
   "name": "@islee23520/lfp",
-  "version": "0.3.5",
+  "version": "0.3.6",
   "description": "LazyCodex flavour pack with lightweight agent override sync.",
   "type": "module",
   "license": "MIT",

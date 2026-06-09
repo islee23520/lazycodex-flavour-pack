@@ -17,7 +17,7 @@ const ART_AGENTS = [
   {
     name: "artistry",
     label: "Art Director (supervisor)",
-    defaultModel: "gemini-3.1-pro-preview",
+    defaultModel: "gpt-5.5",
     defaultReasoning: "high",
     defaultServiceTier: "default",
     description: "Sets creative direction, writes art briefs, manages the production loop. Called 2-3 times total."
@@ -25,7 +25,7 @@ const ART_AGENTS = [
   {
     name: "artistry-gen",
     label: "Production Worker (loop)",
-    defaultModel: "glm-5v-turbo",
+    defaultModel: "gpt-5.4-mini",
     defaultReasoning: "medium",
     defaultServiceTier: "fast",
     description: "Computer Use worker that operates the creative tool. Runs the inner loop (many calls, must be cheap)."
@@ -33,7 +33,7 @@ const ART_AGENTS = [
   {
     name: "artistry-qa",
     label: "Visual QA Inspector",
-    defaultModel: "grok-4.3",
+    defaultModel: "gpt-5.5",
     defaultReasoning: "high",
     defaultServiceTier: "default",
     description: "Inspects screenshots against art brief criteria. Called at each checkpoint."
