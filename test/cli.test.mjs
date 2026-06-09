@@ -50,6 +50,41 @@ test("given npx-style CLI setup when upstream agent exists then updates configur
   }
 });
 
+test("given local CLI setup skips LazyCodex install when requested then installs checkout files", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-cli-"));
+  try {
+    const codexHome = path.join(root, "codex-home");
+    const sourceDir = path.join(root, "agents");
+    const configPath = path.join(root, "config.json");
+    const agentPath = path.join(sourceDir, "explorer.toml");
+    mkdirSync(sourceDir);
+    writeFileSync(agentPath, 'name = "explorer"\nmodel = "gpt-5.4-mini"\n');
+    writeFileSync(
+      configPath,
+      JSON.stringify({
+        source: { agentsDir: sourceDir },
+        overrides: { explorer: { model: "grok-4.3" } }
+      })
+    );
+
+    const result = spawnSync(
+      process.execPath,
+      [CLI, "setup", "--config", configPath, "--skip-art-prompt", "--skip-model-prompt", "--skip-lazycodex-install"],
+      {
+        env: cliEnv(codexHome),
+        encoding: "utf8"
+      }
+    );
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /skipping LazyCodex install; using local LFP checkout files/);
+    assert.doesNotMatch(result.stdout, /lazycodex-ai install stub/);
+    assert.equal(existsSync(path.join(codexHome, "local-marketplaces", "islee23520", "plugins", "lfp", "scripts", "cli.mjs")), true);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("given Korean postposition is attached to setup flag when CLI runs then accepts the intended flag", () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-cli-"));
   try {

@@ -28,6 +28,11 @@ test("given npm package metadata when validating bin entries then publish-safe t
   }
 });
 
+test("given local npm scripts when validating setup command then they install from checkout", () => {
+  assert.match(packageJson.scripts.setup, /--skip-lazycodex-install/);
+  assert.match(packageJson.scripts["dry-setup"], /--skip-lazycodex-install/);
+});
+
 test("given npm package metadata when validating release files then package includes runtime surface", () => {
   assert.deepEqual(packageJson.files, [
     ".codex-plugin",

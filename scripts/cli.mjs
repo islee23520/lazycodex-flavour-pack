@@ -22,7 +22,7 @@ import {
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const DEFAULT_CONFIG = path.join(ROOT, "agent-configs", "omo-agent-model-overrides.toml");
-const SYNC_OPTIONS = new Set(["--check", "--config", "--skip-art-prompt", "--skip-model-prompt"]);
+const SYNC_OPTIONS = new Set(["--check", "--config", "--skip-art-prompt", "--skip-model-prompt", "--skip-lazycodex-install"]);
 const KOREAN_POSTPOSITIONS = ["으로", "부터", "까지", "에게", "에서", "처럼", "보다", "만큼", "은", "는", "이", "가", "을", "를", "와", "과", "도", "만", "로"];
 
 const HELP = `lfp
@@ -55,6 +55,7 @@ Flags:
   --config <path>  Use a specific override config file.
   --skip-art-prompt  Skip the interactive art team model prompt during setup.
   --skip-model-prompt  Skip the interactive OMO override model prompt during setup.
+  --skip-lazycodex-install  Local development only: install this checkout without running LazyCodex install first.
 
 This package is a lightweight overlay. setup runs npx lazycodex-ai install before applying LFP, then installs/enables this pack in Codex and applies configured overrides to existing agents.`;
 
@@ -107,7 +108,9 @@ async function runSetup(argv, { check }) {
   const args = parseSyncArgs(argv);
   let configPath = args.config ?? DEFAULT_CONFIG;
 
-  if (check) {
+  if (args.skipLazycodexInstall) {
+    console.log(`${check ? "would skip" : "lfp setup: skipping"} LazyCodex install; using local LFP checkout files.`);
+  } else if (check) {
     console.log(`would run ${formatLazyCodexInstallCommand()} before applying LFP`);
   } else {
     runLazyCodexInstall();
@@ -298,6 +301,10 @@ function parseSyncArgs(argv) {
     }
     if (item === "--skip-model-prompt") {
       parsed.skipModelPrompt = true;
+      continue;
+    }
+    if (item === "--skip-lazycodex-install") {
+      parsed.skipLazycodexInstall = true;
       continue;
     }
     throw new Error(`Unknown sync option: ${item}`);

@@ -59,7 +59,7 @@ export async function configureAgentModelOverrides(configPath, options = {}) {
       model: current,
       reasoning: currentReasoning,
       tier: typeof fields.service_tier === "string" ? fields.service_tier : "default"
-    });
+    }, { preferCurrent: true });
     const selected = await promptForModel(rl, {
       agentName,
       current,
@@ -91,7 +91,7 @@ export async function configureAgentModelOverrides(configPath, options = {}) {
       model: agent.model,
       reasoning: agent.model_reasoning_effort,
       tier: agent.service_tier
-    });
+    }, { preferCurrent: true });
     config.overrides[agent.name] = {
       model: await promptForModel(rl, {
         agentName: agent.name,

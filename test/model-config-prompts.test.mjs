@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { groupModelAliases, printModelChoices, promptForModel } from "../scripts/model-config-prompts.mjs";
+import { groupModelAliases, logAgentGuide, printModelChoices, promptForModel } from "../scripts/model-config-prompts.mjs";
 
 test("given provider-prefixed model aliases when grouping then displays one choice per underlying model", () => {
   const output = captureOutput();
@@ -35,6 +35,22 @@ test("given grouped model aliases when selecting by group then returns represent
   });
 
   assert.equal(selected, "openai/gpt-5.5");
+});
+
+test("given LazyCodex override prompt prefers current when logging guide then does not push role guide model", () => {
+  const output = captureOutput();
+
+  logAgentGuide(
+    output,
+    "metis",
+    { model: "custom-metis-model", reasoning: "high", tier: "default" },
+    { preferCurrent: true }
+  );
+
+  const text = output.lines.join("\n");
+  assert.match(text, /Current: custom-metis-model/);
+  assert.match(text, /Default: keep the current LazyCodex\/OMO value/);
+  assert.doesNotMatch(text, /Guide: gpt-5\.5/);
 });
 
 function fakeReadline(answers) {

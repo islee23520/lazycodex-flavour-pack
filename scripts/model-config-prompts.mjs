@@ -28,9 +28,13 @@ export function getAgentModelGuide(agentName) {
   return GUIDE_BY_AGENT[String(agentName).toLowerCase()] ?? null;
 }
 
-export function logAgentGuide(output, agentName, current) {
+export function logAgentGuide(output, agentName, current, options = {}) {
   const guide = getAgentModelGuide(agentName);
   output?.log?.(`  Current: ${current.model ?? "unknown"} (reasoning: ${current.reasoning ?? "unset"}, tier: ${current.tier ?? "unset"})`);
+  if (options.preferCurrent === true) {
+    output?.log?.("  Default: keep the current LazyCodex/OMO value; press Enter to leave it unchanged.");
+    return;
+  }
   if (guide === null) return;
 
   const tier = guide.service_tier ? `, tier: ${guide.service_tier}` : "";

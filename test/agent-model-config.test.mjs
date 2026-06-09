@@ -237,16 +237,20 @@ test("given no discovered model list when user types custom model then writes ma
       ].join("\n")
     );
 
+    const output = captureOutput();
     const config = await configureAgentModelOverrides(configPath, {
       models: [],
       readline: fakeReadline(["", "", "", "y", "custom-metis-model", "1", "3"]),
-      output: silentOutput(),
+      output,
       persistUserOverrides: false
     });
     const updated = readFileSync(configPath, "utf8");
+    const outputText = output.lines.join("\n");
 
     assert.equal(config.overrides.metis.model, "custom-metis-model");
     assert.match(updated, /\[agents\.metis]\nmodel = "custom-metis-model"\nmodel_reasoning_effort = "high"\nservice_tier = "default"/);
+    assert.match(outputText, /Default: keep the current LazyCodex\/OMO value/);
+    assert.doesNotMatch(outputText, /Guide: gpt-5\.5/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -273,7 +277,12 @@ function silentOutput() {
 
 function captureOutput() {
   configOutput = { questions: [] };
-  return { log() {} };
+  return {
+    lines: [],
+    log(line = "") {
+      this.lines.push(line);
+    }
+  };
 }
 
 function agentText(name, model, tier) {

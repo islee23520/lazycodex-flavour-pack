@@ -50,8 +50,8 @@
   ],
   "scripts": {
     "test": "node --test test/*.test.mjs",
-    "setup": "node scripts/cli.mjs setup",
-    "dry-setup": "node scripts/cli.mjs dry-setup",
+    "setup": "node scripts/cli.mjs setup --skip-lazycodex-install",
+    "dry-setup": "node scripts/cli.mjs dry-setup --skip-lazycodex-install",
     "doctor": "node scripts/cli.mjs doctor",
     "agent-config": "node scripts/cli.mjs agent-config",
     "smoke:isolated": "node scripts/isolated-smoke.mjs",
