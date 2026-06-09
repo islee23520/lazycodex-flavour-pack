@@ -3,9 +3,6 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-import { getPendingCodexPluginActions, installCodexPlugin } from "./codex-plugin-install.mjs";
-import { syncAgentOverrides } from "./sync-agent-overrides.mjs";
-
 const VISUAL_PATTERN =
   /\b(?:visual(?:\s+qa|\s+check(?:ing)?|\s+engineering)?|vision(?:\s+check(?:ing)?)?|frontend|front-end|ui|ux|css|layout|responsive|screenshot|figma|art\s+(?:direction|work|asset|polish)|artwork|sprite|illustration|qa\s+session|review(?:er|-work)?|final\s+verdict|ulw)\b|비주얼|비전|프론트엔드|화면|레이아웃|아트|스프라이트|일러스트|검수|리뷰어|최종\s*판정/i;
 const GUIDANCE_MARKER = "<lfp-visual-engineering-guidance>";
@@ -21,7 +18,6 @@ const CONTEXT_PRESSURE_MARKERS = [
   "long threads and multiple compactions"
 ];
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const DEFAULT_CONFIG = path.join(ROOT, "agent-configs", "omo-agent-model-overrides.toml");
 const VISUAL_ENGINEERING_CONFIG = path.join(ROOT, "agent-configs", "visual-engineering.toml");
 const VISUAL_LOOKER_CONFIG = path.join(ROOT, "agent-configs", "visual-looker.toml");
 
@@ -35,9 +31,9 @@ For screenshot, image, document, or diagram inspection where the main need is to
 
 These vision agents default to Gemini models (gemini-3.1-pro-preview and equivalents) in their role configs because Gemini provides superior detailed visual understanding, evidence extraction from screenshots/diagrams/charts, layout analysis, and verification tasks. Your active model_provider (e.g. cliproxyapi or a Google-compatible provider) must be configured to route the Gemini model name. 
 
-If your provider does not support Gemini routing, install and configure the codex-xai-oauth@linalab plugin (run its setup) to enable Grok vision models as fallback, and point the vision agent configs at suitable Grok models. The LFP hook will guide you.
+If your provider does not support Gemini routing, install and configure the codex-xai-oauth@linalab plugin (run its setup) to enable Grok vision models as fallback, and point the vision agent configs at suitable Grok models. Run \`lfp setup\` or \`lfp doctor\` to install LFP-owned agents and apply model overrides; this hook only adds guidance and does not mutate LazyCodex/OMO state.
 
-The hook self-heals LFP plugin install, LFP agent deployment, and model overrides on any visual prompt. For vision work with OAuth-backed providers, ensure codex-xai-oauth@linalab (or equivalent) is enabled in your Codex config before spawning vision agents.
+For vision work with OAuth-backed providers, ensure codex-xai-oauth@linalab (or equivalent) is enabled in your Codex config before spawning vision agents.
 
 For ulw-plan work, once the plan draft is done, always run a high-accuracy review before treating the plan as ready to execute. Incorporate required corrections from that review into the final plan.`;
 
@@ -47,9 +43,8 @@ if (isDirectRun()) {
   if (output.length > 0) process.stdout.write(output);
 }
 
-export function runUserPromptSubmitHook(value, options = {}) {
+export function runUserPromptSubmitHook(value) {
   if (!isHookInput(value)) return "";
-  ensureLfpSetupCurrent(options);
   if (isContextPressure(value.prompt)) return "";
   if (!VISUAL_PATTERN.test(value.prompt)) return "";
   if (hasGuidanceAlready(value.transcript_path)) return "";
@@ -62,22 +57,6 @@ export function runUserPromptSubmitHook(value, options = {}) {
   })}\n`;
 }
 
-function ensureLfpSetupCurrent(options) {
-  const configPath = options.configPath ?? DEFAULT_CONFIG;
-  const packageRoot = options.packageRoot ?? ROOT;
-  const pluginOptions = options.env === undefined ? { packageRoot } : { env: options.env, packageRoot };
-
-  try {
-    const pending = getPendingCodexPluginActions(pluginOptions);
-    const pendingOverrides = syncAgentOverrides(configPath, { check: true });
-    if (pending.actions.length === 0 && pendingOverrides.changed.length === 0) return;
-
-    installCodexPlugin(packageRoot, pluginOptions);
-    syncAgentOverrides(configPath, { check: false });
-  } catch {
-    return;
-  }
-}
 
 function readStdinJson() {
   const raw = readFileSync(0, "utf8");

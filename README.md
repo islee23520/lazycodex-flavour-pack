@@ -12,6 +12,7 @@ Run `npx lazycodex-ai@latest install` first when the upstream plugin is missing 
 
 - `hooks/`: LFP hook registrations.
 - `scripts/visual-engineering-hook.mjs`: adds guidance to use `visual-engineering` for UI judgment and `visual-looker` for multimodal visual evidence inspection.
+- `scripts/art-team-hook.mjs`: adds guidance for the LFP art team agents on art-related prompts.
 - `scripts/sync-agent-overrides.mjs`: reapplies model-related fields directly to the configured OMO agent TOMLs.
 - `agent-configs/visual-engineering.toml`: LFP-owned visual engineering agent config.
 - `agent-configs/visual-looker.toml`: LFP-owned Gemini multimodal looker for screenshots, rendered documents, images, diagrams, and visual evidence.
@@ -37,6 +38,8 @@ npm run doctor
 When interactive OMO model setup changes override values, LFP also saves a user copy at `${CODEX_HOME}/lfp/omo-agent-model-overrides.toml`. On later `setup` runs after an npx/package patch, LFP asks whether to apply that saved user copy before showing the model selection prompts.
 
 `dry-setup` previews pending writes. `doctor` reports plugin install state, upstream LazyCodex/OMO readiness, provider status, visual-agent smoke checks, and pending override work.
+
+LFP UserPromptSubmit hooks are guidance-only. They do not install plugins, sync overrides, or touch LazyCodex/OMO main hooks during prompt submission.
 
 The packaged override configs resolve `${CODEX_HOME}` at runtime, so the same release works across different user home directories and custom Codex homes without editing the shipped files.
 

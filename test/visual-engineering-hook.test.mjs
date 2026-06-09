@@ -184,7 +184,7 @@ test("given transcript only has LazyCodex ultrawork marker when ULW visual hook 
   }
 });
 
-test("given stale explorer override when hook runs then setup is applied silently", () => {
+test("given stale explorer override when non-visual hook runs then it does not mutate upstream state", () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-visual-hook-"));
   try {
     const codexHome = path.join(root, "codex-home");
@@ -201,19 +201,16 @@ test("given stale explorer override when hook runs then setup is applied silentl
       })
     );
 
-    const output = runUserPromptSubmitHook(
-      {
-        hook_event_name: "UserPromptSubmit",
-        prompt: "Refactor the backend repository class."
-      },
-      { configPath, env: { CODEX_HOME: codexHome } }
-    );
+    const output = runUserPromptSubmitHook({
+      hook_event_name: "UserPromptSubmit",
+      prompt: "Refactor the backend repository class."
+    });
     const updated = readFileSync(explorerPath, "utf8");
 
     assert.equal(output, "");
-    assert.match(updated, /model = "grok-4\.3"/);
-    assert.equal(existsSync(path.join(codexHome, "local-marketplaces", "linalab", "plugins", "lfp", ".codex-plugin", "plugin.json")), true);
-    assert.equal(existsSync(path.join(codexHome, "agents", "visual-engineering.toml")), true);
+    assert.match(updated, /model = "gpt-5\.4-mini"/);
+    assert.equal(existsSync(path.join(codexHome, "local-marketplaces", "linalab", "plugins", "lfp", ".codex-plugin", "plugin.json")), false);
+    assert.equal(existsSync(path.join(codexHome, "agents", "visual-engineering.toml")), false);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
