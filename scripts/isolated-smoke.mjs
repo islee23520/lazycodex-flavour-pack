@@ -79,8 +79,8 @@ assertIncludes(explorerText, 'model = "grok-4.20-0309-non-reasoning"', "saved ex
 assertIncludes(metisText, 'model = "gpt-5.5"', "metis override applied after saved restore");
 assertIncludes(metisText, 'model_reasoning_effort = "high"', "metis reasoning applied");
 if (!cacheState.healthy) throw new Error(`Codex Apps cache is not clean: ${JSON.stringify(cacheState.duplicateFiles)}`);
-if (!output.questions.some((question) => /Apply saved LFP model override config/.test(question))) {
-  throw new Error("Saved override prompt was not shown");
+if (!output.questions.some((question) => /Adjust LFP model overrides now/.test(question))) {
+  throw new Error("Saved override adjust prompt was not shown");
 }
 if (!output.questions.some((question) => /explorer model/.test(question))) {
   throw new Error("Model override prompts did not continue after saved override restore");
@@ -93,8 +93,8 @@ console.log("isolated smoke: PASS");
 console.log(`isolated smoke: CODEX_HOME=${codexHome}`);
 console.log(`isolated smoke: setup installed lfp@islee23520=${configText.includes('[plugins."lfp@islee23520"]')}`);
 console.log(`isolated smoke: duplicate tool cache healthy=${cacheState.healthy}`);
-console.log(`isolated smoke: saved restore prompt shown=true`);
-console.log(`isolated smoke: prompts continued after saved restore=true`);
+console.log(`isolated smoke: saved adjust prompt shown=true`);
+console.log(`isolated smoke: prompts continued after saved adjust=true`);
 console.log(`isolated smoke: updated agents=${sync.changed.map((filePath) => path.basename(filePath)).join(", ")}`);
 
 function runCli(args) {

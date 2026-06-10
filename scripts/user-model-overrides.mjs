@@ -1,5 +1,6 @@
 import os from "node:os";
-import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 
 const USER_OVERRIDE_CONFIG_NAME = "omo-agent-model-overrides.toml";
@@ -37,6 +38,35 @@ export function restoreUserOverrideConfig(configPath, userConfigPath) {
   const currentText = readFileSync(configPath, "utf8");
   const userText = readFileSync(userConfigPath, "utf8");
   writeFileSync(configPath, mergeUserOverrideText(currentText, userText));
+}
+
+export function restoreSavedUserOverrideConfigIfPresent(configPath, options = {}) {
+  if (!configPath.endsWith(".toml")) return null;
+
+  const userConfigPath = migrateLegacyUserOverrideConfig(options);
+  if (!hasSavedUserOverrideConfig(userConfigPath)) return null;
+
+  restoreUserOverrideConfig(configPath, userConfigPath);
+  return userConfigPath;
+}
+
+export function createRestoredUserOverrideConfig(configPath, options = {}) {
+  if (!configPath.endsWith(".toml")) return null;
+
+  const userConfigPath = migrateLegacyUserOverrideConfig(options);
+  if (!hasSavedUserOverrideConfig(userConfigPath)) return null;
+
+  const currentText = readFileSync(configPath, "utf8");
+  const userText = readFileSync(userConfigPath, "utf8");
+  const tempDir = mkdtempSync(path.join(tmpdir(), "lfp-overrides-"));
+  const tempConfigPath = path.join(tempDir, USER_OVERRIDE_CONFIG_NAME);
+  writeFileSync(tempConfigPath, mergeUserOverrideText(currentText, userText));
+
+  return {
+    configPath: tempConfigPath,
+    restoredPath: userConfigPath,
+    cleanup: () => rmSync(tempDir, { recursive: true, force: true })
+  };
 }
 
 export function saveUserOverrideConfig(configPath, userConfigPath) {
