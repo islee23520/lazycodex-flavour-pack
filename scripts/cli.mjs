@@ -4,7 +4,7 @@ import { createInterface } from "node:readline";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { getCodexPluginState, getPendingCodexPluginActions, installCodexPlugin, PLUGIN_REF } from "./codex-plugin-install.mjs";
-import { syncAgentOverrides } from "./sync-agent-overrides.mjs";
+import { syncAgentOverrides, syncGlobalModelDefaults } from "./sync-agent-overrides.mjs";
 import { configureArtTeam, configureArtTeamIfWanted } from "./art-team-config.mjs";
 import { configureAgentModelOverrides } from "./agent-model-config.mjs";
 import { getCodexAppsToolCacheState } from "./codex-apps-cache.mjs";
@@ -187,8 +187,21 @@ async function runSetup(argv, { check }) {
   const result = check ? pendingOverrides : syncAgentOverrides(configPath, { check: false });
   effectiveConfig?.cleanup();
 
+  let globalResult;
+  try {
+    globalResult = syncGlobalModelDefaults(configPath, { check });
+  } catch (error) {
+    if (!check) console.error(`lfp setup: failed to apply global model defaults: ${error.message}`);
+  }
+
   for (const item of result.changed) {
     console.log(`${check ? "would update" : "updated"} ${item}`);
+  }
+
+  if (globalResult && globalResult.changed && globalResult.changed.length > 0) {
+    for (const item of globalResult.changed) {
+      console.log(`${check ? "would update global model defaults in" : "updated global model defaults in"} ${item}`);
+    }
   }
 
   if (check) {

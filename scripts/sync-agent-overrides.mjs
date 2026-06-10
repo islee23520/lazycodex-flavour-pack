@@ -4,7 +4,7 @@ import { readFileSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-const MODEL_FIELDS = new Set(["model", "model_reasoning_effort", "service_tier"]);
+const MODEL_FIELDS = new Set(["model", "model_reasoning_effort", "service_tier", "model_fallback", "model_fallback_reasoning_effort", "model_fallback_service_tier"]);
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const DEFAULT_CONFIG = path.join(ROOT, "agent-configs", "omo-agent-model-overrides.toml");
 
@@ -216,3 +216,89 @@ function assertInstalledAgentDir(sourceDir, overrides) {
 function isDirectRun() {
   return process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href;
 }
+
+export function syncGlobalModelDefaults(configPath, options = {}) {
+  const env = options.env ?? process.env;
+  const codexHome = env.CODEX_HOME?.trim() || path.join(os.homedir(), ".codex");
+  const globalConfigPath = path.join(codexHome, "config.toml");
+
+  let overrideConfig;
+  try {
+    overrideConfig = readOverrideConfig(configPath, options);
+  } catch (error) {
+    return { changed: [], globalConfigPath, error: error.message };
+  }
+
+  const overrides = overrideConfig.overrides ?? {};
+  // Choose a representative set for global Codex root settings.
+  // Prefer "explorer" (common fast default worker), fall back to first defined agent, or explicit "default".
+  const primaryKey = Object.prototype.hasOwnProperty.call(overrides, "default")
+    ? "default"
+    : (Object.prototype.hasOwnProperty.call(overrides, "explorer") ? "explorer" : Object.keys(overrides)[0]);
+
+  const fields = (primaryKey && overrides[primaryKey]) || {};
+  const relevant = {};
+  for (const k of MODEL_FIELDS) {
+    if (Object.prototype.hasOwnProperty.call(fields, k)) relevant[k] = fields[k];
+  }
+  if (Object.keys(relevant).length === 0) {
+    return { changed: [], globalConfigPath };
+  }
+
+  let currentText = "";
+  try {
+    currentText = readFileSync(globalConfigPath, "utf8");
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+  }
+
+  const nextText = applyTopLevelModelFields(currentText, relevant);
+  if (currentText === nextText) {
+    return { changed: [], globalConfigPath };
+  }
+
+  if (!options.check) {
+    writeFileSync(globalConfigPath, nextText);
+  }
+
+  return { changed: [globalConfigPath], globalConfigPath };
+}
+
+function applyTopLevelModelFields(text, values) {
+  const lines = text.split(/\r?\n/);
+  const output = [];
+  const seen = new Set();
+  let firstSectionIdx = -1;
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i];
+    if (firstSectionIdx === -1 && line.trim().startsWith("[")) {
+      firstSectionIdx = i;
+    }
+    const key = line.includes("=") ? line.split("=", 1)[0].trim() : "";
+    if (MODEL_FIELDS.has(key) && Object.prototype.hasOwnProperty.call(values, key)) {
+      output.push(`${key} = ${JSON.stringify(String(values[key]))}`);
+      seen.add(key);
+      continue;
+    }
+    output.push(line);
+  }
+
+  const toInsert = [];
+  for (const key of [...MODEL_FIELDS].reverse()) {
+    if (Object.prototype.hasOwnProperty.call(values, key) && !seen.has(key)) {
+      toInsert.unshift(`${key} = ${JSON.stringify(String(values[key]))}`);
+    }
+  }
+
+  if (toInsert.length > 0) {
+    if (firstSectionIdx === -1) {
+      output.push(...toInsert);
+    } else {
+      output.splice(firstSectionIdx, 0, ...toInsert);
+    }
+  }
+
+  return `${output.join("\n").replace(/\n*$/, "")}\n`;
+}
+
