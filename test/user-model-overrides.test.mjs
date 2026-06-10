@@ -106,6 +106,28 @@ test("given legacy saved user override exists when configuring then migrates it 
   }
 });
 
+test("given no saved user override when configureAgentModelOverrides runs then emits no Adjust prompt", async () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-user-models-"));
+  try {
+    const codexHome = path.join(root, "codex-home");
+    const configPath = path.join(root, "overrides.toml");
+    writeFileSync(configPath, overrideText("${CODEX_HOME}/agents", "grok-4.3", "low", "default"));
+    // deliberately no ledger file under codexHome/.ledger/lfp
+
+    const output = captureOutput();
+    await configureAgentModelOverrides(configPath, {
+      env: { ...process.env, CODEX_HOME: codexHome },
+      models: ["gpt-5.4-mini", "grok-4.3"],
+      readline: fakeReadline(["1", "2", "4"]),
+      output
+    });
+
+    assert.ok(!output.questions.some((question) => /Adjust LFP model overrides now/.test(question)));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 function fakeReadline(answers) {
   return {
     question(question, resolve) {
