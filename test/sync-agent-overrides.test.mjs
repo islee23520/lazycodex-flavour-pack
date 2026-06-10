@@ -4,7 +4,12 @@ import path from "node:path";
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { applyModelOverrides, readOverrideConfig, syncAgentOverrides } from "../scripts/sync-agent-overrides.mjs";
+import {
+  applyModelOverrides,
+  readOverrideConfig,
+  syncAgentOverrides,
+  syncGlobalModelDefaults
+} from "../scripts/sync-agent-overrides.mjs";
 
 test("given vanilla agent text when applying overrides then only model fields change", () => {
   const source = [
@@ -206,6 +211,47 @@ test("given missing required agent TOML when syncing then reports incomplete ins
       )
     );
     assert.equal(existsSync(missingAgentPath), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("given only agent-specific overrides when syncing global defaults then leaves Codex default model unchanged", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-global-defaults-"));
+  try {
+    const codexHome = path.join(root, "codex-home");
+    const agentsDir = path.join(codexHome, "agents");
+    const configPath = path.join(root, "overrides.toml");
+    const globalConfigPath = path.join(codexHome, "config.toml");
+    mkdirSync(agentsDir, { recursive: true });
+    writeFileSync(
+      globalConfigPath,
+      ['model = "gpt-5.5"', 'model_reasoning_effort = "medium"', 'service_tier = "default"', ""].join("\n")
+    );
+    writeFileSync(
+      configPath,
+      [
+        "[source]",
+        'agents_dir = "${CODEX_HOME}/agents"',
+        "",
+        "[agents.explorer]",
+        'model = "grok-4.20-0309-non-reasoning"',
+        'model_reasoning_effort = "low"',
+        'service_tier = "default"',
+        "",
+        "[agents.librarian]",
+        'model = "gpt-5.4-mini"',
+        'model_reasoning_effort = "low"',
+        'service_tier = "default"',
+        ""
+      ].join("\n")
+    );
+
+    const result = syncGlobalModelDefaults(configPath, { env: { ...process.env, CODEX_HOME: codexHome } });
+
+    assert.deepEqual(result.changed, []);
+    assert.match(readFileSync(globalConfigPath, "utf8"), /model = "gpt-5\.5"/);
+    assert.doesNotMatch(readFileSync(globalConfigPath, "utf8"), /grok-4\.20-0309-non-reasoning/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

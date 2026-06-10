@@ -233,13 +233,7 @@ export function syncGlobalModelDefaults(configPath, options = {}) {
   }
 
   const overrides = overrideConfig.overrides ?? {};
-  // Choose a representative set for global Codex root settings.
-  // Prefer "explorer" (common fast default worker), fall back to first defined agent, or explicit "default".
-  const primaryKey = Object.prototype.hasOwnProperty.call(overrides, "default")
-    ? "default"
-    : (Object.prototype.hasOwnProperty.call(overrides, "explorer") ? "explorer" : Object.keys(overrides)[0]);
-
-  const fields = (primaryKey && overrides[primaryKey]) || {};
+  const fields = Object.prototype.hasOwnProperty.call(overrides, "default") ? overrides.default : {};
   const relevant = {};
   for (const k of MODEL_FIELDS) {
     if (Object.prototype.hasOwnProperty.call(fields, k)) relevant[k] = fields[k];
@@ -304,4 +298,3 @@ function applyTopLevelModelFields(text, values) {
 
   return `${output.join("\n").replace(/\n*$/, "")}\n`;
 }
-
