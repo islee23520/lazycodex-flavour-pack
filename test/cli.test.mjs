@@ -501,6 +501,44 @@ test("given setup has run when doctor runs then reports lfp installed in Codex",
   }
 });
 
+test("given first-run no saved user override when setup then doctor runs then reports existing override phrasing without new banners", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-cli-"));
+  try {
+    const codexHome = path.join(root, "codex-home");
+    const agentsDir = path.join(codexHome, "agents");
+    mkdirSync(agentsDir, { recursive: true });
+    writeFileSync(path.join(agentsDir, "explorer.toml"), 'name = "explorer"\nmodel = "gpt-5.4-mini"\n');
+    writeFileSync(path.join(agentsDir, "librarian.toml"), 'name = "librarian"\nmodel = "gpt-5.4-mini"\n');
+
+    const setup = spawnSync(
+      process.execPath,
+      [CLI, "setup", "--skip-art-prompt", "--skip-lazycodex-install", "--config", "agent-configs/omo-agent-model-overrides.toml"],
+      {
+        env: { ...process.env, CODEX_HOME: codexHome },
+        encoding: "utf8"
+      }
+    );
+    const doctor = spawnSync(
+      process.execPath,
+      [CLI, "doctor", "--config", "agent-configs/omo-agent-model-overrides.toml"],
+      {
+        env: { ...process.env, CODEX_HOME: codexHome },
+        encoding: "utf8"
+      }
+    );
+
+    assert.equal(setup.status, 0, setup.stderr);
+    assert.equal(doctor.status, 0, doctor.stderr);
+    assert.match(doctor.stdout, /agent overrides: already applied/);
+    assert.doesNotMatch(doctor.stdout, /Adjust LFP model overrides now/i);
+    assert.doesNotMatch(doctor.stdout, /using packaged defaults/i);
+    assert.doesNotMatch(doctor.stdout, /packaged defaults/i);
+    assert.doesNotMatch(doctor.stdout, /user-saved overrides active/i);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 function cliEnv(codexHome) {
   return {
     ...process.env,
