@@ -34,8 +34,10 @@ export async function configureAgentModelOverrides(configPath, options = {}) {
   if (rl === undefined) throw new TypeError("readline is required for interactive model override configuration");
 
   const userConfigPath = migrateLegacyUserOverrideConfig(options);
-  const restoredUserConfig = await maybeRestoreUserOverrideConfig(configPath, userConfigPath, { ...options, readline: rl });
-  if (restoredUserConfig) options.output?.log?.("Continuing with editable model override prompts.\n");
+
+  const savedOverrideChoice = await maybeRestoreUserOverrideConfig(configPath, userConfigPath, { ...options, readline: rl });
+  if (savedOverrideChoice === "keep") return readOverrideConfig(configPath, options);
+  if (savedOverrideChoice === "adjust") options.output?.log?.("Continuing with editable model override prompts.\n");
 
   const config = readOverrideConfig(configPath, options);
   const agentNames = Object.keys(config.overrides ?? {});
@@ -240,15 +242,19 @@ async function maybeRestoreUserOverrideConfig(configPath, userConfigPath, option
     return null;
   }
 
-  const shouldApply = await promptForYesNo(
+  const shouldAdjust = await promptForYesNo(
     options.readline,
-    `  Apply saved LFP model override config from ${userConfigPath}? [y/N]: `
+    `  Adjust LFP model overrides now? Saved settings: ${userConfigPath} [y/N]: `
   );
-  if (!shouldApply) return null;
+  if (!shouldAdjust) {
+    restoreUserOverrideConfig(configPath, userConfigPath);
+    options.output?.log?.("Keeping saved LFP model override settings.\n");
+    return "keep";
+  }
 
   restoreUserOverrideConfig(configPath, userConfigPath);
-  options.output?.log?.("Applied saved LFP model override config.\n");
-  return true;
+  options.output?.log?.("Loaded saved settings for adjustment.\n");
+  return "adjust";
 }
 
 function safeReadDir(sourceDir) {

@@ -2,7 +2,7 @@
 
 LFP means LazyCodex Flavour Pack.
 
-Track roadmap work in GitHub issues: <https://github.com/islee23520/lfp/issues>. File upstream LazyCodex/OMO bugs upstream.
+Track roadmap work in GitHub issues: <https://github.com/islee23520/lazycodex-flavour-pack/issues>. File upstream LazyCodex/OMO bugs upstream.
 
 ## Direction
 
@@ -21,8 +21,8 @@ Track roadmap work in GitHub issues: <https://github.com/islee23520/lfp/issues>.
 
 ## Backlog
 
-- <https://github.com/islee23520/lfp/issues/6>: Interactive external model configuration.
-- <https://github.com/islee23520/lfp/issues/7>: Install-time Codex OpenAI-compatible provider registration.
-- <https://github.com/islee23520/lfp/issues/8>: TTY provider selector.
-- <https://github.com/islee23520/lfp/issues/9>: Noninteractive provider configuration input.
-- <https://github.com/islee23520/lfp/issues/10>: Provider auth and secret-source validation.
+- <https://github.com/islee23520/lazycodex-flavour-pack/issues/6>: Interactive external model configuration.
+- <https://github.com/islee23520/lazycodex-flavour-pack/issues/7>: Install-time Codex OpenAI-compatible provider registration.
+- <https://github.com/islee23520/lazycodex-flavour-pack/issues/8>: TTY provider selector.
+- <https://github.com/islee23520/lazycodex-flavour-pack/issues/9>: Noninteractive provider configuration input.
+- <https://github.com/islee23520/lazycodex-flavour-pack/issues/10>: Provider auth and secret-source validation.

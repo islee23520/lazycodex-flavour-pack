@@ -12,6 +12,12 @@ import { formatLazyCodexInstallCommand, runLazyCodexInstall } from "./lazycodex-
 import { promptForYesNo } from "./model-config-prompts.mjs";
 import { getProviderConsentPath, readProviderConsent, saveProviderConsent } from "./provider-consent.mjs";
 import {
+  createRestoredUserOverrideConfig,
+  hasSavedUserOverrideConfig,
+  migrateLegacyUserOverrideConfig,
+  restoreSavedUserOverrideConfigIfPresent
+} from "./user-model-overrides.mjs";
+import {
   printArtTeamConfig,
   printCodexAppsCacheQuarantine,
   printCodexAppsCacheState,
@@ -44,7 +50,8 @@ npx:
 
 Commands:
   setup            Install LFP plugin, agents, and overrides into Codex.
-                   Interactive: prompts for art team and OMO override model selection.
+                   Interactive: asks about art team models (optional). OMO model overrides only
+                   prompt if you have previously saved custom settings via agent-config or prior setup.
   dry-setup        Preview what setup would do without writing.
   doctor           Check LFP install status, agent models, and overrides.
   agent-config     Reconfigure LazyCodex/OMO agent model overrides and apply them.
@@ -119,7 +126,14 @@ async function runSetup(argv, { check }) {
   const basePending = getPendingCodexPluginActions();
   const installOpenAiCompatProvider = check ? false : await shouldInstallOpenAiCompatProvider(basePending.state);
   const pending = getPendingCodexPluginActions({ installOpenAiCompatProvider });
-  const pendingOverrides = syncAgentOverrides(configPath, { check: true });
+  const effectiveConfig = check ? getEffectiveReadOnlyOverrideConfig(configPath, args) : null;
+  let pendingOverrides;
+  try {
+    pendingOverrides = syncAgentOverrides(effectiveConfig?.configPath ?? configPath, { check: true });
+  } catch (error) {
+    effectiveConfig?.cleanup();
+    throw error;
+  }
 
   if (check) {
     for (const action of pending.actions) console.log(`would ${action}`);
@@ -140,6 +154,10 @@ async function runSetup(argv, { check }) {
     if (args.config === undefined) {
       configPath = path.join(installed.pluginRoot, "agent-configs", "omo-agent-model-overrides.toml");
     }
+    if (args.config === undefined && (args.skipModelPrompt || !process.stdin.isTTY)) {
+      const restoredPath = restoreSavedUserOverrideConfigIfPresent(configPath);
+      if (restoredPath !== null) console.log(`applied saved LFP model override config from ${restoredPath} (non-interactive)`);
+    }
     console.log(`installed ${PLUGIN_REF} to ${installed.pluginRoot}`);
     console.log(`installed LFP agents to ${path.join(installed.codexHome, "agents")}`);
     console.log(`enabled ${PLUGIN_REF} in ${installed.configPath}`);
@@ -151,16 +169,23 @@ async function runSetup(argv, { check }) {
     }
 
     if (!args.skipModelPrompt && process.stdin.isTTY) {
-      const rl = createInterface({ input: process.stdin, output: process.stdout });
-      try {
-        await configureAgentModelOverrides(configPath, { readline: rl, output: console });
-      } finally {
-        rl.close();
+      const userConfigPath = migrateLegacyUserOverrideConfig();
+      if (hasSavedUserOverrideConfig(userConfigPath)) {
+        const rl = createInterface({ input: process.stdin, output: process.stdout });
+        try {
+          await configureAgentModelOverrides(configPath, { readline: rl, output: console });
+        } finally {
+          rl.close();
+        }
       }
+      // No saved user preference: the installed plugin's agent-configs/omo-agent-model-overrides.toml
+      // already declares the intended model fields. The final syncAgentOverrides below applies them
+      // directly to the user's agents/*.toml. No interactive questions needed.
     }
   }
 
   const result = check ? pendingOverrides : syncAgentOverrides(configPath, { check: false });
+  effectiveConfig?.cleanup();
 
   for (const item of result.changed) {
     console.log(`${check ? "would update" : "updated"} ${item}`);
@@ -210,8 +235,10 @@ async function shouldInstallOpenAiCompatProvider(state) {
 function runDoctor(argv) {
   const args = parseSyncArgs(argv);
   if (args.check !== undefined) throw new Error("doctor does not accept --check; use dry-setup instead");
-  const configPath = args.config ?? DEFAULT_CONFIG;
   const state = getCodexPluginState();
+  const configPath =
+    args.config ?? (state.pluginFilesInstalled ? path.join(state.pluginRoot, "agent-configs", "omo-agent-model-overrides.toml") : DEFAULT_CONFIG);
+  const effectiveConfig = getEffectiveReadOnlyOverrideConfig(configPath, args);
   let hasIssue = false;
 
   console.log(`lfp doctor: Codex home: ${state.codexHome}`);
@@ -234,7 +261,7 @@ function runDoctor(argv) {
   printArtTeamConfig();
 
   try {
-    const result = syncAgentOverrides(configPath, { check: true });
+    const result = syncAgentOverrides(effectiveConfig?.configPath ?? configPath, { check: true });
     if (result.changed.length === 0) {
       console.log("lfp doctor: agent overrides: already applied");
     } else {
@@ -244,9 +271,16 @@ function runDoctor(argv) {
   } catch (error) {
     hasIssue = true;
     console.log(`lfp doctor: LazyCodex/OMO: ${error instanceof Error ? error.message : String(error)}`);
+  } finally {
+    effectiveConfig?.cleanup();
   }
 
   if (hasIssue) process.exitCode = 1;
+}
+
+function getEffectiveReadOnlyOverrideConfig(configPath, args) {
+  if (args.config !== undefined) return null;
+  return createRestoredUserOverrideConfig(configPath);
 }
 
 async function runArtConfig() {
