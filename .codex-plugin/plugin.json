@@ -21,7 +21,11 @@
     "longDescription": "Adds LFP Codex hooks, agent role files, and vanilla LazyCodex/OMO model override sync without editing upstream plugin cache files. Includes art team agent group for Computer Use-driven creative tool production.",
     "developerName": "islee23520",
     "category": "Developer Tools",
-    "capabilities": ["Hooks", "Agents", "Workflow"],
+    "capabilities": [
+      "Hooks",
+      "Agents",
+      "Workflow"
+    ],
     "websiteURL": "https://linalab.io",
     "privacyPolicyURL": "https://linalab.io",
     "termsOfServiceURL": "https://linalab.io",
@@ -36,7 +40,10 @@
     "screenshots": []
   },
   "x-lfp": {
-    "extends": ["omo@sisyphuslabs", "lazycodex-ai"],
+    "extends": [
+      "omo@sisyphuslabs",
+      "lazycodex-ai"
+    ],
     "modelOverrideSource": "./agent-configs/omo-agent-model-overrides.toml",
     "additionalAgents": [
       "./agent-configs/visual-engineering.toml",
@@ -44,6 +51,32 @@
       "./agent-configs/artistry.toml",
       "./agent-configs/artistry-gen.toml",
       "./agent-configs/artistry-qa.toml"
+    ],
+    "tools": [
+      {
+        "name": "model_fallback_resolver",
+        "description": "Given an agent name and optional error reason (quota, rate-limit, 429, error), returns the effective model to use right now (primary or the per-agent fallback defined in LFP ledger). Never writes anything. Safe to call from any agent on quota/rate/provider failure.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "agent": {
+              "type": "string",
+              "description": "Agent name, e.g. explorer, metis, plan, visual-engineering, visual-looker, momus"
+            },
+            "reason": {
+              "type": "string",
+              "description": "Optional error category that triggers fallback: quota, rate-limit, 429, error, fail"
+            }
+          },
+          "required": [
+            "agent"
+          ]
+        },
+        "path": "./scripts/mcp-model-fallback.mjs"
+      }
     ]
-  }
+  },
+  "capabilities": [
+    "Tools"
+  ]
 }

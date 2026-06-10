@@ -4,7 +4,10 @@ import { readFileSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-const MODEL_FIELDS = new Set(["model", "model_reasoning_effort", "service_tier", "model_fallback", "model_fallback_reasoning_effort", "model_fallback_service_tier"]);
+const MODEL_FIELDS = new Set(["model", "model_reasoning_effort", "service_tier"]);
+// Fallback fields are supported in override config files for LFP internal router/MCP use,
+// but are NEVER written to upstream agent role TOMLs (they cause deserialization warnings).
+const FALLBACK_FIELDS = new Set(["model_fallback", "model_fallback_reasoning_effort", "model_fallback_service_tier"]);
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const DEFAULT_CONFIG = path.join(ROOT, "agent-configs", "omo-agent-model-overrides.toml");
 
