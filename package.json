@@ -42,7 +42,12 @@
     "scripts/codex-provider-config.mjs",
     "scripts/lazycodex-install.mjs",
     "scripts/model-config-prompts.mjs",
+    "scripts/model-override-config.mjs",
+    "scripts/model-override-schema.mjs",
+    "scripts/model-provider.mjs",
+    "scripts/model-recommendations.mjs",
     "scripts/provider-consent.mjs",
+    "scripts/setup-command.mjs",
     "scripts/sync-agent-overrides-hook.mjs",
     "scripts/sync-agent-overrides.mjs",
     "scripts/user-model-overrides.mjs",
@@ -60,5 +65,8 @@
   },
   "engines": {
     "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "zod": "^4.4.3"
   }
 }

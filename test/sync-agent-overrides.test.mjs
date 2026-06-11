@@ -92,6 +92,24 @@ test("given TOML override config when reading then maps agents dir and model fie
   }
 });
 
+test("given invalid override config when reading then reports schema validation issue", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-agent-sync-"));
+  try {
+    const configPath = path.join(root, "overrides.json");
+    writeFileSync(
+      configPath,
+      JSON.stringify({
+        source: { agentsDir: "/tmp/omo-agents" },
+        overrides: { explorer: { model: 123 } }
+      })
+    );
+
+    assert.throws(() => readOverrideConfig(configPath), /Invalid model override config.*overrides\.explorer\.model/i);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("given packaged override config when reading then targets Codex-loaded agents directory", () => {
   const codexHome = path.join(tmpdir(), "lfp-codex-home");
   const config = readOverrideConfig(path.resolve("agent-configs/omo-agent-model-overrides.toml"), {
@@ -103,7 +121,10 @@ test("given packaged override config when reading then targets Codex-loaded agen
   assert.deepEqual(config.overrides.librarian, {
     model: "gpt-5.4-mini",
     model_reasoning_effort: "low",
-    service_tier: "fast"
+    service_tier: "fast",
+    model_fallback: "grok-3-mini-fast",
+    model_fallback_reasoning_effort: "low",
+    model_fallback_service_tier: "default"
   });
 });
 

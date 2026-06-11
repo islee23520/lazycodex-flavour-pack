@@ -3,23 +3,14 @@ import path from "node:path";
 import { createInterface } from "node:readline";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-import { getCodexPluginState, getPendingCodexPluginActions, installCodexPlugin, PLUGIN_REF } from "./codex-plugin-install.mjs";
-import { syncAgentOverrides, syncGlobalModelDefaults } from "./sync-agent-overrides.mjs";
-import { configureArtTeam, configureArtTeamIfWanted } from "./art-team-config.mjs";
+import { getCodexPluginState, PLUGIN_REF } from "./codex-plugin-install.mjs";
+import { syncAgentOverrides } from "./sync-agent-overrides.mjs";
+import { configureArtTeam } from "./art-team-config.mjs";
 import { configureAgentModelOverrides } from "./agent-model-config.mjs";
-import { getCodexAppsToolCacheState } from "./codex-apps-cache.mjs";
-import { formatLazyCodexInstallCommand, runLazyCodexInstall } from "./lazycodex-install.mjs";
-import { promptForYesNo } from "./model-config-prompts.mjs";
-import { getProviderConsentPath, readProviderConsent, saveProviderConsent } from "./provider-consent.mjs";
-import {
-  createRestoredUserOverrideConfig,
-  hasSavedUserOverrideConfig,
-  migrateLegacyUserOverrideConfig,
-  restoreSavedUserOverrideConfigIfPresent
-} from "./user-model-overrides.mjs";
+import { createRestoredUserOverrideConfig } from "./user-model-overrides.mjs";
+import { runSetup } from "./setup-command.mjs";
 import {
   printArtTeamConfig,
-  printCodexAppsCacheQuarantine,
   printCodexAppsCacheState,
   printInstallSmokeState,
   printOpenAiCompatProviderState,
@@ -51,7 +42,8 @@ npx:
 Commands:
   setup            Install LFP plugin, agents, and overrides into Codex.
                    Interactive: asks about art team models (optional). OMO model overrides only
-                   prompt if you have previously saved custom settings via agent-config or prior setup.
+                   prompt on installed setup or when you have previously saved custom settings.
+                   If provider models are discoverable, setup can auto-select recommended models.
   dry-setup        Preview what setup would do without writing.
   doctor           Check LFP install status, agent models, and overrides.
   agent-config     Reconfigure LazyCodex/OMO agent model overrides and apply them.
@@ -84,12 +76,12 @@ export async function runCli(argv) {
   }
 
   if (command === "setup") {
-    await runSetup(args, { check: false });
+    await runSetup(parseSyncArgs(args), { check: false, root: ROOT, defaultConfig: DEFAULT_CONFIG });
     return;
   }
 
   if (command === "dry-setup") {
-    await runSetup(args, { check: true });
+    await runSetup(parseSyncArgs(args), { check: true, root: ROOT, defaultConfig: DEFAULT_CONFIG });
     return;
   }
 
@@ -109,140 +101,6 @@ export async function runCli(argv) {
   }
 
   throw new Error(`Unknown command: ${command}\n\n${HELP}`);
-}
-
-async function runSetup(argv, { check }) {
-  const args = parseSyncArgs(argv);
-  let configPath = args.config ?? DEFAULT_CONFIG;
-
-  if (args.skipLazycodexInstall) {
-    console.log(`${check ? "would skip" : "lfp setup: skipping"} LazyCodex install; using local LFP checkout files.`);
-  } else if (check) {
-    console.log(`would run ${formatLazyCodexInstallCommand()} before applying LFP`);
-  } else {
-    runLazyCodexInstall();
-  }
-
-  const basePending = getPendingCodexPluginActions();
-  const installOpenAiCompatProvider = check ? false : await shouldInstallOpenAiCompatProvider(basePending.state);
-  const pending = getPendingCodexPluginActions({ installOpenAiCompatProvider });
-  const effectiveConfig = check ? getEffectiveReadOnlyOverrideConfig(configPath, args) : null;
-  let pendingOverrides;
-  try {
-    pendingOverrides = syncAgentOverrides(effectiveConfig?.configPath ?? configPath, { check: true });
-  } catch (error) {
-    effectiveConfig?.cleanup();
-    throw error;
-  }
-
-  if (check) {
-    for (const action of pending.actions) console.log(`would ${action}`);
-    const appCacheState = getCodexAppsToolCacheState();
-    for (const item of appCacheState.duplicateFiles) {
-      console.log(`would quarantine duplicate Codex Apps tool cache ${item.filePath} (${item.duplicateToolNames.join(", ")})`);
-    }
-  } else {
-    printCodexAppsCacheQuarantine();
-
-    if (pending.state.openAiCompatProvider.status === "drifted") {
-      printOpenAiCompatProviderState(pending.state);
-      process.exitCode = 1;
-      return;
-    }
-
-    const installed = installCodexPlugin(ROOT, { installOpenAiCompatProvider });
-    if (args.config === undefined) {
-      configPath = path.join(installed.pluginRoot, "agent-configs", "omo-agent-model-overrides.toml");
-    }
-    if (args.config === undefined && (args.skipModelPrompt || !process.stdin.isTTY)) {
-      const restoredPath = restoreSavedUserOverrideConfigIfPresent(configPath);
-      if (restoredPath !== null) console.log(`applied saved LFP model override config from ${restoredPath} (non-interactive)`);
-    }
-    console.log(`installed ${PLUGIN_REF} to ${installed.pluginRoot}`);
-    console.log(`installed LFP agents to ${path.join(installed.codexHome, "agents")}`);
-    console.log(`enabled ${PLUGIN_REF} in ${installed.configPath}`);
-    printOpenAiCompatProviderState(installed);
-    printInstallSmokeState();
-
-    if (!args.skipArtPrompt && process.stdin.isTTY) {
-      await configureArtTeamIfWanted();
-    }
-
-    if (!args.skipModelPrompt && process.stdin.isTTY) {
-      const userConfigPath = migrateLegacyUserOverrideConfig();
-      if (hasSavedUserOverrideConfig(userConfigPath)) {
-        const rl = createInterface({ input: process.stdin, output: process.stdout });
-        try {
-          await configureAgentModelOverrides(configPath, { readline: rl, output: console });
-        } finally {
-          rl.close();
-        }
-      }
-      // No saved user preference: the installed plugin's agent-configs/omo-agent-model-overrides.toml
-      // already declares the intended model fields. The final syncAgentOverrides below applies them
-      // directly to the user's agents/*.toml. No interactive questions needed.
-    }
-  }
-
-  const result = check ? pendingOverrides : syncAgentOverrides(configPath, { check: false });
-  effectiveConfig?.cleanup();
-
-  let globalResult;
-  try {
-    globalResult = syncGlobalModelDefaults(configPath, { check });
-  } catch (error) {
-    if (!check) console.error(`lfp setup: failed to apply global model defaults: ${error.message}`);
-  }
-
-  for (const item of result.changed) {
-    console.log(`${check ? "would update" : "updated"} ${item}`);
-  }
-
-  if (globalResult && globalResult.changed && globalResult.changed.length > 0) {
-    for (const item of globalResult.changed) {
-      console.log(`${check ? "would update global model defaults in" : "updated global model defaults in"} ${item}`);
-    }
-  }
-
-  if (check) {
-    const appCacheState = getCodexAppsToolCacheState();
-    if (pending.actions.length > 0 || result.changed.length > 0 || appCacheState.duplicateFiles.length > 0) {
-      process.exitCode = 1;
-    }
-  }
-}
-
-async function shouldInstallOpenAiCompatProvider(state) {
-  if (state.anyModelProviderConfigured) {
-    console.log("lfp setup: model provider already configured; leaving existing provider untouched.");
-    return false;
-  }
-
-  const savedConsent = readProviderConsent();
-  if (savedConsent !== null) {
-    console.log(
-      `lfp setup: model provider install consent recorded as ${savedConsent ? "yes" : "no"} in ${getProviderConsentPath()}.`
-    );
-    return savedConsent;
-  }
-
-  if (!process.stdin.isTTY) {
-    console.log("lfp setup: model provider missing; skipping provider install in non-interactive mode.");
-    return false;
-  }
-
-  const rl = createInterface({ input: process.stdin, output: process.stdout });
-  try {
-    const answer = await promptForYesNo(
-      rl,
-      `Install OpenAI-compatible model provider ${state.openAiCompatProvider.id} in ${state.configPath}? [y/N]: `
-    );
-    const consentPath = saveProviderConsent(answer);
-    console.log(`lfp setup: recorded model provider install consent in ${consentPath}.`);
-    return answer;
-  } finally {
-    rl.close();
-  }
 }
 
 function runDoctor(argv) {

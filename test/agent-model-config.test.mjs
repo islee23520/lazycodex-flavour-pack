@@ -122,6 +122,98 @@ test("given interactive OMO override setup when user selects listed model tier a
   }
 });
 
+test("given setup recommendation flow when user presses enter per agent then writes recommended available models", async () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-models-"));
+  try {
+    const configPath = path.join(root, "overrides.toml");
+    writeFileSync(
+      configPath,
+      [
+        "[source]",
+        `agents_dir = "${root}"`,
+        "",
+        "[agents.explorer]",
+        'model = "grok-4.3"',
+        'model_reasoning_effort = "medium"',
+        'service_tier = "default"',
+        "",
+        "[agents.librarian]",
+        'model = "grok-4.3"',
+        'model_reasoning_effort = "medium"',
+        'service_tier = "default"',
+        "",
+        "[agents.metis]",
+        'model = "gpt-5.4-mini"',
+        'model_reasoning_effort = "low"',
+        'service_tier = "fast"',
+        ""
+      ].join("\n")
+    );
+    const output = captureOutput();
+
+    const config = await configureAgentModelOverrides(configPath, {
+      models: ["gpt-5.4-mini", "gpt-5.5", "grok-4.3"],
+      readline: fakeReadline(["", "", "", "", "", "", "", "", ""]),
+      output,
+      recommendModels: true,
+      persistUserOverrides: false
+    });
+    const updated = readFileSync(configPath, "utf8");
+
+    assert.equal(config.overrides.explorer.model, "gpt-5.4-mini");
+    assert.equal(config.overrides.explorer.service_tier, "fast");
+    assert.equal(config.overrides.explorer.model_reasoning_effort, "low");
+    assert.equal(config.overrides.librarian.model, "gpt-5.4-mini");
+    assert.equal(config.overrides.librarian.service_tier, "fast");
+    assert.equal(config.overrides.librarian.model_reasoning_effort, "low");
+    assert.equal(config.overrides.metis.model, "gpt-5.5");
+    assert.equal(config.overrides.metis.service_tier, "default");
+    assert.equal(config.overrides.metis.model_reasoning_effort, "high");
+    assert.ok(configOutput.questions.some((question) => /explorer model \[1]/.test(question)));
+    assert.ok(configOutput.questions.some((question) => /librarian model \[1]/.test(question)));
+    assert.ok(configOutput.questions.some((question) => /metis model \[2]/.test(question)));
+    assert.match(updated, /\[agents\.explorer]\nmodel = "gpt-5\.4-mini"\nmodel_reasoning_effort = "low"\nservice_tier = "fast"/);
+    assert.match(updated, /\[agents\.metis]\nmodel = "gpt-5\.5"\nmodel_reasoning_effort = "high"\nservice_tier = "default"/);
+    assert.match(output.lines.join("\n"), /Recommendation: gpt-5\.4-mini/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("given setup recommendation flow when user overrides one agent then keeps manual selection", async () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-models-"));
+  try {
+    const configPath = path.join(root, "overrides.toml");
+    writeFileSync(
+      configPath,
+      [
+        "[source]",
+        `agents_dir = "${root}"`,
+        "",
+        "[agents.explorer]",
+        'model = "grok-4.3"',
+        'model_reasoning_effort = "medium"',
+        'service_tier = "default"',
+        ""
+      ].join("\n")
+    );
+
+    const config = await configureAgentModelOverrides(configPath, {
+      models: ["gpt-5.4-mini", "gpt-5.5", "grok-4.3"],
+      readline: fakeReadline(["3", "1", "2"]),
+      output: silentOutput(),
+      recommendModels: true,
+      persistUserOverrides: false
+    });
+
+    assert.equal(config.overrides.explorer.model, "grok-4.3");
+    assert.equal(config.overrides.explorer.service_tier, "default");
+    assert.equal(config.overrides.explorer.model_reasoning_effort, "medium");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("given additional installed OMO agent when user opts in then appends override section", async () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-models-"));
   try {

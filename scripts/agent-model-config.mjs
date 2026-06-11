@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-import os from "node:os";
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
@@ -19,13 +18,15 @@ import {
   restoreUserOverrideConfig,
   saveUserOverrideConfig
 } from "./user-model-overrides.mjs";
+import { fetchAvailableModels } from "./model-provider.mjs";
+import { buildRecommendedModelOverrides } from "./model-recommendations.mjs";
 
 const MODEL_FIELD = "model";
 const WRITABLE_FIELDS = ["model", "model_reasoning_effort", "service_tier"];
 const LFP_AGENT_NAMES = new Set(["artistry", "artistry-gen", "artistry-qa", "visual-engineering", "visual-looker"]);
-const DEFAULT_CONFIG_NAME = "config.toml";
 
 export { getUserOverrideConfigPath };
+export { fetchAvailableModels, normalizeModelsPayload, readActiveModelProvider } from "./model-provider.mjs";
 
 export async function configureAgentModelOverrides(configPath, options = {}) {
   if (options.interactive === false) return readOverrideConfig(configPath, options);
@@ -53,30 +54,40 @@ export async function configureAgentModelOverrides(configPath, options = {}) {
   options.output?.log?.("Choose models for existing non-art LazyCodex/OMO agents.\n");
   if (models.length > 0) printModelChoices(models, options.output);
 
+  const recommendations =
+    (options.recommendModels === true || options.offerAutoRecommend === true) && models.length > 0
+      ? buildRecommendedModelOverrides(config.overrides, models)
+      : {};
+
   for (const agentName of agentNames) {
     const fields = config.overrides[agentName] ?? {};
+    const recommended = recommendations[agentName] ?? {};
     const current = typeof fields.model === "string" ? fields.model : models[0];
     const currentReasoning = typeof fields.model_reasoning_effort === "string" ? fields.model_reasoning_effort : "low";
+    const defaultModel = recommended.model ?? current;
+    const defaultTier = recommended.service_tier ?? (typeof fields.service_tier === "string" ? fields.service_tier : "default");
+    const defaultReasoning = recommended.model_reasoning_effort ?? currentReasoning;
     logAgentGuide(options.output, agentName, {
       model: current,
       reasoning: currentReasoning,
       tier: typeof fields.service_tier === "string" ? fields.service_tier : "default"
     }, { preferCurrent: true });
+    logAgentRecommendation(options.output, recommended);
     const selected = await promptForModel(rl, {
       agentName,
-      current,
+      current: defaultModel,
       models,
       output: options.output
     });
     fields.model = selected;
     fields.service_tier = await promptForServiceTier(rl, {
       agentName,
-      current: typeof fields.service_tier === "string" ? fields.service_tier : "default",
+      current: defaultTier,
       output: options.output
     });
     fields.model_reasoning_effort = await promptForReasoningEffort(rl, {
       agentName,
-      current: currentReasoning,
+      current: defaultReasoning,
       output: options.output
     });
     config.overrides[agentName] = fields;
@@ -142,25 +153,6 @@ export function discoverAdditionalAgents(sourceDir, overrides) {
   return agents.sort((a, b) => a.name.localeCompare(b.name));
 }
 
-export async function fetchAvailableModels(options = {}) {
-  const provider = readActiveModelProvider(options);
-  if (provider.baseUrl === null) return [];
-
-  const fetchImpl = options.fetch ?? globalThis.fetch;
-  if (typeof fetchImpl !== "function") return [];
-
-  const url = new URL("models", withTrailingSlash(provider.baseUrl));
-  const headers = {};
-  const token = provider.bearerToken ?? readBearerTokenFromEnv(provider, options.env ?? process.env);
-  if (token !== null) headers.authorization = `Bearer ${token}`;
-
-  const response = await fetchImpl(url, { headers });
-  if (!response.ok) return [];
-
-  const payload = await response.json();
-  return normalizeModelsPayload(payload);
-}
-
 async function safeFetchAvailableModels(options) {
   try {
     return await fetchAvailableModels(options);
@@ -169,34 +161,6 @@ async function safeFetchAvailableModels(options) {
     options.output?.log?.(`Could not discover available models: ${message}`);
     return [];
   }
-}
-
-export function readActiveModelProvider(options = {}) {
-  const env = options.env ?? process.env;
-  const configPath = options.codexConfigPath ?? path.join(env.CODEX_HOME?.trim() || path.join(os.homedir(), ".codex"), DEFAULT_CONFIG_NAME);
-  const text = readFileSync(configPath, "utf8");
-  const activeProvider = readTopLevelTomlString(text, "model_provider");
-  if (activeProvider === null) return { id: null, baseUrl: null, bearerToken: null, bearerTokenEnv: null };
-
-  const providerBlock = getTableBlock(text, `model_providers.${activeProvider}`);
-  return {
-    id: activeProvider,
-    baseUrl: readTomlString(providerBlock, "base_url"),
-    bearerToken: readTomlString(providerBlock, "experimental_bearer_token"),
-    bearerTokenEnv: readTomlString(providerBlock, "env_key") ?? readTomlString(providerBlock, "api_key_env")
-  };
-}
-
-export function normalizeModelsPayload(payload) {
-  const entries = Array.isArray(payload?.data) ? payload.data : Array.isArray(payload?.models) ? payload.models : [];
-  const models = [];
-
-  for (const entry of entries) {
-    const model = typeof entry === "string" ? entry : entry?.id;
-    if (typeof model === "string" && model.trim().length > 0) models.push(model.trim());
-  }
-
-  return [...new Set(models)].sort((a, b) => a.localeCompare(b));
 }
 
 export function writeOverrideFields(configPath, overrides) {
@@ -257,33 +221,19 @@ async function maybeRestoreUserOverrideConfig(configPath, userConfigPath, option
   return "adjust";
 }
 
+function logAgentRecommendation(output, recommendation) {
+  if (!recommendation.model) return;
+  output?.log?.(
+    `  Recommendation: ${recommendation.model} (reasoning: ${recommendation.model_reasoning_effort}, tier: ${recommendation.service_tier})`
+  );
+}
+
 function safeReadDir(sourceDir) {
   try {
     return readdirSync(sourceDir);
   } catch {
     return [];
   }
-}
-
-function readBearerTokenFromEnv(provider, env) {
-  if (provider.bearerTokenEnv && env[provider.bearerTokenEnv]?.trim()) return env[provider.bearerTokenEnv].trim();
-  if (env.OPENAI_API_KEY?.trim()) return env.OPENAI_API_KEY.trim();
-  return null;
-}
-
-function withTrailingSlash(value) {
-  return value.endsWith("/") ? value : `${value}/`;
-}
-
-function getTableBlock(text, tableName) {
-  const pattern = new RegExp(`(^|\\n)\\[${escapeRegExp(tableName)}]\\n([\\s\\S]*?)(?=\\n\\[[^\\n]+]|$)`);
-  return pattern.exec(text)?.[2] ?? "";
-}
-
-function readTopLevelTomlString(text, key) {
-  const firstTable = /^\[[^\n]+]/m.exec(text);
-  const topLevel = firstTable === null ? text : text.slice(0, firstTable.index);
-  return readTomlString(topLevel, key);
 }
 
 function readTomlString(text, key) {

@@ -43,6 +43,8 @@ npm run smoke:isolated
 
 `setup` installs/enables LFP under `CODEX_HOME/local-marketplaces/islee23520/plugins/lfp`, installs helper agents under `CODEX_HOME/agents`, and applies configured model-field overrides.
 
+Interactive setup can discover the active Codex provider's `/models` endpoint and use that list to recommend OMO agent models one agent at a time. Each prompt shows the current value plus the recommendation as the default, so pressing Enter accepts the recommendation while still allowing per-agent edits. Saved choices are written into `${CODEX_HOME}/.ledger/lfp/` before setup applies the overrides.
+
 When interactive OMO model setup changes override values, LFP also saves a user copy at `${CODEX_HOME}/.ledger/lfp/omo-agent-model-overrides.toml`. On later interactive `setup` runs after an npx/package patch, LFP asks whether you want to adjust model overrides; answering no keeps the saved settings without rerunning the per-agent prompts. Answering yes loads the saved copy and continues into the model selection flow. Older `${CODEX_HOME}/lfp/omo-agent-model-overrides.toml` copies are migrated into the ledger path.
 
 `agent-config` runs the same OMO override selector without reinstalling the LFP-owned helper agents. It lists already-configured override targets and can opt additional installed upstream agent TOMLs into the override file. Only `model`, `model_reasoning_effort`, and `service_tier` are written.
