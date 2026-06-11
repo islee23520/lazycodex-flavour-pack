@@ -40,14 +40,20 @@
     "scripts/codex-apps-cache.mjs",
     "scripts/codex-plugin-install.mjs",
     "scripts/codex-provider-config.mjs",
+    "scripts/install-transaction.mjs",
     "scripts/lazycodex-install.mjs",
+    "scripts/mcp-model-fallback.mjs",
     "scripts/model-config-prompts.mjs",
+    "scripts/model-fallback-guidance.mjs",
+    "scripts/model-fallback-resolver.mjs",
     "scripts/model-override-config.mjs",
     "scripts/model-override-schema.mjs",
     "scripts/model-provider.mjs",
     "scripts/model-recommendations.mjs",
     "scripts/provider-consent.mjs",
+    "scripts/runtime-promotion.mjs",
     "scripts/setup-command.mjs",
+    "scripts/setup-tui.mjs",
     "scripts/sync-agent-overrides-hook.mjs",
     "scripts/sync-agent-overrides.mjs",
     "scripts/user-model-overrides.mjs",
@@ -64,9 +70,11 @@
     "pack:check": "npm pack --dry-run"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=20.12.0"
   },
   "dependencies": {
+    "@clack/prompts": "^1.5.1",
+    "picocolors": "^1.1.1",
     "zod": "^4.4.3"
   }
 }

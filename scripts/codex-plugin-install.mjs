@@ -1,4 +1,4 @@
-import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -9,6 +9,16 @@ import {
   readOpenAiCompatProviderConfig,
   upsertOpenAiCompatProvider
 } from "./codex-provider-config.mjs";
+import {
+  cleanupInstallSnapshot,
+  createInstallSnapshot,
+  restoreInstallSnapshot
+} from "./install-transaction.mjs";
+import {
+  commitRuntimePromotion,
+  prepareRuntimePromotion,
+  rollbackRuntimePromotion
+} from "./runtime-promotion.mjs";
 
 export const MARKETPLACE_ID = "islee23520";
 export const PLUGIN_ID = "lfp";
@@ -114,16 +124,21 @@ export function installCodexPlugin(packageRoot, options = {}) {
   const pluginOptions = { ...options, packageRoot };
   const state = getCodexPluginState(pluginOptions);
   mkdirSync(path.dirname(state.pluginRoot), { recursive: true });
-  rmSync(state.pluginRoot, { recursive: true, force: true });
-  mkdirSync(state.pluginRoot, { recursive: true });
+  const promotion = prepareRuntimePromotion(packageRoot, state.pluginRoot, RUNTIME_ENTRIES);
+  const snapshot = createInstallSnapshot(state);
 
-  for (const entry of RUNTIME_ENTRIES) {
-    cpSync(path.join(packageRoot, entry), path.join(state.pluginRoot, entry), { recursive: true });
+  try {
+    installAdditionalAgents(packageRoot, state);
+    upsertCodexConfig(state, { installOpenAiCompatProvider: options.installOpenAiCompatProvider === true });
+    commitRuntimePromotion(promotion);
+    cleanupInstallSnapshot(snapshot);
+    return getCodexPluginState(pluginOptions);
+  } catch (error) {
+    restoreInstallSnapshot(snapshot);
+    cleanupInstallSnapshot(snapshot);
+    rollbackRuntimePromotion(promotion);
+    throw error;
   }
-
-  installAdditionalAgents(packageRoot, state);
-  upsertCodexConfig(state, { installOpenAiCompatProvider: options.installOpenAiCompatProvider === true });
-  return getCodexPluginState(pluginOptions);
 }
 
 export function getPendingCodexPluginActions(options = {}) {

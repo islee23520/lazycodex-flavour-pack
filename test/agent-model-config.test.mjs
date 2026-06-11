@@ -214,6 +214,53 @@ test("given setup recommendation flow when user overrides one agent then keeps m
   }
 });
 
+test("given setup confirm configured flow when user presses enter then re-applies existing values", async () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-models-"));
+  try {
+    const configPath = path.join(root, "overrides.toml");
+    writeFileSync(
+      configPath,
+      [
+        "[source]",
+        `agents_dir = "${root}"`,
+        "",
+        "[agents.explorer]",
+        'model = "grok-4.3"',
+        'model_reasoning_effort = "medium"',
+        'service_tier = "default"',
+        "",
+        "[agents.metis]",
+        'model = "gpt-5.4-mini"',
+        'model_reasoning_effort = "low"',
+        'service_tier = "fast"',
+        ""
+      ].join("\n")
+    );
+    const output = captureOutput();
+
+    const config = await configureAgentModelOverrides(configPath, {
+      models: ["gpt-5.4-mini", "gpt-5.5", "grok-4.3"],
+      readline: fakeReadline(["", "", "", "", "", ""]),
+      output,
+      recommendModels: true,
+      confirmConfiguredValues: true,
+      persistUserOverrides: false
+    });
+
+    assert.equal(config.overrides.explorer.model, "grok-4.3");
+    assert.equal(config.overrides.explorer.service_tier, "default");
+    assert.equal(config.overrides.explorer.model_reasoning_effort, "medium");
+    assert.equal(config.overrides.metis.model, "gpt-5.4-mini");
+    assert.equal(config.overrides.metis.service_tier, "fast");
+    assert.equal(config.overrides.metis.model_reasoning_effort, "low");
+    assert.ok(configOutput.questions.some((question) => /explorer model \[3]/.test(question)));
+    assert.ok(configOutput.questions.some((question) => /metis model \[1]/.test(question)));
+    assert.match(output.lines.join("\n"), /Recommendation: gpt-5\.5/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("given additional installed OMO agent when user opts in then appends override section", async () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-models-"));
   try {

@@ -21,7 +21,7 @@ test("given saved user override config when setup runs again then restores model
       output: silentOutput()
     });
     const savedPath = getUserOverrideConfigPath({ env: { CODEX_HOME: codexHome } });
-    assert.equal(savedPath, path.join(codexHome, ".ledger", "lfp", "omo-agent-model-overrides.toml"));
+    assert.equal(savedPath, path.join(codexHome, "lfp", "omo-agent-model-overrides.toml"));
     const savedText = readFileSync(savedPath, "utf8");
     assert.match(savedText, /model = "gpt-5\.4-mini"/);
     assert.match(savedText, /model_reasoning_effort = "xhigh"/);
@@ -57,7 +57,7 @@ test("given saved user override when user declines adjust then keeps saved setti
   try {
     const codexHome = path.join(root, "codex-home");
     const configPath = path.join(root, "overrides.toml");
-    const savedPath = path.join(codexHome, ".ledger", "lfp", "omo-agent-model-overrides.toml");
+    const savedPath = path.join(codexHome, "lfp", "omo-agent-model-overrides.toml");
     writeFileSync(configPath, overrideText("${CODEX_HOME}/agents", "grok-4.3", "low", "default"));
     mkdirSync(path.dirname(savedPath), { recursive: true });
     writeFileSync(savedPath, overrideText("${CODEX_HOME}/agents", "gpt-5.4-mini", "xhigh", "fast"));
@@ -80,7 +80,7 @@ test("given saved user override when user declines adjust then keeps saved setti
   }
 });
 
-test("given legacy saved user override exists when configuring then migrates it into Codex ledger", async () => {
+test("given legacy ledger saved user override exists when configuring then migrates it into Codex LFP config", async () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-user-models-"));
   try {
     const codexHome = path.join(root, "codex-home");
@@ -100,7 +100,7 @@ test("given legacy saved user override exists when configuring then migrates it 
 
     const savedPath = getUserOverrideConfigPath({ env: { CODEX_HOME: codexHome } });
     assert.match(readFileSync(savedPath, "utf8"), /model = "grok-4\.3"/);
-    assert.ok(output.questions.some((question) => question.includes(path.join(codexHome, ".ledger", "lfp"))));
+    assert.ok(output.questions.some((question) => question.includes(path.join(codexHome, "lfp"))));
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -112,7 +112,7 @@ test("given no saved user override when configureAgentModelOverrides runs then e
     const codexHome = path.join(root, "codex-home");
     const configPath = path.join(root, "overrides.toml");
     writeFileSync(configPath, overrideText("${CODEX_HOME}/agents", "grok-4.3", "low", "default"));
-    // deliberately no ledger file under codexHome/.ledger/lfp
+    // deliberately no saved override file under codexHome/lfp
 
     const output = captureOutput();
     await configureAgentModelOverrides(configPath, {

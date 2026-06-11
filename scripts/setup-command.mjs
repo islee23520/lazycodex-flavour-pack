@@ -13,6 +13,7 @@ import {
   printInstallSmokeState,
   printOpenAiCompatProviderState
 } from "./cli-reporting.mjs";
+import { runSetupTui, shouldUseSetupTui } from "./setup-tui.mjs";
 import { syncAgentOverrides, syncGlobalModelDefaults } from "./sync-agent-overrides.mjs";
 import {
   createRestoredUserOverrideConfig,
@@ -22,6 +23,16 @@ import {
 } from "./user-model-overrides.mjs";
 
 export async function runSetup(args, { check, root, defaultConfig }) {
+  const context = { check, root, defaultConfig };
+  if (shouldUseSetupTui(args, { check, input: process.stdin, output: process.stdout })) {
+    await runSetupTui(args, context, { runLineSetup: runSetupLineMode });
+    return;
+  }
+
+  await runSetupLineMode(args, context);
+}
+
+export async function runSetupLineMode(args, { check, root, defaultConfig }) {
   let configPath = args.config ?? defaultConfig;
 
   if (args.skipLazycodexInstall) {
@@ -100,7 +111,12 @@ async function maybePromptModelOverrides(args, configPath) {
 
   const rl = createInterface({ input: process.stdin, output: process.stdout });
   try {
-    await configureAgentModelOverrides(configPath, { readline: rl, output: console, recommendModels: true });
+    await configureAgentModelOverrides(configPath, {
+      readline: rl,
+      output: console,
+      recommendModels: true,
+      confirmConfiguredValues: true
+    });
   } finally {
     rl.close();
   }

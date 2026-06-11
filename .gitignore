@@ -6,3 +6,5 @@ npm-debug.log*
 .omo/ulw/
 .omo/ulw-loop/
 *.code-workspace
+agent-configs
+agent-overrides

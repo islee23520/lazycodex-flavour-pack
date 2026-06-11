@@ -85,12 +85,12 @@ test("given local CLI setup skips LazyCodex install when requested then installs
   }
 });
 
-test("given saved ledger overrides when setup skips model prompt then applies all saved agents", () => {
+test("given saved LFP overrides when setup skips model prompt then applies all saved agents", () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-cli-"));
   try {
     const codexHome = path.join(root, "codex-home");
     const agentsDir = path.join(codexHome, "agents");
-    const savedPath = path.join(codexHome, ".ledger", "lfp", "omo-agent-model-overrides.toml");
+    const savedPath = path.join(codexHome, "lfp", "omo-agent-model-overrides.toml");
     mkdirSync(agentsDir, { recursive: true });
     mkdirSync(path.dirname(savedPath), { recursive: true });
     writeFileSync(path.join(agentsDir, "explorer.toml"), 'name = "explorer"\nmodel = "gpt-5.4-mini"\n');
@@ -147,7 +147,7 @@ test("given no saved user override when interactive setup runs then emits no Adj
     writeFileSync(path.join(agentsDir, "explorer.toml"), 'name = "explorer"\nmodel = "gpt-5.4-mini"\n');
     writeFileSync(path.join(agentsDir, "librarian.toml"), 'name = "librarian"\nmodel = "gpt-5.4-mini"\n');
     writeFileSync(path.join(agentsDir, "metis.toml"), 'name = "metis"\nmodel = "custom-metis-model"\n');
-    // no ledger file present → default interactive path must stay silent and let final sync apply packaged defaults
+    // no saved override file present -> default interactive path must stay silent and let final sync apply packaged defaults
 
     const result = spawnSync(
       process.execPath,
@@ -203,12 +203,12 @@ test("given no saved user override when interactive setup runs then final sync a
   }
 });
 
-test("given saved ledger overrides when dry setup runs then reports no override drift", () => {
+test("given saved LFP overrides when dry setup runs then reports no override drift", () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-cli-"));
   try {
     const codexHome = path.join(root, "codex-home");
     const agentsDir = path.join(codexHome, "agents");
-    const savedPath = path.join(codexHome, ".ledger", "lfp", "omo-agent-model-overrides.toml");
+    const savedPath = path.join(codexHome, "lfp", "omo-agent-model-overrides.toml");
     mkdirSync(agentsDir, { recursive: true });
     mkdirSync(path.dirname(savedPath), { recursive: true });
     writeFileSync(path.join(agentsDir, "explorer.toml"), 'name = "explorer"\nmodel = "grok-4.3"\n');
@@ -242,12 +242,12 @@ test("given saved ledger overrides when dry setup runs then reports no override 
   }
 });
 
-test("given saved ledger overrides when doctor runs then checks saved agent set", () => {
+test("given saved LFP overrides when doctor runs then checks saved agent set", () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-cli-"));
   try {
     const codexHome = path.join(root, "codex-home");
     const agentsDir = path.join(codexHome, "agents");
-    const savedPath = path.join(codexHome, ".ledger", "lfp", "omo-agent-model-overrides.toml");
+    const savedPath = path.join(codexHome, "lfp", "omo-agent-model-overrides.toml");
     mkdirSync(agentsDir, { recursive: true });
     mkdirSync(path.dirname(savedPath), { recursive: true });
     writeFileSync(path.join(agentsDir, "explorer.toml"), 'name = "explorer"\nmodel = "grok-4.3"\n');
@@ -351,6 +351,7 @@ test("given CLI help when invoked then documents npx usage", () => {
   assert.match(result.stdout, /npx @islee23520\/lfp@latest doctor/);
   assert.match(result.stdout, /npx @islee23520\/lfp@latest agent-config/);
   assert.match(result.stdout, /runs npx lazycodex-ai install before applying LFP/);
+  assert.match(result.stdout, /--no-tui/);
 });
 
 test("given setup config is missing when setup runs then leaves Codex home unmodified", () => {

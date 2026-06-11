@@ -18,7 +18,7 @@ const root = mkdtempSync(path.join(tmpdir(), "lfp-isolated-smoke-"));
 const codexHome = path.join(root, "codex-home");
 const agentsDir = path.join(root, "upstream-agents");
 const overrideConfigPath = path.join(root, "omo-agent-model-overrides.toml");
-const savedOverridePath = path.join(codexHome, ".ledger", "lfp", "omo-agent-model-overrides.toml");
+const savedOverridePath = path.join(codexHome, "lfp", "omo-agent-model-overrides.toml");
 
 mkdirSync(codexHome, { recursive: true });
 mkdirSync(agentsDir, { recursive: true });

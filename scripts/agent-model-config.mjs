@@ -64,13 +64,15 @@ export async function configureAgentModelOverrides(configPath, options = {}) {
     const recommended = recommendations[agentName] ?? {};
     const current = typeof fields.model === "string" ? fields.model : models[0];
     const currentReasoning = typeof fields.model_reasoning_effort === "string" ? fields.model_reasoning_effort : "low";
-    const defaultModel = recommended.model ?? current;
-    const defaultTier = recommended.service_tier ?? (typeof fields.service_tier === "string" ? fields.service_tier : "default");
-    const defaultReasoning = recommended.model_reasoning_effort ?? currentReasoning;
+    const currentTier = typeof fields.service_tier === "string" ? fields.service_tier : "default";
+    const useConfiguredDefaults = options.confirmConfiguredValues === true;
+    const defaultModel = useConfiguredDefaults ? current : (recommended.model ?? current);
+    const defaultTier = useConfiguredDefaults ? currentTier : (recommended.service_tier ?? currentTier);
+    const defaultReasoning = useConfiguredDefaults ? currentReasoning : (recommended.model_reasoning_effort ?? currentReasoning);
     logAgentGuide(options.output, agentName, {
       model: current,
       reasoning: currentReasoning,
-      tier: typeof fields.service_tier === "string" ? fields.service_tier : "default"
+      tier: currentTier
     }, { preferCurrent: true });
     logAgentRecommendation(options.output, recommended);
     const selected = await promptForModel(rl, {

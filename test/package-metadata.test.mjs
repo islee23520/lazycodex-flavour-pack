@@ -5,12 +5,14 @@ import assert from "node:assert/strict";
 
 const packageJson = JSON.parse(readFileSync(path.resolve("package.json"), "utf8"));
 const pluginJson = JSON.parse(readFileSync(path.resolve(".codex-plugin", "plugin.json"), "utf8"));
+const hooksJson = JSON.parse(readFileSync(path.resolve("hooks", "hooks.json"), "utf8"));
 const cliText = readFileSync(path.resolve("scripts/cli.mjs"), "utf8");
 const readmeText = readFileSync(path.resolve("README.md"), "utf8");
 const publishWorkflowPath = path.resolve(".github", "workflows", "publish.yml");
 
 test("given npm package metadata when validating publish settings then package is public", () => {
   assert.notEqual(packageJson.private, true);
+  assert.equal(packageJson.engines.node, ">=20.12.0");
   assert.deepEqual(packageJson.publishConfig, {
     access: "public",
     registry: "https://registry.npmjs.org/"
@@ -47,20 +49,33 @@ test("given npm package metadata when validating release files then package incl
     "scripts/codex-apps-cache.mjs",
     "scripts/codex-plugin-install.mjs",
     "scripts/codex-provider-config.mjs",
+    "scripts/install-transaction.mjs",
     "scripts/lazycodex-install.mjs",
+    "scripts/mcp-model-fallback.mjs",
     "scripts/model-config-prompts.mjs",
+    "scripts/model-fallback-guidance.mjs",
+    "scripts/model-fallback-resolver.mjs",
     "scripts/model-override-config.mjs",
     "scripts/model-override-schema.mjs",
     "scripts/model-provider.mjs",
     "scripts/model-recommendations.mjs",
     "scripts/provider-consent.mjs",
+    "scripts/runtime-promotion.mjs",
     "scripts/setup-command.mjs",
+    "scripts/setup-tui.mjs",
     "scripts/sync-agent-overrides-hook.mjs",
     "scripts/sync-agent-overrides.mjs",
     "scripts/user-model-overrides.mjs",
     "scripts/visual-engineering-hook.mjs",
     "README.md"
   ]);
+});
+
+test("given plugin metadata references runtime scripts when validating release files then package includes them", () => {
+  const publishedFiles = new Set(packageJson.files);
+  for (const filePath of getReferencedRuntimeScripts()) {
+    assert.equal(publishedFiles.has(filePath), true, `${filePath} must be included in package files`);
+  }
 });
 
 test("given plugin manifest when validating release metadata then bundled manifest is parseable", () => {
@@ -115,4 +130,20 @@ test("given publish automation docs when validating operator guidance then readm
 
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function getReferencedRuntimeScripts() {
+  const scriptPaths = [];
+  for (const tool of pluginJson["x-lfp"]?.tools ?? []) {
+    if (typeof tool.path === "string") scriptPaths.push(tool.path.replace(/^\.\//, ""));
+  }
+  for (const eventHooks of Object.values(hooksJson.hooks ?? {})) {
+    for (const entry of eventHooks) {
+      for (const hook of entry.hooks ?? []) {
+        const match = /\$\{PLUGIN_ROOT}\/(scripts\/[^"]+\.mjs)/.exec(hook.command ?? "");
+        if (match !== null) scriptPaths.push(match[1]);
+      }
+    }
+  }
+  return [...new Set(scriptPaths)].sort();
 }

@@ -6,7 +6,7 @@ import path from "node:path";
 import { resolve } from "../scripts/model-fallback-resolver.mjs";
 
 const tmp = mkdtempSync(path.join(os.tmpdir(), "lfp-resolver-test-"));
-const ledgerDir = path.join(tmp, ".ledger", "lfp");
+const ledgerDir = path.join(tmp, "lfp");
 mkdirSync(ledgerDir, { recursive: true });
 const ledgerFile = path.join(ledgerDir, "omo-agent-model-overrides.toml");
 writeFileSync(ledgerFile, `

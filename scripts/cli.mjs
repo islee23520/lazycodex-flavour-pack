@@ -19,13 +19,20 @@ import {
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const DEFAULT_CONFIG = path.join(ROOT, "agent-configs", "omo-agent-model-overrides.toml");
-const SYNC_OPTIONS = new Set(["--check", "--config", "--skip-art-prompt", "--skip-model-prompt", "--skip-lazycodex-install"]);
+const SYNC_OPTIONS = new Set([
+  "--check",
+  "--config",
+  "--skip-art-prompt",
+  "--skip-model-prompt",
+  "--skip-lazycodex-install",
+  "--no-tui"
+]);
 const KOREAN_POSTPOSITIONS = ["으로", "부터", "까지", "에게", "에서", "처럼", "보다", "만큼", "은", "는", "이", "가", "을", "를", "와", "과", "도", "만", "로"];
 
 const HELP = `lfp
 
 Usage:
-  lfp setup [--config <path>] [--skip-art-prompt] [--skip-model-prompt]
+  lfp setup [--config <path>] [--skip-art-prompt] [--skip-model-prompt] [--no-tui]
   lfp dry-setup [--config <path>]
   lfp doctor [--config <path>]
   lfp agent-config [--config <path>]
@@ -43,7 +50,8 @@ Commands:
   setup            Install LFP plugin, agents, and overrides into Codex.
                    Interactive: asks about art team models (optional). OMO model overrides only
                    prompt on installed setup or when you have previously saved custom settings.
-                   If provider models are discoverable, setup can auto-select recommended models.
+                   If provider models are discoverable, setup shows recommendations while
+                   Enter keeps and re-applies each configured agent value.
   dry-setup        Preview what setup would do without writing.
   doctor           Check LFP install status, agent models, and overrides.
   agent-config     Reconfigure LazyCodex/OMO agent model overrides and apply them.
@@ -55,6 +63,7 @@ Flags:
   --skip-art-prompt  Skip the interactive art team model prompt during setup.
   --skip-model-prompt  Skip the interactive OMO override model prompt during setup.
   --skip-lazycodex-install  Local development only: install this checkout without running LazyCodex install first.
+  --no-tui  Force legacy line-output setup even when running in an interactive terminal.
 
 This package is a lightweight overlay. setup runs npx lazycodex-ai install before applying LFP, then installs/enables this pack in Codex and applies configured overrides to existing agents.`;
 
@@ -210,6 +219,10 @@ function parseSyncArgs(argv) {
     }
     if (item === "--skip-lazycodex-install") {
       parsed.skipLazycodexInstall = true;
+      continue;
+    }
+    if (item === "--no-tui") {
+      parsed.noTui = true;
       continue;
     }
     throw new Error(`Unknown sync option: ${item}`);

@@ -18,7 +18,7 @@ Input example:
   { "agent": "visual-engineering", "reason": "429" }
   { "agent": "plan", "reason": "rate-limit" }
 
-The tool reads the user's LFP ledger and returns:
+The tool reads the user's saved LFP model override config and returns:
 - primary (your preferred model for that agent)
 - effective (the one you should use right now)
 - using_fallback: true/false

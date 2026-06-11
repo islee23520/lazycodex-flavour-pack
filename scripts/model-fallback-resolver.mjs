@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * LFP Model + Fallback Resolver
- * Source of truth: the user's ~/.codex/.ledger/lfp/omo-agent-model-overrides.toml
+ * Source of truth: the user's ~/.codex/lfp/omo-agent-model-overrides.toml
  *
  * Call with { agent: "...", onError: "quota" | "rate-limit" | "429" | "error" }
  * Returns consistent shape with primary / effective always present (or null).
@@ -16,8 +16,8 @@ const LEDGER_NAME = "omo-agent-model-overrides.toml";
 function getLedgerPath(options = {}) {
   const env = options.env ?? process.env;
   const codexHome = env.CODEX_HOME?.trim() || path.join(os.homedir(), ".codex");
-  const c1 = path.join(codexHome, ".ledger", "lfp", LEDGER_NAME);
-  const c2 = path.join(codexHome, "lfp", LEDGER_NAME);
+  const c1 = path.join(codexHome, "lfp", LEDGER_NAME);
+  const c2 = path.join(codexHome, ".ledger", "lfp", LEDGER_NAME);
   if (existsSync(c1)) return c1;
   if (existsSync(c2)) return c2;
   return null;
@@ -62,7 +62,7 @@ export function resolve(agentName, options = {}) {
       reason: "no-ledger",
       source: null,
       fallback_available: false,
-      message: "No LFP override ledger found. Run `lfp setup` or `lfp agent-config`."
+      message: "No LFP saved override config found. Run `lfp setup` or `lfp agent-config`."
     };
   }
 
@@ -92,7 +92,7 @@ export function resolve(agentName, options = {}) {
       reason: "no-entry",
       source: ledgerPath,
       fallback_available: false,
-      message: `No override entry for agent "${agentName}" in LFP ledger.`
+      message: `No override entry for agent "${agentName}" in LFP saved override config.`
     };
   }
 
@@ -138,4 +138,3 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   }
   console.log(JSON.stringify(resolve(agent, { onError }), null, 2));
 }
-

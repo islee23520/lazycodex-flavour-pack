@@ -4,20 +4,20 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 
 const USER_OVERRIDE_CONFIG_NAME = "omo-agent-model-overrides.toml";
-const LEDGER_DIR = ".ledger";
-const LEGACY_LFP_DIR = "lfp";
+const LFP_DIR = "lfp";
+const LEGACY_LEDGER_DIR = ".ledger";
 const SOURCE_SECTION_PATTERN = /(^|\n)\[source]\n[\s\S]*?(?=\n\[[^\n]+]|$)/;
 
 export function getUserOverrideConfigPath(options = {}) {
   const env = options.env ?? process.env;
   const codexHome = env.CODEX_HOME?.trim() || path.join(os.homedir(), ".codex");
-  return options.userOverrideConfigPath ?? path.join(codexHome, LEDGER_DIR, "lfp", USER_OVERRIDE_CONFIG_NAME);
+  return options.userOverrideConfigPath ?? path.join(codexHome, LFP_DIR, USER_OVERRIDE_CONFIG_NAME);
 }
 
 export function getLegacyUserOverrideConfigPath(options = {}) {
   const env = options.env ?? process.env;
   const codexHome = env.CODEX_HOME?.trim() || path.join(os.homedir(), ".codex");
-  return path.join(codexHome, LEGACY_LFP_DIR, USER_OVERRIDE_CONFIG_NAME);
+  return path.join(codexHome, LEGACY_LEDGER_DIR, LFP_DIR, USER_OVERRIDE_CONFIG_NAME);
 }
 
 export function hasSavedUserOverrideConfig(userConfigPath) {
