@@ -27,6 +27,7 @@ jobs:
 
       - name: Run release verification
         run: |
+          npm ci
           npm test
           npm pack --dry-run
 
