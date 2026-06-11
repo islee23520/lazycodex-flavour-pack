@@ -109,11 +109,14 @@ test("given LFP and LazyCodex hooks when manifests are inspected then they coexi
   const lfpUserPromptSubmit = lfpHooks.hooks.UserPromptSubmit;
 
   assert.equal(lfpUserPromptSubmit.length, 1);
-  assert.equal(lfpUserPromptSubmit[0].hooks.length, 3);
+  assert.equal(lfpUserPromptSubmit[0].hooks.length, 4);
   assert.equal(lfpUserPromptSubmit[0].hooks[0].type, "command");
-  assert.match(lfpUserPromptSubmit[0].hooks[0].command, /\$\{PLUGIN_ROOT\}\/scripts\/visual-engineering-hook\.mjs/);
+  assert.match(lfpUserPromptSubmit[0].hooks[0].command, /\$\{PLUGIN_ROOT\}\/scripts\/sync-agent-overrides-hook\.mjs/);
   assert.equal(lfpUserPromptSubmit[0].hooks[0].timeout, 5);
+  assert.match(lfpUserPromptSubmit[0].hooks[1].command, /\$\{PLUGIN_ROOT\}\/scripts\/visual-engineering-hook\.mjs/);
   assert.equal(lfpUserPromptSubmit[0].matcher, undefined);
+  assert.equal(lfpHooks.hooks.SessionStart[0].hooks.length, 1);
+  assert.match(lfpHooks.hooks.SessionStart[0].hooks[0].command, /\$\{PLUGIN_ROOT\}\/scripts\/sync-agent-overrides-hook\.mjs/);
   assert.equal(lazyCodexUserPromptSubmitHooks.length, 3);
   assert.match(JSON.stringify(lazyCodexUserPromptSubmitHooks), /ultrawork\/dist\/cli\.js/);
   assert.match(JSON.stringify(lazyCodexUserPromptSubmitHooks), /ulw-loop\/dist\/cli\.js/);

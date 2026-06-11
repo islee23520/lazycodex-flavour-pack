@@ -5,40 +5,17 @@ export const SERVICE_TIERS = [
 
 export const REASONING_EFFORTS = ["low", "medium", "high", "xhigh", "max"];
 
-const GUIDE_BY_AGENT = {
-  artistry: { model: "gpt-5.5", reasoning: "high", note: "creative direction on the default Codex/OpenAI stack" },
-  "artistry-gen": { model: "gpt-5.4-mini", reasoning: "medium", service_tier: "fast", note: "cheap inner loop on the default Codex/OpenAI stack" },
-  "artistry-qa": { model: "gpt-5.5", reasoning: "high", note: "visual QA checkpoints on the default Codex/OpenAI stack" },
-  "codex-ultrawork-reviewer": { model: "gpt-5.5", reasoning: "high", note: "reviewer/QA execution" },
-  deep: { model: "gpt-5.5", reasoning: "medium", note: "deep coding" },
-  explore: { model: "gpt-5.4-mini-fast", reasoning: "low", service_tier: "fast", note: "fast exploration" },
-  explorer: { model: "gpt-5.4-mini-fast", reasoning: "low", service_tier: "fast", note: "fast exploration" },
-  librarian: { model: "gpt-5.4-mini-fast", reasoning: "low", service_tier: "fast", note: "fast retrieval" },
-  metis: { model: "gpt-5.5", reasoning: "high", note: "implementation planning" },
-  momus: { model: "gpt-5.5", reasoning: "xhigh", note: "adversarial review" },
-  plan: { model: "gpt-5.5", reasoning: "high", note: "Prometheus planning" },
-  prometheus: { model: "gpt-5.5", reasoning: "high", note: "planning fallback" },
-  quick: { model: "gpt-5.4-mini", reasoning: "low", service_tier: "fast", note: "simple fast tasks" },
-  ultrabrain: { model: "gpt-5.5", reasoning: "xhigh", note: "maximum reasoning" },
-  "unspecified-high": { model: "gpt-5.5", reasoning: "high", note: "complex general work" },
-  "unspecified-low": { model: "gpt-5.5-codex", reasoning: "medium", note: "standard general work" }
-};
-
 export function getAgentModelGuide(agentName) {
-  return GUIDE_BY_AGENT[String(agentName).toLowerCase()] ?? null;
+  return null;
 }
 
 export function logAgentGuide(output, agentName, current, options = {}) {
-  const guide = getAgentModelGuide(agentName);
   output?.log?.(`  Current: ${current.model ?? "unknown"} (reasoning: ${current.reasoning ?? "unset"}, tier: ${current.tier ?? "unset"})`);
   if (options.preferCurrent === true) {
     output?.log?.("  Default: keep the current LazyCodex/OMO value; press Enter to leave it unchanged.");
     return;
   }
-  if (guide === null) return;
-
-  const tier = guide.service_tier ? `, tier: ${guide.service_tier}` : "";
-  output?.log?.(`  Guide: ${guide.model} (reasoning: ${guide.reasoning}${tier}) - ${guide.note}`);
+  output?.log?.("  Guide: no preset — choose a model from the available list or type a custom id.");
 }
 
 export async function promptForModel(rl, { agentName, current, models, output }) {
@@ -132,7 +109,7 @@ function parseModelSelection(answer, choices) {
   if (/^[0-9]+$/.test(answer)) return choices[Number(answer) - 1]?.value ?? null;
   for (const choice of choices) {
     if (choice.aliases.includes(answer)) return answer;
-    if (choice.key === answer) return choice.value;
+    if (choice.key === answer) return answer;
   }
   return answer;
 }

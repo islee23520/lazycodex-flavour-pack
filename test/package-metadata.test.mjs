@@ -50,6 +50,7 @@ test("given npm package metadata when validating release files then package incl
     "scripts/lazycodex-install.mjs",
     "scripts/model-config-prompts.mjs",
     "scripts/provider-consent.mjs",
+    "scripts/sync-agent-overrides-hook.mjs",
     "scripts/sync-agent-overrides.mjs",
     "scripts/user-model-overrides.mjs",
     "scripts/visual-engineering-hook.mjs",

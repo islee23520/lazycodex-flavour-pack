@@ -29,7 +29,7 @@ test("given isolated smoke command when run then setup and doctor pass without r
     assert.match(result.stdout, /duplicate tool cache healthy=true/);
     assert.match(result.stdout, /saved adjust prompt shown=true/);
     assert.match(result.stdout, /prompts continued after saved adjust=true/);
-    assert.match(result.stdout, /updated agents=explorer\.toml, metis\.toml/);
+    assert.match(result.stdout, /updated agents=metis.toml/);
     assert.doesNotMatch(result.stdout, new RegExp(escapeRegExp(sentinelCodexHome)));
     assert.equal(existsSync(sentinelCodexHome), false);
   } finally {

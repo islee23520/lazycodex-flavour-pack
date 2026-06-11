@@ -62,9 +62,9 @@ test("given setup asks about art team when user declines then leaves art configs
 
 function writeArtAgentConfigs(root) {
   mkdirSync(root, { recursive: true });
-  writeFileSync(path.join(root, "artistry.toml"), artAgentText("artistry", "gpt-5.5", "default"));
-  writeFileSync(path.join(root, "artistry-gen.toml"), artAgentText("artistry-gen", "gpt-5.4-mini", "fast"));
-  writeFileSync(path.join(root, "artistry-qa.toml"), artAgentText("artistry-qa", "gpt-5.5", "default"));
+  writeFileSync(path.join(root, "artistry.toml"), artAgentText("artistry", "gemini-pro-agent", "default"));
+  writeFileSync(path.join(root, "artistry-gen.toml"), artAgentText("artistry-gen", "gemini-pro-agent", "default"));
+  writeFileSync(path.join(root, "artistry-qa.toml"), artAgentText("artistry-qa", "gemini-pro-agent", "default"));
 }
 
 function artAgentText(name, model, tier) {

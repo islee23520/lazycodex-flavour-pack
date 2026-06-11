@@ -125,7 +125,7 @@ test("given art team hook in hooks.json when manifest is inspected then it is re
 
   assert.equal(lfpUserPromptSubmit.length, 1);
   const hooks = lfpUserPromptSubmit[0].hooks;
-  assert.equal(hooks.length, 2);
+  assert.equal(hooks.length, 4);
 
   const artHook = hooks.find((h) => h.command.includes("art-team-hook"));
   assert.ok(artHook, "art-team-hook should be registered");
@@ -147,9 +147,9 @@ test("given art team guidance when emitted then contains loop protocol", () => {
   const ctx = parsed.hookSpecificOutput.additionalContext;
 
   // Cost discipline section
-  assert.match(ctx, /gpt-5\.5.*artistry.*brief creation.*checkpoint reviews/s);
-  assert.match(ctx, /gpt-5\.4-mini.*artistry-gen.*inner.*loop/s);
-  assert.match(ctx, /gpt-5\.5.*artistry-qa.*checkpoint/s);
+  assert.match(ctx, /gemini-pro-agent.*artistry.*brief creation.*checkpoint reviews/s);
+  assert.match(ctx, /gemini-pro-agent.*artistry-gen.*inner.*loop/s);
+  assert.match(ctx, /gemini-pro-agent.*artistry-qa.*checkpoint/s);
 
   // Loop protocol
   assert.match(ctx, /Spawn artistry.*art brief/s);

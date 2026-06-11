@@ -43,7 +43,7 @@ writeOverrideConfig(overrideConfigPath, agentsDir, {
   explorer: { model: "gpt-5.4-mini", model_reasoning_effort: "low", service_tier: "fast" }
 });
 writeOverrideConfig(savedOverridePath, null, {
-  explorer: { model: "grok-4.20-0309-non-reasoning", model_reasoning_effort: "low", service_tier: "default" },
+  explorer: { model: "gpt-5.4-mini", model_reasoning_effort: "low", service_tier: "fast" },
   metis: { model: "gpt-5.5", model_reasoning_effort: "high", service_tier: "fast" }
 });
 writeFileSync(
@@ -75,7 +75,7 @@ const metisText = readFileSync(path.join(agentsDir, "metis.toml"), "utf8");
 
 assertIncludes(configText, '[plugins."lfp@islee23520"]', "isolated config enables lfp@islee23520");
 assertIncludes(configText, "[marketplaces.islee23520]", "isolated config uses islee23520 marketplace");
-assertIncludes(explorerText, 'model = "grok-4.20-0309-non-reasoning"', "saved explorer override applied");
+assertIncludes(explorerText, 'model = "gpt-5.4-mini"', "saved explorer override applied");
 assertIncludes(metisText, 'model = "gpt-5.5"', "metis override applied after saved restore");
 assertIncludes(metisText, 'model_reasoning_effort = "high"', "metis reasoning applied");
 if (!cacheState.healthy) throw new Error(`Codex Apps cache is not clean: ${JSON.stringify(cacheState.duplicateFiles)}`);

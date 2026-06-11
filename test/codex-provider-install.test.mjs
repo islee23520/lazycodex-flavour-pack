@@ -210,11 +210,11 @@ function createPackageRoot(root, provider) {
   writeFileSync(path.join(packageRoot, "hooks", "hooks.json"), "{}\n");
   writeFileSync(path.join(packageRoot, "README.md"), "# fixture\n");
   writeFileSync(path.join(packageRoot, "package.json"), "{}\n");
-  writeFileSync(path.join(packageRoot, "agent-configs", "visual-engineering.toml"), 'name = "visual-engineering"\nmodel = "gemini-3.1-pro-preview"\n');
-  writeFileSync(path.join(packageRoot, "agent-configs", "visual-looker.toml"), 'name = "visual-looker"\nmodel = "gemini-3.1-pro-preview"\n');
-  writeFileSync(path.join(packageRoot, "agent-configs", "artistry.toml"), 'name = "artistry"\nmodel = "gpt-5.5"\n');
-  writeFileSync(path.join(packageRoot, "agent-configs", "artistry-gen.toml"), 'name = "artistry-gen"\nmodel = "gpt-5.4-mini"\n');
-  writeFileSync(path.join(packageRoot, "agent-configs", "artistry-qa.toml"), 'name = "artistry-qa"\nmodel = "gpt-5.5"\n');
+  writeFileSync(path.join(packageRoot, "agent-configs", "visual-engineering.toml"), 'name = "visual-engineering"\nmodel = "gemini-pro-agent"\n');
+  writeFileSync(path.join(packageRoot, "agent-configs", "visual-looker.toml"), 'name = "visual-looker"\nmodel = "gemini-pro-agent"\n');
+  writeFileSync(path.join(packageRoot, "agent-configs", "artistry.toml"), 'name = "artistry"\nmodel = "gemini-pro-agent"\n');
+  writeFileSync(path.join(packageRoot, "agent-configs", "artistry-gen.toml"), 'name = "artistry-gen"\nmodel = "gemini-pro-agent"\n');
+  writeFileSync(path.join(packageRoot, "agent-configs", "artistry-qa.toml"), 'name = "artistry-qa"\nmodel = "gemini-pro-agent"\n');
   writeFileSync(
     path.join(packageRoot, "agent-configs", "codex-openai-compat-provider.toml"),
     [

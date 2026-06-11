@@ -99,11 +99,11 @@ test("given packaged override config when reading then targets Codex-loaded agen
   });
 
   assert.equal(config.source.agentsDir, path.join(codexHome, "agents"));
-  assert.equal(config.overrides.explorer.model, "grok-4.20-0309-non-reasoning");
+  assert.equal(config.overrides.explorer.model, "gpt-5.4-mini");
   assert.deepEqual(config.overrides.librarian, {
     model: "gpt-5.4-mini",
     model_reasoning_effort: "low",
-    service_tier: "default"
+    service_tier: "fast"
   });
 });
 
@@ -235,7 +235,7 @@ test("given only agent-specific overrides when syncing global defaults then leav
         'agents_dir = "${CODEX_HOME}/agents"',
         "",
         "[agents.explorer]",
-        'model = "grok-4.20-0309-non-reasoning"',
+        'model = "gpt-5.4-mini"',
         'model_reasoning_effort = "low"',
         'service_tier = "default"',
         "",

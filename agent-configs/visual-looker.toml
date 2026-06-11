@@ -1,9 +1,9 @@
 name = "visual-looker"
 description = "Multimodal vision evidence agent for screenshots, images, documents, diagrams, charts, game assets, photos, illustrations, and any visual artifact inspection and evidence extraction."
 nickname_candidates = ["Vision Looker"]
-model = "gemini-3.1-pro-preview"
+model = "gemini-pro-agent"
 model_reasoning_effort = "high"
-service_tier = "fast"
+service_tier = "default"
 
 developer_instructions = """
 You are a multimodal vision evidence inspector.

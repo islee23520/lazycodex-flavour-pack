@@ -35,21 +35,21 @@ describe("model-fallback-resolver", () => {
     const r = resolve("explorer", { ledgerPath: ledgerFile });
     assert.equal(r.agent, "explorer");
     assert.equal(r.using_fallback, false);
-    assert.equal(r.effective.model, "grok-4.3");
+    assert.equal(r.effective?.model, "grok-4.3");
     assert.equal(r.fallback_available, true);
   });
 
   it("switches to fallback on quota/rate/429/error", () => {
     const r = resolve("explorer", { ledgerPath: ledgerFile, onError: "quota" });
     assert.equal(r.using_fallback, true);
-    assert.equal(r.effective.model, "gpt-5.4-mini");
+    assert.equal(r.effective?.model, "gpt-5.4-mini");
     assert.equal(r.reason, "quota");
   });
 
   it("returns primary for agents without error trigger", () => {
     const r = resolve("plan", { ledgerPath: ledgerFile });
     assert.equal(r.using_fallback, false);
-    assert.equal(r.effective.model, "gpt-5.5");
+    assert.equal(r.effective?.model, "gpt-5.5");
   });
 
   it("reports no-entry for unknown agent", () => {
@@ -58,5 +58,3 @@ describe("model-fallback-resolver", () => {
     assert.equal(r.primary, null);
   });
 });
-
-rmSync(tmp, { recursive: true, force: true });

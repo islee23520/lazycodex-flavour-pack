@@ -146,6 +146,7 @@ test("given no saved user override when interactive setup runs then emits no Adj
     mkdirSync(agentsDir, { recursive: true });
     writeFileSync(path.join(agentsDir, "explorer.toml"), 'name = "explorer"\nmodel = "gpt-5.4-mini"\n');
     writeFileSync(path.join(agentsDir, "librarian.toml"), 'name = "librarian"\nmodel = "gpt-5.4-mini"\n');
+    writeFileSync(path.join(agentsDir, "metis.toml"), 'name = "metis"\nmodel = "custom-metis-model"\n');
     // no ledger file present → default interactive path must stay silent and let final sync apply packaged defaults
 
     const result = spawnSync(
@@ -173,6 +174,7 @@ test("given no saved user override when interactive setup runs then final sync a
     mkdirSync(agentsDir, { recursive: true });
     writeFileSync(path.join(agentsDir, "explorer.toml"), 'name = "explorer"\nmodel = "gpt-5.4-mini"\n');
     writeFileSync(path.join(agentsDir, "librarian.toml"), 'name = "librarian"\nmodel = "gpt-5.4-mini"\n');
+    writeFileSync(path.join(agentsDir, "metis.toml"), 'name = "metis"\nmodel = "custom-metis-model"\n');
 
     const result = spawnSync(
       process.execPath,
@@ -185,14 +187,17 @@ test("given no saved user override when interactive setup runs then final sync a
 
     const explorerText = readFileSync(path.join(agentsDir, "explorer.toml"), "utf8");
     const librarianText = readFileSync(path.join(agentsDir, "librarian.toml"), "utf8");
+    const metisText = readFileSync(path.join(agentsDir, "metis.toml"), "utf8");
 
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /updated .*explorer\.toml/);
     assert.match(result.stdout, /updated .*librarian\.toml/);
-    assert.match(explorerText, /model = "grok-4\.20-0309-non-reasoning"/);
+    assert.match(explorerText, /model = "gpt-5.4-mini"/);
     assert.match(explorerText, /model_reasoning_effort = "low"/);
     assert.match(librarianText, /model = "gpt-5\.4-mini"/);
     assert.match(librarianText, /model_reasoning_effort = "low"/);
+    assert.match(metisText, /model = "gpt-5\.5"/);
+    assert.match(metisText, /model_reasoning_effort = "high"/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -509,6 +514,7 @@ test("given first-run no saved user override when setup then doctor runs then re
     mkdirSync(agentsDir, { recursive: true });
     writeFileSync(path.join(agentsDir, "explorer.toml"), 'name = "explorer"\nmodel = "gpt-5.4-mini"\n');
     writeFileSync(path.join(agentsDir, "librarian.toml"), 'name = "librarian"\nmodel = "gpt-5.4-mini"\n');
+    writeFileSync(path.join(agentsDir, "metis.toml"), 'name = "metis"\nmodel = "custom-metis-model"\n');
 
     const setup = spawnSync(
       process.execPath,

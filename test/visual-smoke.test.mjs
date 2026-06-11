@@ -19,8 +19,8 @@ test("given setup has run when doctor runs then reports vision agent gemini smok
     assert.equal(setup.status, 0, setup.stderr);
     assert.equal(doctor.status, 0, doctor.stderr);
     assert.match(doctor.stdout, /visual smoke: verified/);
-    assert.match(doctor.stdout, /visual-engineering: gemini-3.1-pro-preview/);
-    assert.match(doctor.stdout, /visual-looker: gemini-3.1-pro-preview/);
+    assert.match(doctor.stdout, /visual-engineering: gemini-pro-agent/);
+    assert.match(doctor.stdout, /visual-looker: gemini-pro-agent/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -76,7 +76,7 @@ test("given visual agent model is not grok when doctor runs then reports model m
 
     const setup = runCli(["setup", "--config", fixture.configPath], fixture.codexHome);
     const drifted = readFileSync(driftedPath, "utf8").replace(
-      'model = "gemini-3.1-pro-preview"',
+      'model = "gemini-pro-agent"',
       'model = "gpt-5.4"'
     );
     writeFileSync(driftedPath, drifted);
@@ -87,7 +87,7 @@ test("given visual agent model is not grok when doctor runs then reports model m
     assert.match(doctor.stdout, /visual smoke: failed/);
     assert.match(
       doctor.stdout,
-      /visual-looker model mismatch: expected gemini-3.1-pro-preview, got gpt-5.4/
+      /visual-looker model mismatch: expected gemini-pro-agent, got gpt-5.4/
     );
   } finally {
     rmSync(root, { recursive: true, force: true });
