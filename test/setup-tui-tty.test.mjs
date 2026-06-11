@@ -31,6 +31,8 @@ test("given TTY setup reaches provider consent when user declines then Clack fra
     spawnSync("tmux", ["send-keys", "-t", session, "Enter"]);
     sleep(500);
     spawnSync("tmux", ["send-keys", "-t", session, "n", "Enter"]);
+    sleep(500);
+    spawnSync("tmux", ["send-keys", "-t", session, "Enter"]);
     const transcript = stripAnsi(waitForTranscript(session, /__LFP_STATUS__:0/));
 
     const configText = readFileSync(path.join(fixture.codexHome, "config.toml"), "utf8");
@@ -38,6 +40,7 @@ test("given TTY setup reaches provider consent when user declines then Clack fra
     assert.match(transcript, /LFP setup/);
     assert.match(transcript, /Continue with LFP setup/);
     assert.match(transcript, /Install OpenAI-compatible model provider openai-compatible/);
+    assert.match(transcript, /Start GitHub work from which repo/);
     assert.doesNotMatch(transcript, /Applying LFP overlay/);
     assert.doesNotMatch(transcript, /◒/);
     assert.match(transcript, /Enabled lfp@islee23520/);

@@ -8,7 +8,7 @@ Repository and LFP-owned issues live at <https://github.com/islee23520/lazycodex
 
 `lfp setup` runs `npx lazycodex-ai install` before applying LFP. It validates the configured `agentsDir` before writing its own install files.
 
-Local development uses the checkout directly: `npm run setup` skips the LazyCodex preinstall step and installs files from this working tree into `CODEX_HOME/local-marketplaces/islee23520/plugins/lfp`. Use this when testing local edits before publishing.
+Local development uses the checkout directly: `npm run setup` runs the LazyCodex preinstall step, then installs files from this working tree into `CODEX_HOME/local-marketplaces/islee23520/plugins/lfp`. Use `node scripts/cli.mjs setup --skip-lazycodex-install` only when intentionally testing local files without reinstalling LazyCodex first.
 
 OpenAI-compatible provider setup is consent-gated. In interactive setup, LFP asks before writing a model provider into Codex config and records the answer under `CODEX_HOME/.ledger/lfp/`. Non-interactive setup skips provider installation unless consent has already been recorded.
 

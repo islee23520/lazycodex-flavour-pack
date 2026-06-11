@@ -5,7 +5,16 @@ import { spawnSync } from "node:child_process";
 import test from "node:test";
 import assert from "node:assert/strict";
 
+import { selectGitHubStartTarget } from "../scripts/setup-command.mjs";
+
 const CLI = path.resolve("scripts/cli.mjs");
+
+test("given GitHub start answer when selecting target then maps to supported repos", () => {
+  assert.equal(selectGitHubStartTarget("1")?.repo, "islee23520/lazycodex-ai");
+  assert.equal(selectGitHubStartTarget("omo")?.repo, "sisyphuslabs/omo");
+  assert.equal(selectGitHubStartTarget("lfp")?.repo, "islee23520/lazycodex-flavour-pack");
+  assert.equal(selectGitHubStartTarget(""), null);
+});
 
 test("given upstream LazyCodex install fails when setup runs then LFP leaves Codex home untouched", () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-preflight-"));

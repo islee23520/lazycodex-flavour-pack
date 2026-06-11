@@ -22,6 +22,27 @@ import {
   restoreSavedUserOverrideConfigIfPresent
 } from "./user-model-overrides.mjs";
 
+export const GITHUB_START_TARGETS = [
+  {
+    id: "lazycodex-ai",
+    label: "LazyCodex AI",
+    repo: "islee23520/lazycodex-ai",
+    url: "https://github.com/islee23520/lazycodex-ai"
+  },
+  {
+    id: "omo",
+    label: "OMO",
+    repo: "sisyphuslabs/omo",
+    url: "https://github.com/sisyphuslabs/omo"
+  },
+  {
+    id: "lfp",
+    label: "LFP",
+    repo: "islee23520/lazycodex-flavour-pack",
+    url: "https://github.com/islee23520/lazycodex-flavour-pack"
+  }
+];
+
 export async function runSetup(args, { check, root, defaultConfig }) {
   const context = { check, root, defaultConfig };
   if (shouldUseSetupTui(args, { check, input: process.stdin, output: process.stdout })) {
@@ -100,6 +121,7 @@ async function installAndMaybePrompt(args, root, configPath, installOpenAiCompat
 
   if (!args.skipArtPrompt && process.stdin.isTTY) await configureArtTeamIfWanted();
   if (!args.skipModelPrompt && process.stdin.isTTY) await maybePromptModelOverrides(args, installedConfigPath);
+  if (process.stdin.isTTY) await maybePromptGitHubStart();
 
   return installedConfigPath;
 }
@@ -120,6 +142,37 @@ async function maybePromptModelOverrides(args, configPath) {
   } finally {
     rl.close();
   }
+}
+
+async function maybePromptGitHubStart(options = {}) {
+  const output = options.output ?? console;
+  const rl = options.readline ?? createInterface({ input: process.stdin, output: process.stdout });
+
+  try {
+    output.log("GitHub start targets:");
+    for (const [index, target] of GITHUB_START_TARGETS.entries()) {
+      output.log(`  ${index + 1}. ${target.label} (${target.repo})`);
+    }
+
+    const answer = await prompt(rl, "Start GitHub work from which repo? [1/2/3, Enter to skip]: ");
+    const target = selectGitHubStartTarget(answer);
+    if (target === null) return null;
+
+    output.log(`GitHub start: ${target.url}`);
+    return target;
+  } finally {
+    if (!options.readline) rl.close();
+  }
+}
+
+export function selectGitHubStartTarget(answer) {
+  const value = String(answer ?? "").trim().toLowerCase();
+  if (value.length === 0 || ["n", "no", "skip"].includes(value)) return null;
+
+  if (/^[0-9]+$/.test(value)) return GITHUB_START_TARGETS[Number(value) - 1] ?? null;
+  return GITHUB_START_TARGETS.find((target) => {
+    return value === target.id || value === target.repo.toLowerCase() || value === target.label.toLowerCase();
+  }) ?? null;
 }
 
 function printPendingSetupActions(pending) {
@@ -184,4 +237,8 @@ async function shouldInstallOpenAiCompatProvider(state) {
 function getEffectiveReadOnlyOverrideConfig(configPath, args) {
   if (args.config !== undefined) return null;
   return createRestoredUserOverrideConfig(configPath);
+}
+
+function prompt(rl, question) {
+  return new Promise((resolve) => rl.question(question, resolve));
 }
