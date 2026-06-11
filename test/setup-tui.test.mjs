@@ -94,3 +94,32 @@ test("given TUI setup is confirmed when running then calls the legacy setup writ
   assert.deepEqual(calls.find((call) => call[0] === "line-setup"), ["line-setup", true]);
   assert.equal(calls.at(-1)[0], "outro");
 });
+
+test("given TUI setup writer logs status when running then status is shown as framed setup results", async () => {
+  const calls = [];
+  const prompts = {
+    intro: (message) => calls.push(["intro", message]),
+    note: (message, title) => calls.push(["note", title, message]),
+    confirm: async () => true,
+    isCancel: () => false,
+    cancel: (message) => calls.push(["cancel", message]),
+    spinner: () => ({
+      start: (message) => calls.push(["spinner-start", message]),
+      stop: (message) => calls.push(["spinner-stop", message])
+    }),
+    outro: (message) => calls.push(["outro", message])
+  };
+
+  await runSetupTui(
+    {},
+    { check: false, root: "/tmp/lfp", defaultConfig: "/tmp/lfp/config.toml" },
+    {
+      prompts,
+      colors: { inverse: (value) => value, green: (value) => value },
+      runLineSetup: async () => console.log("lfp setup: installed LFP agents")
+    }
+  );
+
+  assert.deepEqual(calls.at(-2), ["note", "Setup results", "lfp setup: installed LFP agents"]);
+  assert.equal(calls.at(-1)[0], "outro");
+});

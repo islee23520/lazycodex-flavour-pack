@@ -10,7 +10,7 @@ describe("mcp-model-fallback", () => {
 
   it("calls through to resolver (happy path)", async () => {
     // The wrapper just delegates; we only check shape here.
-    // Real ledger behavior is covered in the other test file.
+    // Real saved-config behavior is covered in the other test file.
     const r = await model_fallback_resolver({ agent: "explorer", reason: "quota" });
     assert.equal(r.tool, "lfp.model_fallback_resolver");
     assert.ok("effective" in r || "error" in r);

@@ -90,7 +90,7 @@ test("given saved LFP overrides when setup skips model prompt then applies all s
   try {
     const codexHome = path.join(root, "codex-home");
     const agentsDir = path.join(codexHome, "agents");
-    const savedPath = path.join(codexHome, "lfp", "omo-agent-model-overrides.toml");
+    const savedPath = path.join(codexHome, "lfp", "omo-agent-model-overrides.json");
     mkdirSync(agentsDir, { recursive: true });
     mkdirSync(path.dirname(savedPath), { recursive: true });
     writeFileSync(path.join(agentsDir, "explorer.toml"), 'name = "explorer"\nmodel = "gpt-5.4-mini"\n');
@@ -98,18 +98,18 @@ test("given saved LFP overrides when setup skips model prompt then applies all s
     writeFileSync(path.join(agentsDir, "metis.toml"), 'name = "metis"\nmodel = "gpt-5.5"\n');
     writeFileSync(
       savedPath,
-      [
-        "[agents.explorer]",
-        'model = "grok-4.3"',
-        'model_reasoning_effort = "low"',
-        'service_tier = "default"',
-        "",
-        "[agents.metis]",
-        'model = "custom-metis-model"',
-        'model_reasoning_effort = "high"',
-        'service_tier = "default"',
-        ""
-      ].join("\n")
+      savedOverrideJson({
+        explorer: {
+          model: "grok-4.3",
+          model_reasoning_effort: "low",
+          service_tier: "default"
+        },
+        metis: {
+          model: "custom-metis-model",
+          model_reasoning_effort: "high",
+          service_tier: "default"
+        }
+      })
     );
 
     const result = spawnSync(
@@ -208,21 +208,17 @@ test("given saved LFP overrides when dry setup runs then reports no override dri
   try {
     const codexHome = path.join(root, "codex-home");
     const agentsDir = path.join(codexHome, "agents");
-    const savedPath = path.join(codexHome, "lfp", "omo-agent-model-overrides.toml");
+    const savedPath = path.join(codexHome, "lfp", "omo-agent-model-overrides.json");
     mkdirSync(agentsDir, { recursive: true });
     mkdirSync(path.dirname(savedPath), { recursive: true });
     writeFileSync(path.join(agentsDir, "explorer.toml"), 'name = "explorer"\nmodel = "grok-4.3"\n');
     writeFileSync(path.join(agentsDir, "metis.toml"), 'name = "metis"\nmodel = "custom-metis-model"\n');
     writeFileSync(
       savedPath,
-      [
-        "[agents.explorer]",
-        'model = "grok-4.3"',
-        "",
-        "[agents.metis]",
-        'model = "custom-metis-model"',
-        ""
-      ].join("\n")
+      savedOverrideJson({
+        explorer: { model: "grok-4.3" },
+        metis: { model: "custom-metis-model" }
+      })
     );
 
     const result = spawnSync(
@@ -247,21 +243,17 @@ test("given saved LFP overrides when doctor runs then checks saved agent set", (
   try {
     const codexHome = path.join(root, "codex-home");
     const agentsDir = path.join(codexHome, "agents");
-    const savedPath = path.join(codexHome, "lfp", "omo-agent-model-overrides.toml");
+    const savedPath = path.join(codexHome, "lfp", "omo-agent-model-overrides.json");
     mkdirSync(agentsDir, { recursive: true });
     mkdirSync(path.dirname(savedPath), { recursive: true });
     writeFileSync(path.join(agentsDir, "explorer.toml"), 'name = "explorer"\nmodel = "grok-4.3"\n');
     writeFileSync(path.join(agentsDir, "metis.toml"), 'name = "metis"\nmodel = "custom-metis-model"\n');
     writeFileSync(
       savedPath,
-      [
-        "[agents.explorer]",
-        'model = "grok-4.3"',
-        "",
-        "[agents.metis]",
-        'model = "custom-metis-model"',
-        ""
-      ].join("\n")
+      savedOverrideJson({
+        explorer: { model: "grok-4.3" },
+        metis: { model: "custom-metis-model" }
+      })
     );
 
     const result = spawnSync(process.execPath, [CLI, "doctor"], {
@@ -557,4 +549,8 @@ function cliEnv(codexHome) {
 
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function savedOverrideJson(overrides) {
+  return `${JSON.stringify({ schemaVersion: 1, overrides }, null, 2)}\n`;
 }

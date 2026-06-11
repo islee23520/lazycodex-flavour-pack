@@ -9,7 +9,7 @@
  * Output:
  *   JSON with primary, effective, using_fallback, reason, source, fallback_available
  *
- * This runs locally inside the LFP plugin context, so it sees the user's real ledger.
+ * This runs locally inside the LFP plugin context, so it sees the user's saved LFP model config.
  */
 
 import { resolve } from "./model-fallback-resolver.mjs";

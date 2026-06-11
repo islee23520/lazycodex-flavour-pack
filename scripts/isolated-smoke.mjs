@@ -18,7 +18,7 @@ const root = mkdtempSync(path.join(tmpdir(), "lfp-isolated-smoke-"));
 const codexHome = path.join(root, "codex-home");
 const agentsDir = path.join(root, "upstream-agents");
 const overrideConfigPath = path.join(root, "omo-agent-model-overrides.toml");
-const savedOverridePath = path.join(codexHome, "lfp", "omo-agent-model-overrides.toml");
+const savedOverridePath = path.join(codexHome, "lfp", "omo-agent-model-overrides.json");
 
 mkdirSync(codexHome, { recursive: true });
 mkdirSync(agentsDir, { recursive: true });
@@ -133,6 +133,11 @@ function writeAgent(name, model, reasoning, tier) {
 }
 
 function writeOverrideConfig(filePath, sourceDir, agents) {
+  if (filePath.endsWith(".json")) {
+    writeFileSync(filePath, `${JSON.stringify({ schemaVersion: 1, overrides: agents }, null, 2)}\n`);
+    return;
+  }
+
   const lines = [];
   if (sourceDir !== null) {
     lines.push("[source]", `agents_dir = "${sourceDir}"`, "");

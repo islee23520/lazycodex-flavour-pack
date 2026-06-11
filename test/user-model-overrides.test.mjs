@@ -21,13 +21,14 @@ test("given saved user override config when setup runs again then restores model
       output: silentOutput()
     });
     const savedPath = getUserOverrideConfigPath({ env: { CODEX_HOME: codexHome } });
-    assert.equal(savedPath, path.join(codexHome, "lfp", "omo-agent-model-overrides.toml"));
-    const savedText = readFileSync(savedPath, "utf8");
-    assert.match(savedText, /model = "gpt-5\.4-mini"/);
-    assert.match(savedText, /model_reasoning_effort = "xhigh"/);
-    assert.doesNotMatch(savedText, /\[source]/);
+    assert.equal(savedPath, path.join(codexHome, "lfp", "omo-agent-model-overrides.json"));
+    const savedJson = JSON.parse(readFileSync(savedPath, "utf8"));
+    assert.equal(savedJson.schemaVersion, 1);
+    assert.equal(savedJson.overrides.explorer.model, "gpt-5.4-mini");
+    assert.equal(savedJson.overrides.explorer.model_reasoning_effort, "xhigh");
+    assert.equal(savedJson.source, undefined);
 
-    writeFileSync(savedPath, overrideText(root, "gpt-5.4-mini", "xhigh", "fast"));
+    writeFileSync(savedPath, savedOverrideJson("gpt-5.4-mini", "xhigh", "fast"));
     writeFileSync(configPath, overrideText("${CODEX_HOME}/agents", "grok-4.3", "low", "default"));
     const output = captureOutput();
     const restored = await configureAgentModelOverrides(configPath, {
@@ -57,10 +58,10 @@ test("given saved user override when user declines adjust then keeps saved setti
   try {
     const codexHome = path.join(root, "codex-home");
     const configPath = path.join(root, "overrides.toml");
-    const savedPath = path.join(codexHome, "lfp", "omo-agent-model-overrides.toml");
+    const savedPath = path.join(codexHome, "lfp", "omo-agent-model-overrides.json");
     writeFileSync(configPath, overrideText("${CODEX_HOME}/agents", "grok-4.3", "low", "default"));
     mkdirSync(path.dirname(savedPath), { recursive: true });
-    writeFileSync(savedPath, overrideText("${CODEX_HOME}/agents", "gpt-5.4-mini", "xhigh", "fast"));
+    writeFileSync(savedPath, savedOverrideJson("gpt-5.4-mini", "xhigh", "fast"));
 
     const output = captureOutput();
     const result = await configureAgentModelOverrides(configPath, {
@@ -99,8 +100,35 @@ test("given legacy ledger saved user override exists when configuring then migra
     });
 
     const savedPath = getUserOverrideConfigPath({ env: { CODEX_HOME: codexHome } });
-    assert.match(readFileSync(savedPath, "utf8"), /model = "grok-4\.3"/);
+    const savedJson = JSON.parse(readFileSync(savedPath, "utf8"));
+    assert.equal(savedJson.overrides.explorer.model, "grok-4.3");
     assert.ok(output.questions.some((question) => question.includes(path.join(codexHome, "lfp"))));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("given legacy LFP TOML saved user override exists when configuring then migrates it into JSON config", async () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-user-models-"));
+  try {
+    const codexHome = path.join(root, "codex-home");
+    const configPath = path.join(root, "overrides.toml");
+    const legacyPath = path.join(codexHome, "lfp", "omo-agent-model-overrides.toml");
+    writeFileSync(configPath, overrideText("${CODEX_HOME}/agents", "grok-4.3", "low", "default"));
+    mkdirSync(path.dirname(legacyPath), { recursive: true });
+    writeFileSync(legacyPath, overrideText(root, "gpt-5.4-mini", "xhigh", "fast"));
+
+    await configureAgentModelOverrides(configPath, {
+      env: { ...process.env, CODEX_HOME: codexHome },
+      models: ["gpt-5.4-mini", "grok-4.3"],
+      readline: fakeReadline(["n"]),
+      output: silentOutput()
+    });
+
+    const savedPath = getUserOverrideConfigPath({ env: { CODEX_HOME: codexHome } });
+    const savedJson = JSON.parse(readFileSync(savedPath, "utf8"));
+    assert.equal(savedJson.overrides.explorer.model, "gpt-5.4-mini");
+    assert.equal(savedJson.overrides.explorer.service_tier, "fast");
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -159,6 +187,19 @@ function overrideText(root, model, reasoning, tier) {
     `service_tier = "${tier}"`,
     ""
   ].join("\n");
+}
+
+function savedOverrideJson(model, reasoning, tier) {
+  return `${JSON.stringify({
+    schemaVersion: 1,
+    overrides: {
+      explorer: {
+        model,
+        model_reasoning_effort: reasoning,
+        service_tier: tier
+      }
+    }
+  }, null, 2)}\n`;
 }
 
 function escapeRegExp(value) {

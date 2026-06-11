@@ -8,27 +8,28 @@ import { resolve } from "../scripts/model-fallback-resolver.mjs";
 const tmp = mkdtempSync(path.join(os.tmpdir(), "lfp-resolver-test-"));
 const ledgerDir = path.join(tmp, "lfp");
 mkdirSync(ledgerDir, { recursive: true });
-const ledgerFile = path.join(ledgerDir, "omo-agent-model-overrides.toml");
-writeFileSync(ledgerFile, `
-[source]
-agents_dir = "\${CODEX_HOME}/agents"
-
-[agents.explorer]
-model = "grok-4.3"
-model_reasoning_effort = "low"
-service_tier = "default"
-model_fallback = "gpt-5.4-mini"
-model_fallback_reasoning_effort = "low"
-model_fallback_service_tier = "default"
-
-[agents.plan]
-model = "gpt-5.5"
-model_reasoning_effort = "high"
-service_tier = "default"
-model_fallback = "gpt-5.5"
-model_fallback_reasoning_effort = "medium"
-model_fallback_service_tier = "default"
-`);
+const ledgerFile = path.join(ledgerDir, "omo-agent-model-overrides.json");
+writeFileSync(ledgerFile, `${JSON.stringify({
+  schemaVersion: 1,
+  overrides: {
+    explorer: {
+      model: "grok-4.3",
+      model_reasoning_effort: "low",
+      service_tier: "default",
+      model_fallback: "gpt-5.4-mini",
+      model_fallback_reasoning_effort: "low",
+      model_fallback_service_tier: "default"
+    },
+    plan: {
+      model: "gpt-5.5",
+      model_reasoning_effort: "high",
+      service_tier: "default",
+      model_fallback: "gpt-5.5",
+      model_fallback_reasoning_effort: "medium",
+      model_fallback_service_tier: "default"
+    }
+  }
+}, null, 2)}\n`);
 
 describe("model-fallback-resolver", () => {
   it("returns primary when no error reason", () => {

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * LFP Model + Fallback Resolver
- * Source of truth: the user's ~/.codex/lfp/omo-agent-model-overrides.toml
+ * Source of truth: the user's ~/.codex/lfp/omo-agent-model-overrides.json
  *
  * Call with { agent: "...", onError: "quota" | "rate-limit" | "429" | "error" }
  * Returns consistent shape with primary / effective always present (or null).
@@ -11,15 +11,20 @@ import os from "node:os";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 
-const LEDGER_NAME = "omo-agent-model-overrides.toml";
+import { SavedUserModelOverrideConfigSchema } from "./model-override-schema.mjs";
+
+const CONFIG_NAME = "omo-agent-model-overrides.json";
+const LEGACY_CONFIG_NAME = "omo-agent-model-overrides.toml";
 
 function getLedgerPath(options = {}) {
   const env = options.env ?? process.env;
   const codexHome = env.CODEX_HOME?.trim() || path.join(os.homedir(), ".codex");
-  const c1 = path.join(codexHome, "lfp", LEDGER_NAME);
-  const c2 = path.join(codexHome, ".ledger", "lfp", LEDGER_NAME);
+  const c1 = path.join(codexHome, "lfp", CONFIG_NAME);
+  const c2 = path.join(codexHome, "lfp", LEGACY_CONFIG_NAME);
+  const c3 = path.join(codexHome, ".ledger", "lfp", LEGACY_CONFIG_NAME);
   if (existsSync(c1)) return c1;
   if (existsSync(c2)) return c2;
+  if (existsSync(c3)) return c3;
   return null;
 }
 
@@ -68,7 +73,7 @@ export function resolve(agentName, options = {}) {
 
   try {
     const text = readFileSync(ledgerPath, "utf8");
-    parsed = parseSimpleToml(text);
+    parsed = ledgerPath.endsWith(".json") ? parseSavedJson(text) : parseSimpleToml(text);
   } catch (e) {
     return {
       agent: agentName,
@@ -126,6 +131,11 @@ export function resolve(agentName, options = {}) {
     source: ledgerPath,
     fallback_available: !!entry.model_fallback
   };
+}
+
+function parseSavedJson(text) {
+  const parsed = SavedUserModelOverrideConfigSchema.parse(JSON.parse(text));
+  return { source: {}, overrides: parsed.overrides };
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

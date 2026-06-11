@@ -19,6 +19,11 @@ export const ModelOverrideConfigSchema = z.object({
   overrides: z.record(z.string().min(1), ModelOverrideFieldsSchema).default({})
 });
 
+export const SavedUserModelOverrideConfigSchema = z.object({
+  schemaVersion: z.literal(1),
+  overrides: z.record(z.string().min(1), ModelOverrideFieldsSchema).default({})
+}).strict();
+
 export function parseModelOverrideConfig(config) {
   const result = ModelOverrideConfigSchema.safeParse(config);
   if (result.success) return result.data;

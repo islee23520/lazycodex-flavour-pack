@@ -33,11 +33,27 @@ export async function runSetupTui(args, context, deps = {}) {
     throw new Error("LFP setup cancelled");
   }
 
+  const capturedOutput = [];
+  const restoreConsole = captureConsoleOutput(capturedOutput);
   try {
     await runLineSetup({ ...args, noTui: true }, context);
   } catch (error) {
     throw error;
+  } finally {
+    restoreConsole();
   }
 
+  if (capturedOutput.length > 0) prompts.note(capturedOutput.join("\n"), "Setup results");
   prompts.outro(colors.green(`Enabled ${PLUGIN_REF}. Run lfp doctor to verify anytime.`));
+}
+
+function captureConsoleOutput(lines) {
+  const originalLog = console.log;
+  const originalError = console.error;
+  console.log = (...values) => lines.push(values.map(String).join(" "));
+  console.error = (...values) => lines.push(values.map(String).join(" "));
+  return () => {
+    console.log = originalLog;
+    console.error = originalError;
+  };
 }
