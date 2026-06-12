@@ -219,7 +219,11 @@ test("given TUI OMO overrides with additional agents then uses yesNoSelector and
     intro: (m) => calls.push(["intro", m]),
     note: (m, t) => calls.push(["note", t, m]),
     confirm: async (opts) => { calls.push(["confirm", opts.message]); return true; }, // answer yes to change the extra agent
-    select: async (opts) => { calls.push(["select", opts.message]); return opts.initialValue ?? opts.options?.[0]?.value; },
+    select: async (opts) => {
+      calls.push(["select", opts.message]);
+      if (/GitHub/.test(opts.message)) return "1";
+      return opts.initialValue ?? opts.options?.[0]?.value;
+    },
     isCancel: () => false,
     cancel: (m) => calls.push(["cancel", m]),
     outro: (m) => calls.push(["outro", m])
@@ -248,7 +252,7 @@ test("given TUI OMO overrides with additional agents then uses yesNoSelector and
         // finally GitHub
         if (opts.gitHubStartSelector) {
           const gh = await opts.gitHubStartSelector();
-          calls.push(["github", gh ? gh.id : "skip"]);
+          calls.push(["github", gh ? gh.id : "skip", gh?.repo, gh?.url]);
         }
       }
     }
@@ -259,5 +263,11 @@ test("given TUI OMO overrides with additional agents then uses yesNoSelector and
   assert.ok(calls.some(c => c[0] === "confirm" && /Change codex-ultrawork-reviewer/.test(c[1])), "yes/no confirm for additional agent used");
   assert.ok(calls.some(c => c[0] === "additionalYes" && c[1] === true), "answered yes to additional");
   assert.ok(calls.some(c => c[0] === "select" && /codex-ultrawork-reviewer model/.test(c[1])), "additional model select");
-  assert.ok(calls.some(c => c[0] === "select" && /GitHub/.test(c[1]) || c[0]==="github"), "reached GitHub selector");
+  assert.ok(calls.some(c => c[0] === "select" && /GitHub/.test(c[1])), "reached GitHub selector");
+  assert.deepEqual(calls.find(c => c[0] === "github"), [
+    "github",
+    "lazycodex-ai",
+    "sisyphuslabs/lazycodex-ai",
+    "https://github.com/sisyphuslabs/lazycodex-ai"
+  ]);
 });

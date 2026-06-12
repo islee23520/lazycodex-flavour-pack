@@ -69,7 +69,12 @@ function createFixture(root) {
 }
 
 function hasTmux() {
-  return spawnSync("tmux", ["-V"], { encoding: "utf8" }).status === 0;
+  if (spawnSync("tmux", ["-V"], { encoding: "utf8" }).status !== 0) return false;
+
+  const session = `lfp-tmux-check-${process.pid}`;
+  const started = spawnSync("tmux", ["new-session", "-d", "-s", session, "sleep 1"]);
+  spawnSync("tmux", ["kill-session", "-t", session]);
+  return started.status === 0;
 }
 
 function waitForTranscript(session, pattern) {

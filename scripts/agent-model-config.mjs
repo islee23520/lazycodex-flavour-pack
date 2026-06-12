@@ -85,26 +85,26 @@ export async function configureAgentModelOverrides(configPath, options = {}) {
     });
     fields.model = selected;
     fields.service_tier = await promptForServiceTier(rl, {
-        agentName,
-        current: defaultTier,
-        output: options.output,
-        tierSelector: options.tierSelector
-      });
+      agentName,
+      current: defaultTier,
+      output: options.output,
+      tierSelector: options.tierSelector
+    });
     fields.model_reasoning_effort = await promptForReasoningEffort(rl, {
-        agentName,
-        current: defaultReasoning,
-        output: options.output,
-        reasoningSelector: options.reasoningSelector
-      });
+      agentName,
+      current: defaultReasoning,
+      output: options.output,
+      reasoningSelector: options.reasoningSelector
+    });
     config.overrides[agentName] = fields;
   }
 
   for (const agent of additionalAgents) {
     const shouldChange = await promptForYesNo(
-    rl,
-    `  Change ${agent.name} (current: ${agent.model ?? "unknown"}) model/tier/reasoning too? [y/N]: `,
-    { yesNoSelector: options.yesNoSelector }
-  );
+      rl,
+      `  Change ${agent.name} (current: ${agent.model ?? "unknown"}) model/tier/reasoning too? [y/N]: `,
+      { yesNoSelector: options.yesNoSelector }
+    );
     if (!shouldChange) continue;
 
     logAgentGuide(options.output, agent.name, {
@@ -122,22 +122,22 @@ export async function configureAgentModelOverrides(configPath, options = {}) {
         modelSelector: options.modelSelector
       }),
       service_tier: await promptForServiceTier(rl, {
-          agentName: agent.name,
-          current: agent.service_tier ?? "default",
-          output: options.output,
-          tierSelector: options.tierSelector
-        }),
+        agentName: agent.name,
+        current: agent.service_tier ?? "default",
+        output: options.output,
+        tierSelector: options.tierSelector
+      }),
       model_reasoning_effort: await promptForReasoningEffort(rl, {
-          agentName: agent.name,
-          current: agent.model_reasoning_effort ?? "medium",
-          output: options.output,
-          reasoningSelector: options.reasoningSelector
-        })
-      };
+        agentName: agent.name,
+        current: agent.model_reasoning_effort ?? "medium",
+        output: options.output,
+        reasoningSelector: options.reasoningSelector
+      })
+    };
   }
 
   writeOverrideFields(configPath, config.overrides);
-  saveUserOverrideConfig(configPath, userConfigPath);
+  if (options.persistUserOverrides !== false) saveUserOverrideConfig(configPath, userConfigPath);
   options.output?.log?.("OMO override model configuration written.\n");
   return config;
 }

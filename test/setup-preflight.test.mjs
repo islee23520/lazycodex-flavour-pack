@@ -10,7 +10,7 @@ import { maybePromptModelOverrides, selectGitHubStartTarget } from "../scripts/s
 const CLI = path.resolve("scripts/cli.mjs");
 
 test("given GitHub start answer when selecting target then maps to supported repos", () => {
-  assert.equal(selectGitHubStartTarget("1")?.repo, "islee23520/lazycodex-ai");
+  assert.equal(selectGitHubStartTarget("1")?.repo, "sisyphuslabs/lazycodex-ai");
   assert.equal(selectGitHubStartTarget("omo")?.repo, "sisyphuslabs/omo");
   assert.equal(selectGitHubStartTarget("lfp")?.repo, "islee23520/lazycodex-flavour-pack");
   assert.equal(selectGitHubStartTarget(""), null);

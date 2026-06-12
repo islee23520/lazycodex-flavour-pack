@@ -26,8 +26,8 @@ export const GITHUB_START_TARGETS = [
   {
     id: "lazycodex-ai",
     label: "LazyCodex AI",
-    repo: "islee23520/lazycodex-ai",
-    url: "https://github.com/islee23520/lazycodex-ai"
+    repo: "sisyphuslabs/lazycodex-ai",
+    url: "https://github.com/sisyphuslabs/lazycodex-ai"
   },
   {
     id: "omo",
@@ -148,7 +148,7 @@ export async function maybePromptModelOverrides(args, configPath, options = {}) 
       const shouldEdit = await promptForYesNo(
         rl,
         "Edit OMO agent model overrides now? Existing configured values will be applied if you press Enter. [y/N]: ",
-        { yesNoSelector: selectorOptions.yesNoSelector }
+        { yesNoSelector: options.yesNoSelector }
       );
       if (!shouldEdit) {
         output.log("Keeping configured OMO model override values.");
@@ -173,6 +173,14 @@ export async function maybePromptModelOverrides(args, configPath, options = {}) 
 
 async function maybePromptGitHubStart(options = {}) {
   const output = options.output ?? console;
+  if (typeof options.gitHubStartSelector === "function") {
+    const target = await options.gitHubStartSelector();
+    if (target === null) return null;
+
+    output.log(`GitHub start: ${target.url}`);
+    return target;
+  }
+
   const rl = options.readline ?? createInterface({ input: process.stdin, output: process.stdout });
 
   try {

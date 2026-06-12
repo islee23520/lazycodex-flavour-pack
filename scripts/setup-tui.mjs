@@ -156,7 +156,7 @@ function createReasoningSelector(prompts) {
 function createGitHubStartSelector(prompts) {
   return async () => {
     const targets = [
-      { id: "lazycodex-ai", label: "LazyCodex AI", repo: "islee23520/lazycodex-ai", url: "https://github.com/islee23520/lazycodex-ai" },
+      { id: "lazycodex-ai", label: "LazyCodex AI", repo: "sisyphuslabs/lazycodex-ai", url: "https://github.com/sisyphuslabs/lazycodex-ai" },
       { id: "omo", label: "OMO", repo: "sisyphuslabs/omo", url: "https://github.com/sisyphuslabs/omo" },
       { id: "lfp", label: "LFP", repo: "islee23520/lazycodex-flavour-pack", url: "https://github.com/islee23520/lazycodex-flavour-pack" }
     ];
