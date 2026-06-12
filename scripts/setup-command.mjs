@@ -53,7 +53,7 @@ export async function runSetup(args, { check, root, defaultConfig }) {
   await runSetupLineMode(args, context);
 }
 
-export async function runSetupLineMode(args, { check, root, defaultConfig }) {
+export async function runSetupLineMode(args, { check, root, defaultConfig }, options = {}) {
   let configPath = args.config ?? defaultConfig;
 
   if (args.skipLazycodexInstall) {
@@ -65,7 +65,7 @@ export async function runSetupLineMode(args, { check, root, defaultConfig }) {
   }
 
   const basePending = getPendingCodexPluginActions();
-  const installOpenAiCompatProvider = check ? false : await shouldInstallOpenAiCompatProvider(basePending.state);
+  const installOpenAiCompatProvider = check ? false : await shouldInstallOpenAiCompatProvider(basePending.state, options);
   const pending = getPendingCodexPluginActions({ installOpenAiCompatProvider });
   const effectiveConfig = check ? getEffectiveReadOnlyOverrideConfig(configPath, args) : null;
   let pendingOverrides;
@@ -79,7 +79,7 @@ export async function runSetupLineMode(args, { check, root, defaultConfig }) {
   if (check) {
     printPendingSetupActions(pending);
   } else {
-    const installedPath = await installAndMaybePrompt(args, root, configPath, installOpenAiCompatProvider, pending);
+    const installedPath = await installAndMaybePrompt(args, root, configPath, installOpenAiCompatProvider, pending, options);
     if (installedPath === null) return;
     configPath = installedPath;
   }
@@ -97,7 +97,7 @@ export async function runSetupLineMode(args, { check, root, defaultConfig }) {
   }
 }
 
-async function installAndMaybePrompt(args, root, configPath, installOpenAiCompatProvider, pending) {
+async function installAndMaybePrompt(args, root, configPath, installOpenAiCompatProvider, pending, options = {}) {
   printCodexAppsCacheQuarantine();
 
   if (pending.state.openAiCompatProvider.status === "drifted") {
@@ -119,9 +119,18 @@ async function installAndMaybePrompt(args, root, configPath, installOpenAiCompat
   printOpenAiCompatProviderState(installed);
   printInstallSmokeState();
 
-  if (!args.skipArtPrompt && process.stdin.isTTY) await configureArtTeamIfWanted();
-  if (!args.skipModelPrompt && process.stdin.isTTY) await maybePromptModelOverrides(args, installedConfigPath);
-  if (process.stdin.isTTY) await maybePromptGitHubStart();
+  if (!args.skipArtPrompt && process.stdin.isTTY) await configureArtTeamIfWanted({
+    modelSelector: options.modelSelector,
+    tierSelector: options.tierSelector,
+    reasoningSelector: options.reasoningSelector
+  });
+  if (!args.skipModelPrompt && process.stdin.isTTY) await maybePromptModelOverrides(args, installedConfigPath, {
+    modelSelector: options.modelSelector,
+    tierSelector: options.tierSelector,
+    reasoningSelector: options.reasoningSelector,
+    yesNoSelector: options.yesNoSelector
+  });
+  if (process.stdin.isTTY) await maybePromptGitHubStart({ gitHubStartSelector: options.gitHubStartSelector });
 
   return installedConfigPath;
 }
@@ -138,7 +147,8 @@ export async function maybePromptModelOverrides(args, configPath, options = {}) 
     if (!hasSavedOverrides) {
       const shouldEdit = await promptForYesNo(
         rl,
-        "Edit OMO agent model overrides now? Existing configured values will be applied if you press Enter. [y/N]: "
+        "Edit OMO agent model overrides now? Existing configured values will be applied if you press Enter. [y/N]: ",
+        { yesNoSelector: selectorOptions.yesNoSelector }
       );
       if (!shouldEdit) {
         output.log("Keeping configured OMO model override values.");
@@ -150,7 +160,11 @@ export async function maybePromptModelOverrides(args, configPath, options = {}) 
       readline: rl,
       output,
       recommendModels: true,
-      confirmConfiguredValues: true
+      confirmConfiguredValues: true,
+      modelSelector: options.modelSelector,
+      tierSelector: options.tierSelector,
+      reasoningSelector: options.reasoningSelector,
+      yesNoSelector: options.yesNoSelector
     });
   } finally {
     if (!options.readline) rl.close();
@@ -214,7 +228,7 @@ function printSetupChanges(result, globalResult, check) {
   }
 }
 
-async function shouldInstallOpenAiCompatProvider(state) {
+async function shouldInstallOpenAiCompatProvider(state, selectorOptions = {}) {
   if (state.anyModelProviderConfigured) {
     console.log("lfp setup: model provider already configured; leaving existing provider untouched.");
     return false;
@@ -237,7 +251,8 @@ async function shouldInstallOpenAiCompatProvider(state) {
   try {
     const answer = await promptForYesNo(
       rl,
-      `Install OpenAI-compatible model provider ${state.openAiCompatProvider.id} in ${state.configPath}? [y/N]: `
+      `Install OpenAI-compatible model provider ${state.openAiCompatProvider.id} in ${state.configPath}? [y/N]: `,
+      { yesNoSelector: selectorOptions.yesNoSelector }
     );
     const consentPath = saveProviderConsent(answer);
     console.log(`lfp setup: recorded model provider install consent in ${consentPath}.`);

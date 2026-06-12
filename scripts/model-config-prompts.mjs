@@ -19,11 +19,19 @@ export function logAgentGuide(output, agentName, current, options = {}) {
   output?.log?.("  Guide: no preset — choose a model from the available list or type a custom id.");
 }
 
-export async function promptForModel(rl, { agentName, current, models, output }) {
+export async function promptForModel(rl, { agentName, current, models, output, modelSelector }) {
   const choices = groupModelAliases(models);
   const defaultIndex = choices.findIndex((choice) => choice.aliases.includes(current) || choice.key === current) + 1;
   const suffix = defaultIndex > 0 ? `[${defaultIndex}]` : `[${current}]`;
   const prefix = agentName ? `${agentName} model` : "Model";
+
+  if (typeof modelSelector === "function" && choices.length > 0) {
+    return await modelSelector({
+      agentName,
+      current,
+      choices: choices.map((choice) => ({ ...choice, label: formatModelChoice(choice) }))
+    });
+  }
 
   while (true) {
     const answer = (await prompt(rl, `  ${prefix} ${suffix}: `)).trim();
@@ -36,7 +44,11 @@ export async function promptForModel(rl, { agentName, current, models, output })
   }
 }
 
-export async function promptForServiceTier(rl, { agentName, current, output }) {
+export async function promptForServiceTier(rl, { agentName, current, output, tierSelector }) {
+  if (typeof tierSelector === "function") {
+    return await tierSelector({ agentName, current });
+  }
+
   printChoices(SERVICE_TIERS.map((tier) => tier.label), output);
   const defaultIndex = SERVICE_TIERS.findIndex((tier) => tier.value === current) + 1;
   const suffix = defaultIndex > 0 ? `[${defaultIndex}]` : `[${current}]`;
@@ -56,7 +68,11 @@ export async function promptForServiceTier(rl, { agentName, current, output }) {
   }
 }
 
-export async function promptForReasoningEffort(rl, { agentName, current, output }) {
+export async function promptForReasoningEffort(rl, { agentName, current, output, reasoningSelector }) {
+  if (typeof reasoningSelector === "function") {
+    return await reasoningSelector({ agentName, current });
+  }
+
   printChoices(REASONING_EFFORTS, output);
   const defaultIndex = REASONING_EFFORTS.indexOf(current) + 1;
   const suffix = defaultIndex > 0 ? `[${defaultIndex}]` : `[${current}]`;
@@ -81,7 +97,11 @@ export function printModelChoices(models, output) {
   output?.log?.("");
 }
 
-export async function promptForYesNo(rl, question) {
+export async function promptForYesNo(rl, question, options = {}) {
+  const { yesNoSelector } = options;
+  if (typeof yesNoSelector === "function") {
+    return await yesNoSelector({ question });
+  }
   const answer = (await prompt(rl, question)).trim().toLowerCase();
   return ["y", "yes"].includes(answer);
 }

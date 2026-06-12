@@ -38,6 +38,25 @@ test("given grouped model aliases when selecting by group then returns represent
   assert.equal(selected, "openai/gpt-5.5");
 });
 
+test("given TUI model selector when choosing model then returns selected value without readline", async () => {
+  const selected = await promptForModel(readlineShouldNotRun(), {
+    current: "gpt-5.4-mini",
+    models: ["gpt-5.4-mini", "github-copilot/gpt-5.5", "openai/gpt-5.5"],
+    output: silentOutput(),
+    modelSelector: async ({ agentName, current, choices }) => {
+      assert.equal(agentName, undefined);
+      assert.equal(current, "gpt-5.4-mini");
+      assert.deepEqual(
+        choices.map((choice) => choice.label),
+        ["gpt-5.4-mini", "gpt-5.5 (aliases: github-copilot/gpt-5.5, openai/gpt-5.5)"]
+      );
+      return "openai/gpt-5.5";
+    }
+  });
+
+  assert.equal(selected, "openai/gpt-5.5");
+});
+
 test("given LazyCodex override prompt prefers current when logging guide then does not push role guide model", () => {
   const output = captureOutput();
 
@@ -58,6 +77,14 @@ function fakeReadline(answers) {
   return {
     question(_question, resolve) {
       resolve(answers.shift() ?? "");
+    }
+  };
+}
+
+function readlineShouldNotRun() {
+  return {
+    question() {
+      throw new Error("readline should not run when TUI model selector is available");
     }
   };
 }

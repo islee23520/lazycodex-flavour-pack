@@ -68,12 +68,10 @@ Flags:
 This package is a lightweight overlay. setup runs npx lazycodex-ai install before applying LFP, then installs/enables this pack in Codex and applies configured overrides to existing agents.`;
 
 if (isDirectRun()) {
-  try {
-    await runCli(process.argv.slice(2));
-  } catch (error) {
+  runCli(process.argv.slice(2)).catch((error) => {
     console.error(error instanceof Error ? error.message : String(error));
     process.exitCode = 1;
-  }
+  });
 }
 
 export async function runCli(argv) {

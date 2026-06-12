@@ -80,27 +80,31 @@ export async function configureAgentModelOverrides(configPath, options = {}) {
       agentName,
       current: defaultModel,
       models,
-      output: options.output
+      output: options.output,
+      modelSelector: options.modelSelector
     });
     fields.model = selected;
     fields.service_tier = await promptForServiceTier(rl, {
-      agentName,
-      current: defaultTier,
-      output: options.output
-    });
+        agentName,
+        current: defaultTier,
+        output: options.output,
+        tierSelector: options.tierSelector
+      });
     fields.model_reasoning_effort = await promptForReasoningEffort(rl, {
-      agentName,
-      current: defaultReasoning,
-      output: options.output
-    });
+        agentName,
+        current: defaultReasoning,
+        output: options.output,
+        reasoningSelector: options.reasoningSelector
+      });
     config.overrides[agentName] = fields;
   }
 
   for (const agent of additionalAgents) {
     const shouldChange = await promptForYesNo(
-      rl,
-      `  Change ${agent.name} (current: ${agent.model ?? "unknown"}) model/tier/reasoning too? [y/N]: `
-    );
+    rl,
+    `  Change ${agent.name} (current: ${agent.model ?? "unknown"}) model/tier/reasoning too? [y/N]: `,
+    { yesNoSelector: options.yesNoSelector }
+  );
     if (!shouldChange) continue;
 
     logAgentGuide(options.output, agent.name, {
@@ -114,19 +118,22 @@ export async function configureAgentModelOverrides(configPath, options = {}) {
         agentName: agent.name,
         current: agent.model ?? models[0],
         models,
-        output: options.output
+        output: options.output,
+        modelSelector: options.modelSelector
       }),
       service_tier: await promptForServiceTier(rl, {
-        agentName: agent.name,
-        current: agent.service_tier ?? "default",
-        output: options.output
-      }),
+          agentName: agent.name,
+          current: agent.service_tier ?? "default",
+          output: options.output,
+          tierSelector: options.tierSelector
+        }),
       model_reasoning_effort: await promptForReasoningEffort(rl, {
-        agentName: agent.name,
-        current: agent.model_reasoning_effort ?? "medium",
-        output: options.output
-      })
-    };
+          agentName: agent.name,
+          current: agent.model_reasoning_effort ?? "medium",
+          output: options.output,
+          reasoningSelector: options.reasoningSelector
+        })
+      };
   }
 
   writeOverrideFields(configPath, config.overrides);
@@ -212,7 +219,8 @@ async function maybeRestoreUserOverrideConfig(configPath, userConfigPath, option
 
   const shouldAdjust = await promptForYesNo(
     options.readline,
-    `  Adjust LFP model overrides now? Saved settings: ${userConfigPath} [y/N]: `
+    `  Adjust LFP model overrides now? Saved settings: ${userConfigPath} [y/N]: `,
+    { yesNoSelector: options.yesNoSelector }
   );
   if (!shouldAdjust) {
     restoreUserOverrideConfig(configPath, userConfigPath);

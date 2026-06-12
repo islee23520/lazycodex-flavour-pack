@@ -93,18 +93,26 @@ export async function configureArtTeam(options = {}) {
 
       const model =
         models.length > 0
-          ? await promptForModel(rl, { agentName: agentPromptName, current: current.model, models, output })
+          ? await promptForModel(rl, {
+              agentName: agentPromptName,
+              current: current.model,
+              models,
+              output,
+              modelSelector: options.modelSelector
+            })
           : await promptForText(rl, `  ${agentPromptName} model [${current.model}]: `, current.model);
       const tier = await promptForServiceTier(rl, {
-        agentName: agentPromptName,
-        current: current.service_tier ?? agent.defaultServiceTier,
-        output
-      });
+      agentName: agentPromptName,
+      current: current.service_tier ?? agent.defaultServiceTier,
+      output,
+      tierSelector: options.tierSelector
+    });
       const reasoning = await promptForReasoningEffort(rl, {
-        agentName: agentPromptName,
-        current: current.model_reasoning_effort ?? agent.defaultReasoning,
-        output
-      });
+      agentName: agentPromptName,
+      current: current.model_reasoning_effort ?? agent.defaultReasoning,
+      output,
+      reasoningSelector: options.reasoningSelector
+    });
 
       config[agent.name] = {
         model,
