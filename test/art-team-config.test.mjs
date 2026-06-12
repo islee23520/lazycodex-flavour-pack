@@ -35,12 +35,13 @@ test("given art team setup when user selects listed models tiers and reasoning t
     assert.match(qa, /model = "gpt-5\.4-mini"/);
     assert.match(qa, /model_reasoning_effort = "high"/);
     assert.match(qa, /service_tier = "fast"/);
+    assert.ok(configOutput.questions.some((question) => /artistry \(Art Director \(supervisor\)\) model/.test(question)));
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
 });
 
-test("given setup asks about art team when user declines then leaves art configs unchanged", async () => {
+test("given setup asks about art team when user declines then keeps configured art values without editing", async () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-art-config-"));
   try {
     writeArtAgentConfigs(root);
@@ -73,12 +74,16 @@ function artAgentText(name, model, tier) {
 
 function fakeReadline(answers) {
   return {
-    question(_question, resolve) {
+    question(question, resolve) {
+      configOutput.questions.push(question);
       resolve(answers.shift() ?? "");
     }
   };
 }
 
+let configOutput = { questions: [] };
+
 function silentOutput() {
+  configOutput = { questions: [] };
   return { log() {} };
 }

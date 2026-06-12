@@ -51,7 +51,8 @@ export async function configureAgentModelOverrides(configPath, options = {}) {
   }
 
   options.output?.log?.("\n=== OMO Agent Model Overrides ===");
-  options.output?.log?.("Choose models for existing non-art LazyCodex/OMO agents.\n");
+  options.output?.log?.("Choose models for existing non-art LazyCodex/OMO agents.");
+  options.output?.log?.("Each agent prompt shows the agent name, current config, and selected fields.\n");
   if (models.length > 0) printModelChoices(models, options.output);
 
   const recommendations =
@@ -107,6 +108,7 @@ export async function configureAgentModelOverrides(configPath, options = {}) {
       reasoning: agent.model_reasoning_effort,
       tier: agent.service_tier
     }, { preferCurrent: true });
+    options.output?.log?.("  Source: installed agent, not yet in LFP override config.");
     config.overrides[agent.name] = {
       model: await promptForModel(rl, {
         agentName: agent.name,

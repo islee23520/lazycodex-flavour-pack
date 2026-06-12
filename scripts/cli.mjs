@@ -48,8 +48,8 @@ npx:
 
 Commands:
   setup            Install LFP plugin, agents, and overrides into Codex.
-                   Interactive: asks about art team models (optional). OMO model overrides only
-                   prompt on installed setup or when you have previously saved custom settings.
+                   Interactive: asks whether to edit art team and OMO model settings.
+                   Press Enter to keep and apply the configured values without per-agent prompts.
                    If provider models are discoverable, setup shows recommendations while
                    Enter keeps and re-applies each configured agent value.
   dry-setup        Preview what setup would do without writing.

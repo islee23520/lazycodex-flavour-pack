@@ -126,21 +126,34 @@ async function installAndMaybePrompt(args, root, configPath, installOpenAiCompat
   return installedConfigPath;
 }
 
-async function maybePromptModelOverrides(args, configPath) {
-  const userConfigPath = migrateLegacyUserOverrideConfig();
-  const shouldPromptModelOverrides = hasSavedUserOverrideConfig(userConfigPath) || args.config === undefined;
+export async function maybePromptModelOverrides(args, configPath, options = {}) {
+  const userConfigPath = migrateLegacyUserOverrideConfig(options);
+  const hasSavedOverrides = hasSavedUserOverrideConfig(userConfigPath);
+  const shouldPromptModelOverrides = hasSavedOverrides || args.config === undefined;
   if (!shouldPromptModelOverrides) return;
 
-  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  const rl = options.readline ?? createInterface({ input: process.stdin, output: process.stdout });
+  const output = options.output ?? console;
   try {
+    if (!hasSavedOverrides) {
+      const shouldEdit = await promptForYesNo(
+        rl,
+        "Edit OMO agent model overrides now? Existing configured values will be applied if you press Enter. [y/N]: "
+      );
+      if (!shouldEdit) {
+        output.log("Keeping configured OMO model override values.");
+        return;
+      }
+    }
+
     await configureAgentModelOverrides(configPath, {
       readline: rl,
-      output: console,
+      output,
       recommendModels: true,
       confirmConfiguredValues: true
     });
   } finally {
-    rl.close();
+    if (!options.readline) rl.close();
   }
 }
 

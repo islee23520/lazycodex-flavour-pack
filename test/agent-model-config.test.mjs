@@ -175,6 +175,8 @@ test("given setup recommendation flow when user presses enter per agent then wri
     assert.match(updated, /\[agents\.explorer]\nmodel = "gpt-5\.4-mini"\nmodel_reasoning_effort = "low"\nservice_tier = "fast"/);
     assert.match(updated, /\[agents\.metis]\nmodel = "gpt-5\.5"\nmodel_reasoning_effort = "high"\nservice_tier = "default"/);
     assert.match(output.lines.join("\n"), /Recommendation: gpt-5\.4-mini/);
+    assert.match(output.lines.join("\n"), /Available models \(enter number or exact model id\):/);
+    assert.match(output.lines.join("\n"), /Agent: explorer/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

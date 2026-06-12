@@ -10,6 +10,7 @@ export function getAgentModelGuide(agentName) {
 }
 
 export function logAgentGuide(output, agentName, current, options = {}) {
+  if (agentName) output?.log?.(`Agent: ${agentName}`);
   output?.log?.(`  Current: ${current.model ?? "unknown"} (reasoning: ${current.reasoning ?? "unset"}, tier: ${current.tier ?? "unset"})`);
   if (options.preferCurrent === true) {
     output?.log?.("  Default: keep the current LazyCodex/OMO value; press Enter to leave it unchanged.");
@@ -73,6 +74,7 @@ export async function promptForReasoningEffort(rl, { agentName, current, output 
 }
 
 export function printModelChoices(models, output) {
+  output?.log?.("Available models (enter number or exact model id):");
   for (const [index, choice] of groupModelAliases(models).entries()) {
     output?.log?.(`  ${index + 1}. ${formatModelChoice(choice)}`);
   }

@@ -52,7 +52,10 @@ export async function configureArtTeamIfWanted(options = {}) {
   const output = options.output ?? console;
 
   try {
-    const answer = (await prompt(rl, "Configure art team models now? [y/N]: ")).trim().toLowerCase();
+    const answer = (await prompt(
+      rl,
+      "Edit art team model config now? Existing configured values are already installed; press Enter to keep them. [y/N]: "
+    )).trim().toLowerCase();
     if (!["y", "yes"].includes(answer)) {
       output.log("Keeping existing art team model configuration.");
       return null;
@@ -78,11 +81,11 @@ export async function configureArtTeam(options = {}) {
 
     for (const agent of ART_AGENTS) {
       const current = config[agent.name] ?? { model: agent.defaultModel };
+      const agentPromptName = `${agent.name} (${agent.label})`;
 
-      output.log(`${agent.label}`);
       output.log(`  Role: ${agent.description}`);
       output.log(`  Default: ${agent.defaultModel}`);
-      logAgentGuide(output, agent.name, {
+      logAgentGuide(output, agentPromptName, {
         model: current.model,
         reasoning: current.model_reasoning_effort ?? agent.defaultReasoning,
         tier: current.service_tier ?? agent.defaultServiceTier
@@ -90,13 +93,15 @@ export async function configureArtTeam(options = {}) {
 
       const model =
         models.length > 0
-          ? await promptForModel(rl, { current: current.model, models, output })
-          : await promptForText(rl, `  Model [${current.model}]: `, current.model);
+          ? await promptForModel(rl, { agentName: agentPromptName, current: current.model, models, output })
+          : await promptForText(rl, `  ${agentPromptName} model [${current.model}]: `, current.model);
       const tier = await promptForServiceTier(rl, {
+        agentName: agentPromptName,
         current: current.service_tier ?? agent.defaultServiceTier,
         output
       });
       const reasoning = await promptForReasoningEffort(rl, {
+        agentName: agentPromptName,
         current: current.model_reasoning_effort ?? agent.defaultReasoning,
         output
       });

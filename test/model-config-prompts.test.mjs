@@ -25,6 +25,7 @@ test("given provider-prefixed model aliases when grouping then displays one choi
     ]
   );
   assert.match(output.lines.join("\n"), /gpt-5\.5 \(aliases: github-copilot\/gpt-5\.5, openai\/gpt-5\.5, opencode\/gpt-5\.5\)/);
+  assert.match(output.lines.join("\n"), /Available models \(enter number or exact model id\):/);
 });
 
 test("given grouped model aliases when selecting by group then returns representative available model id", async () => {
