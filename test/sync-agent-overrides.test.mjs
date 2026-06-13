@@ -117,6 +117,16 @@ test("given packaged override config when reading then targets Codex-loaded agen
   });
 
   assert.equal(config.source.agentsDir, path.join(codexHome, "agents"));
+  assert.deepEqual(config.overrides.default, {
+    model: "gpt-5.5",
+    model_reasoning_effort: "high",
+    service_tier: "default"
+  });
+  assert.deepEqual(config.overrides.ulw, {
+    model: "gpt-5.5",
+    model_reasoning_effort: "xhigh",
+    service_tier: "default"
+  });
   assert.equal(config.overrides.explorer.model, "gpt-5.4-mini");
   assert.deepEqual(config.overrides.librarian, {
     model: "gpt-5.4-mini",
@@ -273,6 +283,62 @@ test("given only agent-specific overrides when syncing global defaults then leav
     assert.deepEqual(result.changed, []);
     assert.match(readFileSync(globalConfigPath, "utf8"), /model = "gpt-5\.5"/);
     assert.doesNotMatch(readFileSync(globalConfigPath, "utf8"), /grok-4\.20-0309-non-reasoning/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("given default and ULW override sections when syncing global defaults then updates only top-level and ULW profile fields", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-global-defaults-"));
+  try {
+    const codexHome = path.join(root, "codex-home");
+    const agentsDir = path.join(codexHome, "agents");
+    const configPath = path.join(root, "overrides.toml");
+    const globalConfigPath = path.join(codexHome, "config.toml");
+    mkdirSync(agentsDir, { recursive: true });
+    writeFileSync(
+      globalConfigPath,
+      [
+        'model = "gpt-5.4-mini"',
+        'model_reasoning_effort = "low"',
+        'service_tier = "fast"',
+        "",
+        "[profiles.ulw]",
+        'model = "gpt-5.4-mini"',
+        'model_reasoning_effort = "low"',
+        'service_tier = "fast"',
+        "",
+        "[profiles.other]",
+        'model = "keep-me"',
+        ""
+      ].join("\n")
+    );
+    writeFileSync(
+      configPath,
+      [
+        "[source]",
+        'agents_dir = "${CODEX_HOME}/agents"',
+        "",
+        "[agents.default]",
+        'model = "gpt-5.5"',
+        'model_reasoning_effort = "high"',
+        'service_tier = "default"',
+        "",
+        "[agents.ulw]",
+        'model = "gpt-5.5"',
+        'model_reasoning_effort = "xhigh"',
+        'service_tier = "default"',
+        ""
+      ].join("\n")
+    );
+
+    const result = syncGlobalModelDefaults(configPath, { env: { ...process.env, CODEX_HOME: codexHome } });
+    const updated = readFileSync(globalConfigPath, "utf8");
+
+    assert.deepEqual(result.changed, [globalConfigPath]);
+    assert.match(updated, /^model = "gpt-5\.5"\nmodel_reasoning_effort = "high"\nservice_tier = "default"/);
+    assert.match(updated, /\[profiles\.ulw]\nmodel = "gpt-5\.5"\nmodel_reasoning_effort = "xhigh"\nservice_tier = "default"/);
+    assert.match(updated, /\[profiles\.other]\nmodel = "keep-me"/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

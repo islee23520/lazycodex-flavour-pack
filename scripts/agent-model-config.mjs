@@ -24,6 +24,10 @@ import { buildRecommendedModelOverrides } from "./model-recommendations.mjs";
 const MODEL_FIELD = "model";
 const WRITABLE_FIELDS = ["model", "model_reasoning_effort", "service_tier"];
 const LFP_AGENT_NAMES = new Set(["artistry", "artistry-gen", "artistry-qa", "visual-engineering", "visual-looker"]);
+const DEFAULT_MODEL_SECTIONS = new Map([
+  ["default", "Default Codex"],
+  ["ulw", "ULW"]
+]);
 
 export { getUserOverrideConfigPath };
 export { fetchAvailableModels, normalizeModelsPayload, readActiveModelProvider } from "./model-provider.mjs";
@@ -41,24 +45,46 @@ export async function configureAgentModelOverrides(configPath, options = {}) {
   if (savedOverrideChoice === "adjust") options.output?.log?.("Continuing with editable model override prompts.\n");
 
   const config = readOverrideConfig(configPath, options);
-  const agentNames = Object.keys(config.overrides ?? {});
+  const defaultModelNames = Object.keys(config.overrides ?? {}).filter((name) => DEFAULT_MODEL_SECTIONS.has(name));
+  const agentNames = Object.keys(config.overrides ?? {}).filter((name) => !DEFAULT_MODEL_SECTIONS.has(name));
   const additionalAgents = options.additionalAgents ?? discoverAdditionalAgents(config.source?.agentsDir, config.overrides ?? {});
-  if (agentNames.length === 0 && additionalAgents.length === 0) return config;
+  if (defaultModelNames.length === 0 && agentNames.length === 0 && additionalAgents.length === 0) return config;
 
   const models = options.models ?? (await safeFetchAvailableModels(options));
   if (models.length === 0) {
     options.output?.log?.("No available models were discovered; enter model IDs manually.");
   }
 
-  options.output?.log?.("\n=== OMO Agent Model Overrides ===");
-  options.output?.log?.("Choose models for existing non-art LazyCodex/OMO agents.");
-  options.output?.log?.("Each agent prompt shows the agent name, current config, and selected fields.\n");
   if (models.length > 0) printModelChoices(models, options.output);
 
   const recommendations =
     (options.recommendModels === true || options.offerAutoRecommend === true) && models.length > 0
       ? buildRecommendedModelOverrides(config.overrides, models)
       : {};
+
+  if (defaultModelNames.length > 0) {
+    options.output?.log?.("=== Default Model Settings ===");
+    options.output?.log?.("Choose Codex default models. ULW is used for ultrawork runs and related defaults.\n");
+  }
+
+  for (const agentName of defaultModelNames) {
+    await promptForModelSection(config, agentName, {
+      displayName: DEFAULT_MODEL_SECTIONS.get(agentName),
+      models,
+      output: options.output,
+      confirmConfiguredValues: options.confirmConfiguredValues,
+      modelSelector: options.modelSelector,
+      tierSelector: options.tierSelector,
+      reasoningSelector: options.reasoningSelector,
+      readline: rl
+    });
+  }
+
+  if (agentNames.length > 0) {
+    options.output?.log?.("\n=== OMO Agent Model Overrides ===");
+    options.output?.log?.("Choose models for existing non-art LazyCodex/OMO agents.");
+    options.output?.log?.("Each agent prompt shows the agent name, current config, and selected fields.\n");
+  }
 
   for (const agentName of agentNames) {
     const fields = config.overrides[agentName] ?? {};
@@ -78,6 +104,7 @@ export async function configureAgentModelOverrides(configPath, options = {}) {
     logAgentRecommendation(options.output, recommended);
     const selected = await promptForModel(rl, {
       agentName,
+      displayName: agentName,
       current: defaultModel,
       models,
       output: options.output,
@@ -86,12 +113,14 @@ export async function configureAgentModelOverrides(configPath, options = {}) {
     fields.model = selected;
     fields.service_tier = await promptForServiceTier(rl, {
       agentName,
+      displayName: agentName,
       current: defaultTier,
       output: options.output,
       tierSelector: options.tierSelector
     });
     fields.model_reasoning_effort = await promptForReasoningEffort(rl, {
       agentName,
+      displayName: agentName,
       current: defaultReasoning,
       output: options.output,
       reasoningSelector: options.reasoningSelector
@@ -116,6 +145,7 @@ export async function configureAgentModelOverrides(configPath, options = {}) {
     config.overrides[agent.name] = {
       model: await promptForModel(rl, {
         agentName: agent.name,
+        displayName: agent.name,
         current: agent.model ?? models[0],
         models,
         output: options.output,
@@ -123,12 +153,14 @@ export async function configureAgentModelOverrides(configPath, options = {}) {
       }),
       service_tier: await promptForServiceTier(rl, {
         agentName: agent.name,
+        displayName: agent.name,
         current: agent.service_tier ?? "default",
         output: options.output,
         tierSelector: options.tierSelector
       }),
       model_reasoning_effort: await promptForReasoningEffort(rl, {
         agentName: agent.name,
+        displayName: agent.name,
         current: agent.model_reasoning_effort ?? "medium",
         output: options.output,
         reasoningSelector: options.reasoningSelector
@@ -140,6 +172,44 @@ export async function configureAgentModelOverrides(configPath, options = {}) {
   if (options.persistUserOverrides !== false) saveUserOverrideConfig(configPath, userConfigPath);
   options.output?.log?.("OMO override model configuration written.\n");
   return config;
+}
+
+async function promptForModelSection(config, agentName, options) {
+  const fields = config.overrides[agentName] ?? {};
+  const current = typeof fields.model === "string" ? fields.model : options.models[0];
+  const currentReasoning = typeof fields.model_reasoning_effort === "string" ? fields.model_reasoning_effort : "low";
+  const currentTier = typeof fields.service_tier === "string" ? fields.service_tier : "default";
+  const label = options.displayName ?? agentName;
+
+  logAgentGuide(options.output, label, {
+    model: current,
+    reasoning: currentReasoning,
+    tier: currentTier
+  }, { preferCurrent: true });
+
+  fields.model = await promptForModel(options.readline, {
+    agentName,
+    displayName: label,
+    current,
+    models: options.models,
+    output: options.output,
+    modelSelector: options.modelSelector
+  });
+  fields.service_tier = await promptForServiceTier(options.readline, {
+    agentName,
+    displayName: label,
+    current: currentTier,
+    output: options.output,
+    tierSelector: options.tierSelector
+  });
+  fields.model_reasoning_effort = await promptForReasoningEffort(options.readline, {
+    agentName,
+    displayName: label,
+    current: currentReasoning,
+    output: options.output,
+    reasoningSelector: options.reasoningSelector
+  });
+  config.overrides[agentName] = fields;
 }
 
 export function discoverAdditionalAgents(sourceDir, overrides) {

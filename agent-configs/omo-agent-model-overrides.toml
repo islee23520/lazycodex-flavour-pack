@@ -1,6 +1,16 @@
 [source]
 agents_dir = "${CODEX_HOME}/agents"
 
+[agents.default]
+model = "gpt-5.5"
+model_reasoning_effort = "high"
+service_tier = "default"
+
+[agents.ulw]
+model = "gpt-5.5"
+model_reasoning_effort = "xhigh"
+service_tier = "default"
+
 [agents.explorer]
 model = "gpt-5.4-mini"
 model_reasoning_effort = "low"

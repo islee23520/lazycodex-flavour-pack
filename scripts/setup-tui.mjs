@@ -56,10 +56,11 @@ export async function runSetupTui(args, context, deps = {}) {
 }
 
 function createModelSelector(prompts) {
-  return async ({ agentName, current, choices }) => {
+  return async ({ agentName, displayName, current, choices }) => {
     const options = buildModelOptions(current, choices);
+    const label = displayName ?? agentName;
     const selected = await prompts.select({
-      message: `${agentName ? `${agentName} model` : "Model"}`,
+      message: `${label ? `${label} model` : "Model"}`,
       options,
       initialValue: options.find((option) => option.value === current)?.value ?? options[0]?.value
     });
@@ -111,14 +112,15 @@ function createYesNoSelector(prompts) {
 }
 
 function createTierSelector(prompts) {
-  return async ({ agentName, current }) => {
+  return async ({ agentName, displayName, current }) => {
     const options = SERVICE_TIERS.map((tier) => ({
       value: tier.value,
       label: tier.label,
       hint: tier.value === current ? "current" : undefined
     }));
+    const label = displayName ?? agentName;
     const selected = await prompts.select({
-      message: `${agentName ? `${agentName} service tier` : "Service tier"}`,
+      message: `${label ? `${label} service tier` : "Service tier"}`,
       options,
       initialValue: current
     });
@@ -131,14 +133,15 @@ function createTierSelector(prompts) {
 }
 
 function createReasoningSelector(prompts) {
-  return async ({ agentName, current }) => {
+  return async ({ agentName, displayName, current }) => {
     const options = REASONING_EFFORTS.map((effort) => ({
       value: effort,
       label: effort,
       hint: effort === current ? "current" : undefined
     }));
+    const label = displayName ?? agentName;
     const selected = await prompts.select({
-      message: `${agentName ? `${agentName} reasoning effort` : "Reasoning effort"}`,
+      message: `${label ? `${label} reasoning effort` : "Reasoning effort"}`,
       options,
       initialValue: current
     });

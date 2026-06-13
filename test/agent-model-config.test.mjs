@@ -263,6 +263,59 @@ test("given setup confirm configured flow when user presses enter then re-applie
   }
 });
 
+test("given default and ULW model sections when configuring setup then prompts and writes them before per-agent overrides", async () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-models-"));
+  try {
+    const configPath = path.join(root, "overrides.toml");
+    writeFileSync(
+      configPath,
+      [
+        "[source]",
+        `agents_dir = "${root}"`,
+        "",
+        "[agents.default]",
+        'model = "gpt-5.5"',
+        'model_reasoning_effort = "high"',
+        'service_tier = "default"',
+        "",
+        "[agents.ulw]",
+        'model = "gpt-5.5"',
+        'model_reasoning_effort = "xhigh"',
+        'service_tier = "default"',
+        "",
+        "[agents.explorer]",
+        'model = "gpt-5.4-mini"',
+        'model_reasoning_effort = "low"',
+        'service_tier = "fast"',
+        ""
+      ].join("\n")
+    );
+    const output = captureOutput();
+
+    const config = await configureAgentModelOverrides(configPath, {
+      models: ["gpt-5.4-mini", "gpt-5.5", "grok-4.3"],
+      readline: fakeReadline(["3", "1", "2", "", "", "", "", "", ""]),
+      output,
+      confirmConfiguredValues: true,
+      persistUserOverrides: false
+    });
+    const updated = readFileSync(configPath, "utf8");
+
+    assert.equal(config.overrides.default.model, "grok-4.3");
+    assert.equal(config.overrides.default.service_tier, "default");
+    assert.equal(config.overrides.default.model_reasoning_effort, "medium");
+    assert.equal(config.overrides.ulw.model, "gpt-5.5");
+    assert.equal(config.overrides.ulw.model_reasoning_effort, "xhigh");
+    assert.match(output.lines.join("\n"), /=== Default Model Settings ===/);
+    assert.ok(configOutput.questions.findIndex((question) => /Default Codex model/.test(question)) < configOutput.questions.findIndex((question) => /explorer model/.test(question)));
+    assert.ok(configOutput.questions.some((question) => /ULW model/.test(question)));
+    assert.match(updated, /\[agents\.default]\nmodel = "grok-4\.3"\nmodel_reasoning_effort = "medium"\nservice_tier = "default"/);
+    assert.match(updated, /\[agents\.ulw]\nmodel = "gpt-5\.5"\nmodel_reasoning_effort = "xhigh"\nservice_tier = "default"/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("given additional installed OMO agent when user opts in then appends override section", async () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-models-"));
   try {

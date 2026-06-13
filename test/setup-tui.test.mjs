@@ -142,6 +142,48 @@ test("given TUI setup model selector when line setup asks for model then uses Cl
   assert.deepEqual(calls.find((call) => call[0] === "selected"), ["selected", "gpt-5.5"]);
 });
 
+test("given TUI setup default model selector when line setup asks then labels default and ULW choices explicitly", async () => {
+  const calls = [];
+  const prompts = {
+    intro: (message) => calls.push(["intro", message]),
+    note: (message, title) => calls.push(["note", title, message]),
+    confirm: async () => true,
+    select: async (options) => {
+      calls.push(["select", options.message, options.options, options.initialValue]);
+      return options.initialValue;
+    },
+    isCancel: () => false,
+    cancel: (message) => calls.push(["cancel", message]),
+    outro: (message) => calls.push(["outro", message])
+  };
+
+  await runSetupTui(
+    {},
+    { check: false, root: "/tmp/lfp", defaultConfig: "/tmp/lfp/config.toml" },
+    {
+      prompts,
+      colors: { inverse: (value) => value, green: (value) => value },
+      runLineSetup: async (_args, _context, options) => {
+        await options.modelSelector({
+          agentName: "default",
+          displayName: "Default Codex",
+          current: "gpt-5.5",
+          choices: [{ value: "gpt-5.5", label: "gpt-5.5", aliases: ["gpt-5.5"], key: "gpt-5.5" }]
+        });
+        await options.modelSelector({
+          agentName: "ulw",
+          displayName: "ULW",
+          current: "gpt-5.5",
+          choices: [{ value: "gpt-5.5", label: "gpt-5.5", aliases: ["gpt-5.5"], key: "gpt-5.5" }]
+        });
+      }
+    }
+  );
+
+  assert.ok(calls.some((call) => call[0] === "select" && call[1] === "Default Codex model"));
+  assert.ok(calls.some((call) => call[0] === "select" && call[1] === "ULW model"));
+});
+
 test("given TUI setup writer logs status when running then status is shown as framed setup results", async () => {
   const calls = [];
   const prompts = {
