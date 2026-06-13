@@ -32,11 +32,13 @@ export function upsertOpenAiCompatProvider(text, provider) {
 
   if (state.status === "configured") return withActiveProvider;
 
-  return upsertTable(withActiveProvider, `model_providers.${provider.id}`, [
+  const lines = [
     `base_url = ${JSON.stringify(provider.baseUrl)}`,
     `wire_api = ${JSON.stringify(provider.wireApi)}`,
     `requires_openai_auth = ${provider.requiresOpenAiAuth}`
-  ]);
+  ];
+  if (provider.envKey) lines.push(`env_key = ${JSON.stringify(provider.envKey)}`);
+  return upsertTable(withActiveProvider, `model_providers.${provider.id}`, lines);
 }
 
 export function hasAnyModelProvider(text) {
@@ -66,6 +68,7 @@ function getProviderStatus(providerBlock, provider) {
     readTomlString(providerBlock, "wire_api") === provider.wireApi &&
     readTomlBoolean(providerBlock, "requires_openai_auth") === provider.requiresOpenAiAuth
   ) {
+    if (provider.envKey && readTomlString(providerBlock, "env_key") !== provider.envKey) return "drifted";
     return "configured";
   }
   return "drifted";

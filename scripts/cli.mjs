@@ -9,7 +9,10 @@ import { configureArtTeam } from "./art-team-config.mjs";
 import { configureAgentModelOverrides } from "./agent-model-config.mjs";
 import { createRestoredUserOverrideConfig } from "./user-model-overrides.mjs";
 import { runSetup } from "./setup-command.mjs";
+import { parseDoctorArgs, parseSyncArgs } from "./cli-args.mjs";
 import {
+  printCodexAppsCacheFixApply,
+  printCodexAppsCacheFixPreview,
   printArtTeamConfig,
   printCodexAppsCacheState,
   printInstallSmokeState,
@@ -19,22 +22,12 @@ import {
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const DEFAULT_CONFIG = path.join(ROOT, "agent-configs", "omo-agent-model-overrides.toml");
-const SYNC_OPTIONS = new Set([
-  "--check",
-  "--config",
-  "--skip-art-prompt",
-  "--skip-model-prompt",
-  "--skip-lazycodex-install",
-  "--no-tui"
-]);
-const KOREAN_POSTPOSITIONS = ["으로", "부터", "까지", "에게", "에서", "처럼", "보다", "만큼", "은", "는", "이", "가", "을", "를", "와", "과", "도", "만", "로"];
-
 const HELP = `lfp
 
 Usage:
   lfp setup [--config <path>] [--skip-art-prompt] [--skip-model-prompt] [--no-tui]
   lfp dry-setup [--config <path>]
-  lfp doctor [--config <path>]
+  lfp doctor [--config <path>] [--fix-cache [--apply]]
   lfp agent-config [--config <path>]
   lfp art-config
   lfp help
@@ -60,6 +53,8 @@ Commands:
 
 Flags:
   --config <path>  Use a specific override config file.
+  --fix-cache  Check duplicate Codex Apps tool cache files.
+  --apply  With doctor --fix-cache, quarantine duplicate cache files.
   --skip-art-prompt  Skip the interactive art team model prompt during setup.
   --skip-model-prompt  Skip the interactive OMO override model prompt during setup.
   --skip-lazycodex-install  Local development only: install this checkout without running LazyCodex install first.
@@ -111,8 +106,9 @@ export async function runCli(argv) {
 }
 
 function runDoctor(argv) {
-  const args = parseSyncArgs(argv);
+  const args = parseDoctorArgs(argv);
   if (args.check !== undefined) throw new Error("doctor does not accept --check; use dry-setup instead");
+  if (args.apply && !args.fixCache) throw new Error("doctor --apply requires --fix-cache");
   const state = getCodexPluginState();
   const configPath =
     args.config ?? (state.pluginFilesInstalled ? path.join(state.pluginRoot, "agent-configs", "omo-agent-model-overrides.toml") : DEFAULT_CONFIG);
@@ -133,7 +129,7 @@ function runDoctor(argv) {
   hasIssue ||= !installSmokeOk;
   const visualSmokeOk = printVisualSmokeState();
   hasIssue ||= !visualSmokeOk;
-  const appCacheOk = printCodexAppsCacheState();
+  const appCacheOk = printDoctorCodexAppsCacheState(args);
   hasIssue ||= !appCacheOk;
 
   printArtTeamConfig();
@@ -154,6 +150,12 @@ function runDoctor(argv) {
   }
 
   if (hasIssue) process.exitCode = 1;
+}
+
+function printDoctorCodexAppsCacheState(args) {
+  if (!args.fixCache) return printCodexAppsCacheState();
+  if (args.apply) return printCodexAppsCacheFixApply();
+  return printCodexAppsCacheFixPreview();
 }
 
 function getEffectiveReadOnlyOverrideConfig(configPath, args) {
@@ -190,55 +192,6 @@ function getDefaultInstalledOverrideConfigPath() {
     return path.join(state.pluginRoot, "agent-configs", "omo-agent-model-overrides.toml");
   }
   return DEFAULT_CONFIG;
-}
-
-function parseSyncArgs(argv) {
-  const parsed = {};
-  for (let index = 0; index < argv.length; index += 1) {
-    const item = normalizeSyncOption(argv[index]);
-    if (item === "--check") {
-      parsed.check = true;
-      continue;
-    }
-    if (item === "--config") {
-      const value = argv[index + 1];
-      if (value === undefined) throw new Error("--config requires a value");
-      parsed.config = value;
-      index += 1;
-      continue;
-    }
-    if (item === "--skip-art-prompt") {
-      parsed.skipArtPrompt = true;
-      continue;
-    }
-    if (item === "--skip-model-prompt") {
-      parsed.skipModelPrompt = true;
-      continue;
-    }
-    if (item === "--skip-lazycodex-install") {
-      parsed.skipLazycodexInstall = true;
-      continue;
-    }
-    if (item === "--no-tui") {
-      parsed.noTui = true;
-      continue;
-    }
-    throw new Error(`Unknown sync option: ${item}`);
-  }
-  return parsed;
-}
-
-function normalizeSyncOption(item) {
-  if (SYNC_OPTIONS.has(item)) return item;
-  if (!item.startsWith("--")) return item;
-
-  for (const postposition of KOREAN_POSTPOSITIONS) {
-    if (!item.endsWith(postposition)) continue;
-    const normalized = item.slice(0, -postposition.length);
-    if (SYNC_OPTIONS.has(normalized)) return normalized;
-  }
-
-  return item;
 }
 
 function isDirectRun() {

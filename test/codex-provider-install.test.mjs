@@ -256,3 +256,84 @@ function runCli(args, codexHome) {
     encoding: "utf8"
   });
 }
+
+test("given noninteractive setup with provider env vars when api key env is missing then fails with validation message", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-provider-ni-"));
+  try {
+    const fixture = createFixture(root);
+    const result = spawnSync(process.execPath, [CLI, "setup", "--config", fixture.configPath, "--skip-lazycodex-install"], {
+      env: {
+        ...process.env,
+        CODEX_HOME: fixture.codexHome,
+        LFP_PROVIDER_ID: "localproxy",
+        LFP_PROVIDER_BASE_URL: "https://localproxy.example/v1",
+        LFP_PROVIDER_WIRE_API: "responses"
+      },
+      encoding: "utf8"
+    });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /LFP_PROVIDER_API_KEY_ENV|provider-api-key-env|required/i);
+    assert.equal(existsSync(path.join(fixture.codexHome, "config.toml")), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("given noninteractive setup with full provider env vars when env key exists then writes env_key without secret", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-provider-ni-"));
+  try {
+    const fixture = createFixture(root);
+    const result = spawnSync(process.execPath, [CLI, "setup", "--config", fixture.configPath], {
+      env: {
+        ...process.env,
+        CODEX_HOME: fixture.codexHome,
+        LFP_LAZYCODEX_INSTALL_BIN: process.execPath,
+        LFP_LAZYCODEX_INSTALL_ARGS: JSON.stringify([LAZYCODEX_INSTALL_STUB]),
+        LFP_PROVIDER_ID: "localproxy",
+        LFP_PROVIDER_BASE_URL: "https://localproxy.example/v1",
+        LFP_PROVIDER_WIRE_API: "responses",
+        LFP_PROVIDER_API_KEY_ENV: "LOCALPROXY_API_KEY",
+        LOCALPROXY_API_KEY: "super-secret-value"
+      },
+      encoding: "utf8"
+    });
+    assert.equal(result.status, 0, result.stderr);
+    const codexConfig = readFileSync(path.join(fixture.codexHome, "config.toml"), "utf8");
+    assert.match(codexConfig, /env_key = "LOCALPROXY_API_KEY"/);
+    assert.match(codexConfig, /model_provider = "localproxy"/);
+    assert.doesNotMatch(codexConfig, /super-secret-value/);
+    assert.doesNotMatch(result.stdout, /super-secret-value/);
+    assert.doesNotMatch(result.stderr, /super-secret-value/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("given noninteractive setup with provider env vars when user-managed provider exists then skips provider install", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-provider-ni-"));
+  try {
+    const fixture = createFixture(root);
+    mkdirSync(fixture.codexHome, { recursive: true });
+    writeFileSync(path.join(fixture.codexHome, "config.toml"), 'model_provider = "custom-local"\n');
+    const result = spawnSync(process.execPath, [CLI, "setup", "--config", fixture.configPath], {
+      env: {
+        ...process.env,
+        CODEX_HOME: fixture.codexHome,
+        LFP_LAZYCODEX_INSTALL_BIN: process.execPath,
+        LFP_LAZYCODEX_INSTALL_ARGS: JSON.stringify([LAZYCODEX_INSTALL_STUB]),
+        LFP_PROVIDER_ID: "localproxy",
+        LFP_PROVIDER_BASE_URL: "https://localproxy.example/v1",
+        LFP_PROVIDER_WIRE_API: "responses",
+        LFP_PROVIDER_API_KEY_ENV: "LOCALPROXY_API_KEY",
+        LOCALPROXY_API_KEY: "some-key"
+      },
+      encoding: "utf8"
+    });
+    assert.equal(result.status, 0, result.stderr);
+    const codexConfig = readFileSync(path.join(fixture.codexHome, "config.toml"), "utf8");
+    assert.match(codexConfig, /^model_provider = "custom-local"$/m);
+    assert.doesNotMatch(codexConfig, /\[model_providers\.localproxy\]/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});

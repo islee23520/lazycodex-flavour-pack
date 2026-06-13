@@ -32,6 +32,43 @@ export function printCodexAppsCacheState() {
   return false;
 }
 
+export function printCodexAppsCacheFixPreview() {
+  const state = getCodexAppsToolCacheState();
+  if (state.healthy) {
+    console.log("lfp doctor: Codex Apps tool cache: ok");
+    return true;
+  }
+
+  for (const item of state.duplicateFiles) {
+    console.log(
+      `lfp doctor: would quarantine duplicate Codex Apps tool cache ${item.filePath} (${item.duplicateToolNames.join(", ")})`
+    );
+  }
+  console.log("lfp doctor: Codex Apps tool cache: rerun with 'lfp doctor --fix-cache --apply' to quarantine");
+  return false;
+}
+
+export function printCodexAppsCacheFixApply() {
+  const result = quarantineDuplicateCodexAppsToolCaches();
+  for (const item of result.quarantined) {
+    console.log(
+      `lfp doctor: quarantined duplicate Codex Apps tool cache ${item.filePath} -> ${item.targetPath} (${item.duplicateToolNames.join(", ")})`
+    );
+  }
+
+  const state = getCodexAppsToolCacheState();
+  if (state.healthy) {
+    console.log("lfp doctor: Codex Apps tool cache: ok");
+    return true;
+  }
+
+  console.log("lfp doctor: Codex Apps tool cache: duplicate tool names remain after quarantine");
+  for (const item of state.duplicateFiles) {
+    console.log(`lfp doctor: Codex Apps tool cache: ${item.filePath} duplicates ${item.duplicateToolNames.join(", ")}`);
+  }
+  return false;
+}
+
 export function printOpenAiCompatProviderState(state) {
   const provider = state.openAiCompatProvider;
   console.log(`lfp doctor: OpenAI-compatible provider: ${provider.status} (${provider.id})`);

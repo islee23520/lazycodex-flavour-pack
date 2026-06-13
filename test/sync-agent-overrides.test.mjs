@@ -36,6 +36,37 @@ test("given vanilla agent text when applying overrides then only model fields ch
   assert.match(result, /developer_instructions = """keep me"""/);
 });
 
+test("given fallback model overrides when applying agent overrides then writes all six public model fields", () => {
+  const source = [
+    'name = "explorer"',
+    'description = "Codebase search specialist"',
+    'model = "gpt-5.4-mini"',
+    'model_reasoning_effort = "medium"',
+    'service_tier = "default"',
+    'model_fallback = "old-fallback"',
+    "",
+    'developer_instructions = """keep me"""',
+    ""
+  ].join("\n");
+
+  const result = applyModelOverrides(source, {
+    model: "grok-4.3",
+    model_reasoning_effort: "low",
+    service_tier: "fast",
+    model_fallback: "grok-3-mini-fast",
+    model_fallback_reasoning_effort: "low",
+    model_fallback_service_tier: "default"
+  });
+
+  assert.match(result, /model = "grok-4\.3"/);
+  assert.match(result, /model_reasoning_effort = "low"/);
+  assert.match(result, /service_tier = "fast"/);
+  assert.match(result, /model_fallback = "grok-3-mini-fast"/);
+  assert.match(result, /model_fallback_reasoning_effort = "low"/);
+  assert.match(result, /model_fallback_service_tier = "default"/);
+  assert.match(result, /developer_instructions = """keep me"""/);
+});
+
 test("given source dir and override config when syncing then updates source agent config in place", () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-agent-sync-"));
   try {
@@ -56,6 +87,56 @@ test("given source dir and override config when syncing then updates source agen
 
     assert.equal(result.changed.length, 1);
     assert.match(updated, /model = "grok-4\.3"/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("given TOML override config with fallback fields when syncing then updates source agent config in place", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-agent-sync-"));
+  try {
+    const sourceDir = path.join(root, "source");
+    const configPath = path.join(root, "overrides.toml");
+    const agentPath = path.join(sourceDir, "explorer.toml");
+    mkdirSync(sourceDir);
+    writeFileSync(
+      agentPath,
+      [
+        'name = "explorer"',
+        'model = "old"',
+        'model_reasoning_effort = "medium"',
+        'service_tier = "default"',
+        'model_fallback = "old-fallback"',
+        ""
+      ].join("\n")
+    );
+    writeFileSync(
+      configPath,
+      [
+        "[source]",
+        `agents_dir = "${sourceDir}"`,
+        "",
+        "[agents.explorer]",
+        'model = "new"',
+        'model_reasoning_effort = "low"',
+        'service_tier = "fast"',
+        'model_fallback = "fallback"',
+        'model_fallback_reasoning_effort = "low"',
+        'model_fallback_service_tier = "default"',
+        ""
+      ].join("\n")
+    );
+
+    const result = syncAgentOverrides(configPath);
+    const updated = readFileSync(agentPath, "utf8");
+
+    assert.deepEqual(result.changed, [agentPath]);
+    assert.match(updated, /model = "new"/);
+    assert.match(updated, /model_reasoning_effort = "low"/);
+    assert.match(updated, /service_tier = "fast"/);
+    assert.match(updated, /model_fallback = "fallback"/);
+    assert.match(updated, /model_fallback_reasoning_effort = "low"/);
+    assert.match(updated, /model_fallback_service_tier = "default"/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -242,6 +323,57 @@ test("given missing required agent TOML when syncing then reports incomplete ins
       )
     );
     assert.equal(existsSync(missingAgentPath), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("given fallback fields in default and ulw overrides when syncing global defaults then ignores fallback fields", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-global-defaults-"));
+  try {
+    const codexHome = path.join(root, "codex-home");
+    const agentsDir = path.join(codexHome, "agents");
+    const configPath = path.join(root, "overrides.toml");
+    const globalConfigPath = path.join(codexHome, "config.toml");
+    mkdirSync(agentsDir, { recursive: true });
+    writeFileSync(globalConfigPath, '[profiles.ulw]\nmodel = "old-ulw"\n');
+    writeFileSync(
+      configPath,
+      [
+        "[source]",
+        `agents_dir = "${agentsDir}"`,
+        "",
+        "[agents.default]",
+        'model = "default-primary"',
+        'model_reasoning_effort = "high"',
+        'service_tier = "default"',
+        'model_fallback = "default-fallback"',
+        'model_fallback_reasoning_effort = "low"',
+        'model_fallback_service_tier = "default"',
+        "",
+        "[agents.ulw]",
+        'model = "ulw-primary"',
+        'model_reasoning_effort = "xhigh"',
+        'service_tier = "default"',
+        'model_fallback = "ulw-fallback"',
+        'model_fallback_reasoning_effort = "low"',
+        'model_fallback_service_tier = "default"',
+        ""
+      ].join("\n")
+    );
+
+    const result = syncGlobalModelDefaults(configPath, {
+      env: { ...process.env, CODEX_HOME: codexHome }
+    });
+    const updated = readFileSync(globalConfigPath, "utf8");
+
+    assert.deepEqual(result.changed, [globalConfigPath]);
+    assert.match(updated, /^model = "default-primary"$/m);
+    assert.match(updated, /^model_reasoning_effort = "high"$/m);
+    assert.match(updated, /^service_tier = "default"$/m);
+    assert.match(updated, /^\[profiles\.ulw]$/m);
+    assert.match(updated, /model = "ulw-primary"/);
+    assert.doesNotMatch(updated, /model_fallback/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

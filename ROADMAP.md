@@ -9,6 +9,7 @@ Track roadmap work in GitHub issues: <https://github.com/islee23520/lazycodex-fl
 - Lightweight overlay for already-installed LazyCodex/OMO agents.
 - `agent-configs/` is the source of truth for helper agents and model overrides.
 - Setup stays small: install/update upstream LazyCodex first, register LFP, install helper agents, configure the provider when safe, verify upstream LazyCodex/OMO, then apply model-field overrides.
+- Agent TOML override sync is limited to exactly six public fields: `model`, `model_reasoning_effort`, `service_tier`, `model_fallback`, `model_fallback_reasoning_effort`, and `model_fallback_service_tier`. Global default sync for top-level config and `[profiles.ulw]` remains limited to `model`, `model_reasoning_effort`, and `service_tier`.
 - No agent lifecycle manager, upstream plugin replacement, or broad TOML rewriting.
 
 ## Near-Term Work

@@ -1,17 +1,17 @@
 #!/usr/bin/env node
-import os from "node:os";
 import { readFileSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
+import { AGENT_MODEL_FIELDS, VIRTUAL_OVERRIDE_SECTIONS } from "./model-field-scope.mjs";
+import { syncGlobalModelDefaults } from "./global-model-defaults.mjs";
 import { readOverrideConfig } from "./model-override-config.mjs";
 
-const MODEL_FIELDS = new Set(["model", "model_reasoning_effort", "service_tier"]);
-const VIRTUAL_OVERRIDE_SECTIONS = new Set(["default", "ulw"]);
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const DEFAULT_CONFIG = path.join(ROOT, "agent-configs", "omo-agent-model-overrides.toml");
 
 export { readOverrideConfig } from "./model-override-config.mjs";
+export { syncGlobalModelDefaults } from "./global-model-defaults.mjs";
 
 if (isDirectRun()) {
   try {
@@ -63,7 +63,7 @@ export function applyModelOverrides(sourceText, values) {
 
   for (const [index, line] of lines.entries()) {
     const key = line.includes("=") ? line.split("=", 1)[0].trim() : "";
-    if (MODEL_FIELDS.has(key) && Object.hasOwn(values, key)) {
+    if (AGENT_MODEL_FIELDS.has(key) && Object.hasOwn(values, key)) {
       output.push(`${key} = ${JSON.stringify(String(values[key]))}`);
       seen.add(key);
       continue;
@@ -75,7 +75,7 @@ export function applyModelOverrides(sourceText, values) {
     }
   }
 
-  for (const key of [...MODEL_FIELDS].reverse()) {
+  for (const key of [...AGENT_MODEL_FIELDS].reverse()) {
     if (Object.hasOwn(values, key) && !seen.has(key)) {
       output.splice(insertAt, 0, `${key} = ${JSON.stringify(String(values[key]))}`);
     }
@@ -148,142 +148,4 @@ function assertInstalledAgentDir(sourceDir, overrides) {
 
 function isDirectRun() {
   return process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href;
-}
-
-export function syncGlobalModelDefaults(configPath, options = {}) {
-  const env = options.env ?? process.env;
-  const codexHome = env.CODEX_HOME?.trim() || path.join(os.homedir(), ".codex");
-  const globalConfigPath = path.join(codexHome, "config.toml");
-
-  let overrideConfig;
-  try {
-    overrideConfig = readOverrideConfig(configPath, options);
-  } catch (error) {
-    return { changed: [], globalConfigPath, error: error.message };
-  }
-
-  const overrides = overrideConfig.overrides ?? {};
-  const defaultFields = pickModelFields(overrides.default ?? {});
-  const ulwFields = pickModelFields(overrides.ulw ?? {});
-  if (Object.keys(defaultFields).length === 0 && Object.keys(ulwFields).length === 0) {
-    return { changed: [], globalConfigPath };
-  }
-
-  let currentText = "";
-  try {
-    currentText = readFileSync(globalConfigPath, "utf8");
-  } catch (error) {
-    if (error.code !== "ENOENT") throw error;
-  }
-
-  let nextText = currentText;
-  if (Object.keys(defaultFields).length > 0) {
-    nextText = applyTopLevelModelFields(nextText, defaultFields);
-  }
-  if (Object.keys(ulwFields).length > 0) {
-    nextText = applySectionModelFields(nextText, "profiles.ulw", ulwFields);
-  }
-  if (currentText === nextText) {
-    return { changed: [], globalConfigPath };
-  }
-
-  if (!options.check) {
-    writeFileSync(globalConfigPath, nextText);
-  }
-
-  return { changed: [globalConfigPath], globalConfigPath };
-}
-
-function pickModelFields(fields) {
-  const relevant = {};
-  for (const key of MODEL_FIELDS) {
-    if (Object.prototype.hasOwnProperty.call(fields, key)) relevant[key] = fields[key];
-  }
-  return relevant;
-}
-
-function applyTopLevelModelFields(text, values) {
-  const lines = text.split(/\r?\n/);
-  const output = [];
-  const seen = new Set();
-  let firstSectionIdx = -1;
-
-  for (let i = 0; i < lines.length; i += 1) {
-    const line = lines[i];
-    if (firstSectionIdx === -1 && line.trim().startsWith("[")) {
-      firstSectionIdx = i;
-    }
-    const key = line.includes("=") ? line.split("=", 1)[0].trim() : "";
-    if (firstSectionIdx === -1 && MODEL_FIELDS.has(key) && Object.prototype.hasOwnProperty.call(values, key)) {
-      output.push(`${key} = ${JSON.stringify(String(values[key]))}`);
-      seen.add(key);
-      continue;
-    }
-    output.push(line);
-  }
-
-  const toInsert = [];
-  for (const key of [...MODEL_FIELDS].reverse()) {
-    if (Object.prototype.hasOwnProperty.call(values, key) && !seen.has(key)) {
-      toInsert.unshift(`${key} = ${JSON.stringify(String(values[key]))}`);
-    }
-  }
-
-  if (toInsert.length > 0) {
-    if (firstSectionIdx === -1) {
-      output.push(...toInsert);
-    } else {
-      output.splice(firstSectionIdx, 0, ...toInsert);
-    }
-  }
-
-  return `${output.join("\n").replace(/\n*$/, "")}\n`;
-}
-
-function applySectionModelFields(text, sectionName, values) {
-  const lines = text.split(/\r?\n/);
-  const output = [];
-  const seen = new Set();
-  let inTargetSection = false;
-  let foundSection = false;
-  let insertAt = -1;
-
-  for (const line of lines) {
-    const sectionMatch = line.trim().match(/^\[([A-Za-z0-9_.-]+)]$/);
-    if (sectionMatch) {
-      if (inTargetSection && insertAt === -1) insertAt = output.length;
-      inTargetSection = sectionMatch[1] === sectionName;
-      foundSection ||= inTargetSection;
-      output.push(line);
-      if (inTargetSection) insertAt = output.length;
-      continue;
-    }
-
-    const key = line.includes("=") ? line.split("=", 1)[0].trim() : "";
-    if (inTargetSection && MODEL_FIELDS.has(key) && Object.prototype.hasOwnProperty.call(values, key)) {
-      output.push(`${key} = ${JSON.stringify(String(values[key]))}`);
-      seen.add(key);
-      insertAt = output.length;
-      continue;
-    }
-
-    output.push(line);
-    if (inTargetSection && line.trim().length > 0) insertAt = output.length;
-  }
-
-  const missingLines = [];
-  for (const key of MODEL_FIELDS) {
-    if (Object.prototype.hasOwnProperty.call(values, key) && !seen.has(key)) {
-      missingLines.push(`${key} = ${JSON.stringify(String(values[key]))}`);
-    }
-  }
-
-  if (!foundSection) {
-    if (output.at(-1)?.trim() !== "") output.push("");
-    output.push(`[${sectionName}]`, ...missingLines);
-  } else if (missingLines.length > 0) {
-    output.splice(insertAt, 0, ...missingLines);
-  }
-
-  return `${output.join("\n").replace(/\n*$/, "")}\n`;
 }

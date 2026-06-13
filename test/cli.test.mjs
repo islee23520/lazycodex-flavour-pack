@@ -499,6 +499,118 @@ test("given setup has run when doctor runs then reports lfp installed in Codex",
   }
 });
 
+test("given doctor fix-cache preview sees duplicate Codex Apps cache then reports without moving files", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-cli-"));
+  try {
+    const codexHome = path.join(root, "codex-home");
+    const sourceDir = path.join(root, "agents");
+    const configPath = path.join(root, "config.json");
+    const agentPath = path.join(sourceDir, "explorer.toml");
+    const cachePath = path.join(codexHome, "cache", "codex_apps_tools", "tools.json");
+    mkdirSync(sourceDir, { recursive: true });
+    mkdirSync(path.dirname(cachePath), { recursive: true });
+    writeFileSync(agentPath, 'name = "explorer"\nmodel = "grok-4.3"\n');
+    writeFileSync(cachePath, codexAppsToolCacheJson(["_fetch", "_fetch"]));
+    writeFileSync(
+      configPath,
+      JSON.stringify({
+        source: { agentsDir: sourceDir },
+        overrides: { explorer: { model: "grok-4.3" } }
+      })
+    );
+
+    const result = spawnSync(process.execPath, [CLI, "doctor", "--fix-cache", "--config", configPath], {
+      env: cliEnv(codexHome),
+      encoding: "utf8"
+    });
+
+    assert.equal(result.status, 1);
+    assert.match(result.stdout, /would quarantine duplicate Codex Apps tool cache/);
+    assert.match(result.stdout, new RegExp(`${escapeRegExp(cachePath)}.*_fetch`));
+    assert.equal(existsSync(cachePath), true);
+    assert.equal(existsSync(path.join(path.dirname(cachePath), "quarantine")), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("given doctor fix-cache apply sees duplicate Codex Apps cache then quarantines and rechecks healthy", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-cli-"));
+  try {
+    const codexHome = path.join(root, "codex-home");
+    const sourceDir = path.join(root, "agents");
+    const configPath = path.join(root, "config.json");
+    const agentPath = path.join(sourceDir, "explorer.toml");
+    const cacheDir = path.join(codexHome, "cache", "codex_apps_tools");
+    const cachePath = path.join(cacheDir, "tools.json");
+    mkdirSync(sourceDir, { recursive: true });
+    writeFileSync(agentPath, 'name = "explorer"\nmodel = "grok-4.3"\n');
+    writeFileSync(
+      configPath,
+      JSON.stringify({
+        source: { agentsDir: sourceDir },
+        overrides: { explorer: { model: "grok-4.3" } }
+      })
+    );
+    const setup = spawnSync(process.execPath, [CLI, "setup", "--config", configPath, "--skip-art-prompt"], {
+      env: cliEnv(codexHome),
+      encoding: "utf8"
+    });
+    mkdirSync(cacheDir, { recursive: true });
+    writeFileSync(cachePath, codexAppsToolCacheJson(["_fetch", "_fetch"]));
+
+    const result = spawnSync(process.execPath, [CLI, "doctor", "--fix-cache", "--apply", "--config", configPath], {
+      env: cliEnv(codexHome),
+      encoding: "utf8"
+    });
+    const rerun = spawnSync(process.execPath, [CLI, "doctor", "--fix-cache", "--config", configPath], {
+      env: cliEnv(codexHome),
+      encoding: "utf8"
+    });
+
+    assert.equal(setup.status, 0, setup.stderr);
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, new RegExp(`quarantined duplicate Codex Apps tool cache ${escapeRegExp(cachePath)} -> .*_fetch`));
+    assert.match(result.stdout, /Codex Apps tool cache: ok/);
+    assert.equal(existsSync(cachePath), false);
+    assert.equal(existsSync(path.join(cacheDir, "quarantine")), true);
+    assert.equal(rerun.status, 0, rerun.stderr);
+    assert.match(rerun.stdout, /Codex Apps tool cache: ok/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("given doctor apply is passed without fix-cache then rejects the flag combination", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-cli-"));
+  try {
+    const result = spawnSync(process.execPath, [CLI, "doctor", "--apply", "--config", path.join(root, "missing.json")], {
+      env: cliEnv(root),
+      encoding: "utf8"
+    });
+
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /doctor --apply requires --fix-cache/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("given doctor apply-fix-cache is passed then rejects it as an unknown option", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-cli-"));
+  try {
+    const result = spawnSync(process.execPath, [CLI, "doctor", "--apply-fix-cache"], {
+      env: cliEnv(root),
+      encoding: "utf8"
+    });
+
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /Unknown doctor option: --apply-fix-cache/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("given first-run no saved user override when setup then doctor runs then reports existing override phrasing without new banners", () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-cli-"));
   try {
@@ -553,4 +665,11 @@ function escapeRegExp(value) {
 
 function savedOverrideJson(overrides) {
   return `${JSON.stringify({ schemaVersion: 1, overrides }, null, 2)}\n`;
+}
+
+function codexAppsToolCacheJson(toolNames) {
+  return `${JSON.stringify({
+    schema_version: 3,
+    tools: toolNames.map((toolName) => ({ tool_name: toolName }))
+  })}\n`;
 }

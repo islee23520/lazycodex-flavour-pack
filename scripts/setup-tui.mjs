@@ -4,6 +4,7 @@ import pc from "picocolors";
 import { SERVICE_TIERS, REASONING_EFFORTS } from "./model-config-prompts.mjs";
 
 import { PLUGIN_REF } from "./codex-plugin-install.mjs";
+import { createProviderConsentSelector } from "./setup-provider-tui.mjs";
 
 export function shouldUseSetupTui(args, options) {
   if (options.check || args.noTui === true) return false;
@@ -43,7 +44,8 @@ export async function runSetupTui(args, context, deps = {}) {
       tierSelector: createTierSelector(prompts),
       reasoningSelector: createReasoningSelector(prompts),
       yesNoSelector: createYesNoSelector(prompts),
-      gitHubStartSelector: createGitHubStartSelector(prompts)
+      gitHubStartSelector: createGitHubStartSelector(prompts),
+      providerConsentSelector: createProviderConsentSelector(prompts)
     });
   } catch (error) {
     throw error;

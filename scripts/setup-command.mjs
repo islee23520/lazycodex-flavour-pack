@@ -7,7 +7,7 @@ import { getCodexAppsToolCacheState } from "./codex-apps-cache.mjs";
 import { getPendingCodexPluginActions, installCodexPlugin, PLUGIN_REF } from "./codex-plugin-install.mjs";
 import { formatLazyCodexInstallCommand, runLazyCodexInstall } from "./lazycodex-install.mjs";
 import { promptForYesNo } from "./model-config-prompts.mjs";
-import { getProviderConsentPath, readProviderConsent, saveProviderConsent } from "./provider-consent.mjs";
+import { resolveProviderOverride, shouldInstallOpenAiCompatProvider } from "./setup-provider.mjs";
 import {
   printCodexAppsCacheQuarantine,
   printInstallSmokeState,
@@ -64,9 +64,14 @@ export async function runSetupLineMode(args, { check, root, defaultConfig }, opt
     runLazyCodexInstall();
   }
 
-  const basePending = getPendingCodexPluginActions();
-  const installOpenAiCompatProvider = check ? false : await shouldInstallOpenAiCompatProvider(basePending.state, options);
-  const pending = getPendingCodexPluginActions({ installOpenAiCompatProvider });
+  let providerOverride = resolveProviderOverride(args, options);
+  const basePending = getPendingCodexPluginActions({ providerConfig: providerOverride ?? undefined });
+  const consentResult = check ? false : await shouldInstallOpenAiCompatProvider(basePending.state, options, providerOverride);
+  if (consentResult && typeof consentResult === "object" && consentResult.providerOverride) {
+    providerOverride = consentResult.providerOverride;
+  }
+  const installOpenAiCompatProvider = !!consentResult;
+  const pending = getPendingCodexPluginActions({ installOpenAiCompatProvider, providerConfig: providerOverride ?? undefined });
   const effectiveConfig = check ? getEffectiveReadOnlyOverrideConfig(configPath, args) : null;
   let pendingOverrides;
   try {
@@ -79,7 +84,7 @@ export async function runSetupLineMode(args, { check, root, defaultConfig }, opt
   if (check) {
     printPendingSetupActions(pending);
   } else {
-    const installedPath = await installAndMaybePrompt(args, root, configPath, installOpenAiCompatProvider, pending, options);
+    const installedPath = await installAndMaybePrompt(args, root, configPath, installOpenAiCompatProvider, pending, options, providerOverride);
     if (installedPath === null) return;
     configPath = installedPath;
   }
@@ -97,7 +102,7 @@ export async function runSetupLineMode(args, { check, root, defaultConfig }, opt
   }
 }
 
-async function installAndMaybePrompt(args, root, configPath, installOpenAiCompatProvider, pending, options = {}) {
+async function installAndMaybePrompt(args, root, configPath, installOpenAiCompatProvider, pending, options = {}, providerOverride = null) {
   printCodexAppsCacheQuarantine();
 
   if (pending.state.openAiCompatProvider.status === "drifted") {
@@ -106,7 +111,7 @@ async function installAndMaybePrompt(args, root, configPath, installOpenAiCompat
     return null;
   }
 
-  const installed = installCodexPlugin(root, { installOpenAiCompatProvider });
+  const installed = installCodexPlugin(root, { installOpenAiCompatProvider, providerConfig: providerOverride ?? undefined });
   const installedConfigPath =
     args.config === undefined ? path.join(installed.pluginRoot, "agent-configs", "omo-agent-model-overrides.toml") : configPath;
   if (args.config === undefined && (args.skipModelPrompt || !process.stdin.isTTY)) {
@@ -233,40 +238,6 @@ function printSetupChanges(result, globalResult, check) {
 
   for (const item of globalResult.changed) {
     console.log(`${check ? "would update global model defaults in" : "updated global model defaults in"} ${item}`);
-  }
-}
-
-async function shouldInstallOpenAiCompatProvider(state, selectorOptions = {}) {
-  if (state.anyModelProviderConfigured) {
-    console.log("lfp setup: model provider already configured; leaving existing provider untouched.");
-    return false;
-  }
-
-  const savedConsent = readProviderConsent();
-  if (savedConsent !== null) {
-    console.log(
-      `lfp setup: model provider install consent recorded as ${savedConsent ? "yes" : "no"} in ${getProviderConsentPath()}.`
-    );
-    return savedConsent;
-  }
-
-  if (!process.stdin.isTTY) {
-    console.log("lfp setup: model provider missing; skipping provider install in non-interactive mode.");
-    return false;
-  }
-
-  const rl = createInterface({ input: process.stdin, output: process.stdout });
-  try {
-    const answer = await promptForYesNo(
-      rl,
-      `Install OpenAI-compatible model provider ${state.openAiCompatProvider.id} in ${state.configPath}? [y/N]: `,
-      { yesNoSelector: selectorOptions.yesNoSelector }
-    );
-    const consentPath = saveProviderConsent(answer);
-    console.log(`lfp setup: recorded model provider install consent in ${consentPath}.`);
-    return answer;
-  } finally {
-    rl.close();
   }
 }
 

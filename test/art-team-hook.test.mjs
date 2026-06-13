@@ -122,19 +122,16 @@ test("given malformed input when hook runs then stays quiet", () => {
 
 test("given art team hook in hooks.json when manifest is inspected then it is registered as UserPromptSubmit sibling", () => {
   const lfpUserPromptSubmit = lfpHooks.hooks.UserPromptSubmit;
-
   assert.equal(lfpUserPromptSubmit.length, 1);
   const hooks = lfpUserPromptSubmit[0].hooks;
-  assert.equal(hooks.length, 4);
+  assert.equal(hooks.length, 1);
 
-  const artHook = hooks.find((h) => h.command.includes("art-team-hook"));
-  assert.ok(artHook, "art-team-hook should be registered");
-  assert.equal(artHook.type, "command");
-  assert.match(artHook.command, /\$\{PLUGIN_ROOT\}\/scripts\/art-team-hook\.mjs/);
-  assert.equal(artHook.timeout, 5);
+  const dispatcherHook = hooks[0];
+  assert.ok(dispatcherHook.command.includes("user-prompt-submit"), "dispatcher should be registered");
+  assert.equal(dispatcherHook.type, "command");
+  assert.match(dispatcherHook.command, /\$\{PLUGIN_ROOT\}\/scripts\/user-prompt-submit\.mjs/);
+  assert.equal(dispatcherHook.timeout, 10);
 
-  const visualHook = hooks.find((h) => h.command.includes("visual-engineering-hook"));
-  assert.ok(visualHook, "visual-engineering-hook should still be registered");
 });
 
 test("given art team guidance when emitted then contains loop protocol", () => {
