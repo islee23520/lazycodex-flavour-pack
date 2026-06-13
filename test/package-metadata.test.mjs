@@ -3,9 +3,12 @@ import path from "node:path";
 import test from "node:test";
 import assert from "node:assert/strict";
 
+import { readOverrideConfig } from "../scripts/model-override-config.mjs";
+
 const packageJson = JSON.parse(readFileSync(path.resolve("package.json"), "utf8"));
 const pluginJson = JSON.parse(readFileSync(path.resolve(".codex-plugin", "plugin.json"), "utf8"));
 const hooksJson = JSON.parse(readFileSync(path.resolve("hooks", "hooks.json"), "utf8"));
+const legacyOmoOverridesJson = JSON.parse(readFileSync(path.resolve("agent-overrides", "omo.json"), "utf8"));
 const cliText = readFileSync(path.resolve("scripts/cli.mjs"), "utf8");
 const readmeText = readFileSync(path.resolve("README.md"), "utf8");
 const publishWorkflowPath = path.resolve(".github", "workflows", "publish.yml");
@@ -41,6 +44,7 @@ test("given npm package metadata when validating release files then package incl
     "agent-configs",
     "agent-overrides",
     "hooks",
+    "scripts/agent-model-config-io.mjs",
     "scripts/agent-model-config.mjs",
     "scripts/art-team-config.mjs",
     "scripts/art-team-hook.mjs",
@@ -54,6 +58,11 @@ test("given npm package metadata when validating release files then package incl
     "scripts/install-transaction.mjs",
     "scripts/lazycodex-install.mjs",
     "scripts/mcp-model-fallback.mjs",
+    "scripts/model-benchmark-recommendations.mjs",
+    "scripts/model-benchmark-scenarios.mjs",
+    "scripts/model-benchmark-overrides.mjs",
+    "scripts/model-benchmark-results.mjs",
+    "scripts/model-benchmark.mjs",
     "scripts/model-config-prompts.mjs",
     "scripts/model-field-scope.mjs",
     "scripts/model-fallback-guidance.mjs",
@@ -61,6 +70,7 @@ test("given npm package metadata when validating release files then package incl
     "scripts/model-override-config.mjs",
     "scripts/model-override-schema.mjs",
     "scripts/model-provider.mjs",
+    "scripts/model-reasoning-compat.mjs",
     "scripts/model-recommendations.mjs",
     "scripts/provider-consent.mjs",
     "scripts/runtime-promotion.mjs",
@@ -106,6 +116,15 @@ test("given npm package metadata when validating internal files then code maps a
   assert.equal(publishedFiles.has("test"), false);
   assert.equal(publishedFiles.has("scripts/isolated-smoke.mjs"), false);
   assert.equal(existsSync(path.resolve(".npmignore")), true);
+});
+
+test("given legacy OMO override consumers when validating release files then JSON stays aligned with durable TOML", () => {
+  const durableConfig = readOverrideConfig(path.resolve("agent-configs", "omo-agent-model-overrides.toml"));
+
+  assert.deepEqual(legacyOmoOverridesJson.source, { agentsDir: "${CODEX_HOME}/agents" });
+  for (const agentName of Object.keys(legacyOmoOverridesJson.overrides)) {
+    assert.deepEqual(legacyOmoOverridesJson.overrides[agentName], durableConfig.overrides[agentName]);
+  }
 });
 
 test("given release automation when validating repository metadata then publish workflow exists", () => {

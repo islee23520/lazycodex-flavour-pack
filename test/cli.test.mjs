@@ -233,6 +233,7 @@ test("given saved LFP overrides when dry setup runs then reports no override dri
     assert.equal(result.status, 1);
     assert.doesNotMatch(result.stdout, /would update .*explorer\.toml/);
     assert.doesNotMatch(result.stdout, /would update .*metis\.toml/);
+    assert.doesNotMatch(result.stdout, /would update global model defaults/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

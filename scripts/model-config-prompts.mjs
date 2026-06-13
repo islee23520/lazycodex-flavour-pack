@@ -3,7 +3,7 @@ export const SERVICE_TIERS = [
   { value: "fast", label: "fast" }
 ];
 
-export const REASONING_EFFORTS = ["low", "medium", "high", "xhigh", "max"];
+export const REASONING_EFFORTS = ["low", "medium", "high", "xhigh"];
 
 export function getAgentModelGuide(agentName) {
   return null;

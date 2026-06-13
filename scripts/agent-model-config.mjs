@@ -1,7 +1,4 @@
 #!/usr/bin/env node
-import { readdirSync, readFileSync, writeFileSync } from "node:fs";
-import path from "node:path";
-
 import {
   logAgentGuide,
   printModelChoices,
@@ -20,10 +17,9 @@ import {
 } from "./user-model-overrides.mjs";
 import { fetchAvailableModels } from "./model-provider.mjs";
 import { buildRecommendedModelOverrides } from "./model-recommendations.mjs";
+import { getCompatibleReasoningEffort } from "./model-reasoning-compat.mjs";
+import { discoverAdditionalAgents, writeOverrideFields } from "./agent-model-config-io.mjs";
 
-const MODEL_FIELD = "model";
-const WRITABLE_FIELDS = ["model", "model_reasoning_effort", "service_tier"];
-const LFP_AGENT_NAMES = new Set(["artistry", "artistry-gen", "artistry-qa", "visual-engineering", "visual-looker"]);
 const DEFAULT_MODEL_SECTIONS = new Map([
   ["default", "Default Codex"],
   ["ulw", "ULW"]
@@ -118,13 +114,13 @@ export async function configureAgentModelOverrides(configPath, options = {}) {
       output: options.output,
       tierSelector: options.tierSelector
     });
-    fields.model_reasoning_effort = await promptForReasoningEffort(rl, {
+    fields.model_reasoning_effort = getCompatibleReasoningEffort(fields.model, await promptForReasoningEffort(rl, {
       agentName,
       displayName: agentName,
       current: defaultReasoning,
       output: options.output,
       reasoningSelector: options.reasoningSelector
-    });
+    }));
     config.overrides[agentName] = fields;
   }
 
@@ -142,29 +138,32 @@ export async function configureAgentModelOverrides(configPath, options = {}) {
       tier: agent.service_tier
     }, { preferCurrent: true });
     options.output?.log?.("  Source: installed agent, not yet in LFP override config.");
+    const selectedModel = await promptForModel(rl, {
+      agentName: agent.name,
+      displayName: agent.name,
+      current: agent.model ?? models[0],
+      models,
+      output: options.output,
+      modelSelector: options.modelSelector
+    });
+    const selectedTier = await promptForServiceTier(rl, {
+      agentName: agent.name,
+      displayName: agent.name,
+      current: agent.service_tier ?? "default",
+      output: options.output,
+      tierSelector: options.tierSelector
+    });
+    const selectedReasoning = await promptForReasoningEffort(rl, {
+      agentName: agent.name,
+      displayName: agent.name,
+      current: agent.model_reasoning_effort ?? "medium",
+      output: options.output,
+      reasoningSelector: options.reasoningSelector
+    });
     config.overrides[agent.name] = {
-      model: await promptForModel(rl, {
-        agentName: agent.name,
-        displayName: agent.name,
-        current: agent.model ?? models[0],
-        models,
-        output: options.output,
-        modelSelector: options.modelSelector
-      }),
-      service_tier: await promptForServiceTier(rl, {
-        agentName: agent.name,
-        displayName: agent.name,
-        current: agent.service_tier ?? "default",
-        output: options.output,
-        tierSelector: options.tierSelector
-      }),
-      model_reasoning_effort: await promptForReasoningEffort(rl, {
-        agentName: agent.name,
-        displayName: agent.name,
-        current: agent.model_reasoning_effort ?? "medium",
-        output: options.output,
-        reasoningSelector: options.reasoningSelector
-      })
+      model: selectedModel,
+      service_tier: selectedTier,
+      model_reasoning_effort: getCompatibleReasoningEffort(selectedModel, selectedReasoning)
     };
   }
 
@@ -202,36 +201,14 @@ async function promptForModelSection(config, agentName, options) {
     output: options.output,
     tierSelector: options.tierSelector
   });
-  fields.model_reasoning_effort = await promptForReasoningEffort(options.readline, {
+  fields.model_reasoning_effort = getCompatibleReasoningEffort(fields.model, await promptForReasoningEffort(options.readline, {
     agentName,
     displayName: label,
     current: currentReasoning,
     output: options.output,
     reasoningSelector: options.reasoningSelector
-  });
+  }));
   config.overrides[agentName] = fields;
-}
-
-export function discoverAdditionalAgents(sourceDir, overrides) {
-  if (typeof sourceDir !== "string") return [];
-  const configured = new Set(Object.keys(overrides ?? {}));
-  const agents = [];
-
-  for (const fileName of safeReadDir(sourceDir)) {
-    if (!fileName.endsWith(".toml")) continue;
-    const name = fileName.slice(0, -".toml".length);
-    if (configured.has(name) || LFP_AGENT_NAMES.has(name)) continue;
-
-    const text = readFileSync(path.join(sourceDir, fileName), "utf8");
-    agents.push({
-      name,
-      model: readTomlString(text, "model"),
-      model_reasoning_effort: readTomlString(text, "model_reasoning_effort"),
-      service_tier: readTomlString(text, "service_tier")
-    });
-  }
-
-  return agents.sort((a, b) => a.name.localeCompare(b.name));
 }
 
 async function safeFetchAvailableModels(options) {
@@ -242,42 +219,6 @@ async function safeFetchAvailableModels(options) {
     options.output?.log?.(`Could not discover available models: ${message}`);
     return [];
   }
-}
-
-export function writeOverrideFields(configPath, overrides) {
-  if (!configPath.endsWith(".toml")) return;
-
-  const lines = readFileSync(configPath, "utf8").split(/\r?\n/);
-  const output = [];
-  let section = null;
-  const seenAgentSections = new Set();
-
-  for (const line of lines) {
-    const sectionMatch = line.trim().match(/^\[([A-Za-z0-9_.-]+)]$/);
-    if (sectionMatch) {
-      section = sectionMatch[1];
-      if (section.startsWith("agents.")) seenAgentSections.add(section.slice("agents.".length));
-    }
-
-    const agentName = section?.startsWith("agents.") ? section.slice("agents.".length) : null;
-    const key = line.includes("=") ? line.split("=", 1)[0].trim() : "";
-    if (agentName !== null && WRITABLE_FIELDS.includes(key) && overrides[agentName]?.[key]) {
-      output.push(`${key} = ${JSON.stringify(String(overrides[agentName][key]))}`);
-      continue;
-    }
-
-    output.push(line);
-  }
-
-  for (const [agentName, fields] of Object.entries(overrides)) {
-    if (seenAgentSections.has(agentName)) continue;
-    output.push("", `[agents.${agentName}]`);
-    for (const key of WRITABLE_FIELDS) {
-      if (fields?.[key]) output.push(`${key} = ${JSON.stringify(String(fields[key]))}`);
-    }
-  }
-
-  writeFileSync(configPath, `${output.join("\n").replace(/\n*$/, "")}\n`);
 }
 
 export const writeOverrideModels = writeOverrideFields;
@@ -310,19 +251,4 @@ function logAgentRecommendation(output, recommendation) {
   );
 }
 
-function safeReadDir(sourceDir) {
-  try {
-    return readdirSync(sourceDir);
-  } catch {
-    return [];
-  }
-}
-
-function readTomlString(text, key) {
-  const match = new RegExp(`^${escapeRegExp(key)}\\s*=\\s*"([^"]*)"\\s*$`, "m").exec(text);
-  return match?.[1] ?? null;
-}
-
-function escapeRegExp(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
+export { discoverAdditionalAgents, writeOverrideFields };

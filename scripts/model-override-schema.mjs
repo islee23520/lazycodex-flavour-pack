@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const ReasoningEffortSchema = z.enum(["low", "medium", "high", "xhigh", "max"]);
+export const ReasoningEffortSchema = z.enum(["low", "medium", "high", "xhigh"]);
 export const ServiceTierSchema = z.enum(["default", "fast"]);
 
 export const ModelOverrideFieldsSchema = z.object({

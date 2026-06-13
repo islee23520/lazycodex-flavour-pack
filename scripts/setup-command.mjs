@@ -89,9 +89,10 @@ export async function runSetupLineMode(args, { check, root, defaultConfig }, opt
     configPath = installedPath;
   }
 
+  const effectiveConfigPath = effectiveConfig?.configPath ?? configPath;
   const result = check ? pendingOverrides : syncAgentOverrides(configPath, { check: false });
+  const globalResult = syncGlobalDefaults(effectiveConfigPath, check);
   effectiveConfig?.cleanup();
-  const globalResult = syncGlobalDefaults(configPath, check);
   printSetupChanges(result, globalResult, check);
 
   if (check) {

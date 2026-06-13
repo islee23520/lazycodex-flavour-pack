@@ -81,6 +81,30 @@ test("given saved user override when user declines adjust then keeps saved setti
   }
 });
 
+test("given saved user override has unsupported max reasoning when configuring then reports validation error", async () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-user-models-"));
+  try {
+    const codexHome = path.join(root, "codex-home");
+    const configPath = path.join(root, "overrides.toml");
+    const savedPath = path.join(codexHome, "lfp", "omo-agent-model-overrides.json");
+    writeFileSync(configPath, overrideText("${CODEX_HOME}/agents", "grok-4.3", "low", "default"));
+    mkdirSync(path.dirname(savedPath), { recursive: true });
+    writeFileSync(savedPath, savedOverrideJson("gpt-5.4-mini", "max", "default"));
+
+    await assert.rejects(
+      configureAgentModelOverrides(configPath, {
+        env: { ...process.env, CODEX_HOME: codexHome },
+        models: ["gpt-5.4-mini", "grok-4.3"],
+        readline: fakeReadline(["n"]),
+        output: silentOutput()
+      }),
+      /"overrides",\s*"explorer",\s*"model_reasoning_effort"/
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("given legacy ledger saved user override exists when configuring then migrates it into Codex LFP config", async () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-user-models-"));
   try {

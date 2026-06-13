@@ -7,7 +7,7 @@
       "model": "gpt-5.4-mini",
       "model_reasoning_effort": "low",
       "service_tier": "fast",
-      "model_fallback": "grok-4.20-0309-non-reasoning",
+      "model_fallback": "grok-3-mini-fast",
       "model_fallback_reasoning_effort": "low",
       "model_fallback_service_tier": "default"
     },
@@ -15,15 +15,15 @@
       "model": "gpt-5.4-mini",
       "model_reasoning_effort": "low",
       "service_tier": "fast",
-      "model_fallback": "glm-5.1",
-      "model_fallback_reasoning_effort": "medium",
+      "model_fallback": "grok-3-mini-fast",
+      "model_fallback_reasoning_effort": "low",
       "model_fallback_service_tier": "default"
     },
     "metis": {
       "model": "gpt-5.5",
       "model_reasoning_effort": "high",
       "service_tier": "default",
-      "model_fallback": "grok-4.3",
+      "model_fallback": "gemini-pro-agent",
       "model_fallback_reasoning_effort": "high",
       "model_fallback_service_tier": "default"
     }

@@ -7,6 +7,7 @@ import { getCodexPluginState, PLUGIN_REF } from "./codex-plugin-install.mjs";
 import { syncAgentOverrides } from "./sync-agent-overrides.mjs";
 import { configureArtTeam } from "./art-team-config.mjs";
 import { configureAgentModelOverrides } from "./agent-model-config.mjs";
+import { runBenchmarkCommand } from "./model-benchmark.mjs";
 import { createRestoredUserOverrideConfig } from "./user-model-overrides.mjs";
 import { runSetup } from "./setup-command.mjs";
 import { parseDoctorArgs, parseSyncArgs } from "./cli-args.mjs";
@@ -29,6 +30,7 @@ Usage:
   lfp dry-setup [--config <path>]
   lfp doctor [--config <path>] [--fix-cache [--apply]]
   lfp agent-config [--config <path>]
+  lfp benchmark-models [--recommend-only] [--roles <csv>] [--models <csv>] [--samples <n>] [--output <path>] [--dry-run] [--apply]
   lfp art-config
   lfp help
 
@@ -37,6 +39,7 @@ npx:
   npx @islee23520/lfp@latest dry-setup
   npx @islee23520/lfp@latest doctor
   npx @islee23520/lfp@latest agent-config
+  npx @islee23520/lfp@latest benchmark-models
   npx @islee23520/lfp@latest art-config
 
 Commands:
@@ -48,6 +51,7 @@ Commands:
   dry-setup        Preview what setup would do without writing.
   doctor           Check LFP install status, agent models, and overrides.
   agent-config     Reconfigure LazyCodex/OMO agent model overrides and apply them.
+  benchmark-models Recommend or benchmark role-based model routing against the active OpenAI-compatible provider.
   art-config       Reconfigure art team models (interactive prompt).
   help             Show this help.
 
@@ -59,6 +63,13 @@ Flags:
   --skip-model-prompt  Skip the interactive OMO override model prompt during setup.
   --skip-lazycodex-install  Local development only: install this checkout without running LazyCodex install first.
   --no-tui  Force legacy line-output setup even when running in an interactive terminal.
+  --roles  With benchmark-models, comma-separated role names to test.
+  --models  With benchmark-models, comma-separated model ids to test.
+  --samples  With benchmark-models, repeated samples per role/model.
+  --output  With benchmark-models, JSON result path under .omo/benchmark-results by default.
+  --recommend-only  With benchmark-models, use prebenchmarked family routing over active /v1/models without completion calls.
+  --dry-run  With benchmark-models, score scenarios without provider calls.
+  --apply  With benchmark-models, write winning model fields to saved LFP overrides.
 
 This package is a lightweight overlay. setup runs npx lazycodex-ai install before applying LFP, then installs/enables this pack in Codex and applies configured overrides to existing agents.`;
 
@@ -94,6 +105,11 @@ export async function runCli(argv) {
 
   if (command === "agent-config") {
     await runAgentConfig(args);
+    return;
+  }
+
+  if (command === "benchmark-models") {
+    await runBenchmarkCommand(args);
     return;
   }
 
