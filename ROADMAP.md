@@ -1,6 +1,6 @@
 # LFP Roadmap
 
-LFP (LazyCodex Flavour Pack) extends LazyCodex — the OMO Light edition for Codex — to bring the full OMO feature set into the Codex environment. LazyCodex intentionally ships only a portable subset (rules, ultrawork, lsp, 6 core agents) because it targets GPT-only workflows. LFP bridges the rest: the complete agent roster, category-based model routing, declarative fallback chains, runtime fallback, art team orchestration, visual specialists, and multi-model provider support.
+LFP (LazyCodex Flavour Pack) extends LazyCodex — the OMO Light edition for Codex — to bring the full OMO feature set into the Codex environment. LazyCodex intentionally ships only a portable subset (rules, ultrawork, lsp, 6 core agents) because it targets GPT-only workflows. LFP bridges the rest: the complete agent roster, category-based model routing, MCP fallback resolver for saved override configurations, art team orchestration, visual specialists, and multi-model provider support.
 
 Track roadmap work in GitHub issues: <https://github.com/islee23520/lazycodex-flavour-pack/issues>.
 
@@ -9,7 +9,7 @@ Track roadmap work in GitHub issues: <https://github.com/islee23520/lazycodex-fl
 - LFP is the **full OMO feature bridge for Codex**, not a lightweight overlay.
 - `agent-configs/` is the source of truth for LFP-owned agents, model overrides, categories, and fallback configuration.
 - Setup stays safe: install/update upstream LazyCodex first, register LFP, install LFP agents, configure the provider when consented, verify upstream, then apply model-field overrides.
-- Agent TOML override sync on upstream OMO agents is limited to exactly six public model fields. LFP-owned agents have full TOML control.
+- Agent TOML override sync on upstream OMO agents is limited to exactly three primary model fields. LFP-owned agents have full TOML control.
 - Codex only supports `SessionStart` and `UserPromptSubmit` hooks. Category routing, runtime fallback, and orchestration work within this constraint — via guidance hooks, MCP tools, resolver logic, and multi-agent patterns.
 - Install safety is mandatory for every agent or config write: snapshot → write → promote with rollback.
 
@@ -19,7 +19,7 @@ Track roadmap work in GitHub issues: <https://github.com/islee23520/lazycodex-fl
 | --- | --- | --- | --- |
 | 11 agents | 6 core | +6 LFP-owned = 12 total | +5 missing = 17 total |
 | 8 categories with model routing | None | None | Full category system |
-| Per-agent + per-category fallback chains | None | MCP resolver tool | Declarative chains + resolver |
+| Per-agent + per-category fallback chains | None | MCP resolver tool for saved override configurations | Manual chains + resolver |
 | Runtime fallback (retry on 408/429/5xx) | None | Guidance hook | Retry engine |
 | 14+ skills | Subset | None | Port remaining skills |
 | Background agents / parallel orchestration | None | None | Emulated via multi-agent patterns |

@@ -76,7 +76,7 @@ Flags:
   --dry-run  With benchmark-models, score scenarios without provider calls.
   --apply  With benchmark-models, write winning model fields to saved LFP overrides.
 
-This package is a lightweight overlay. setup runs npx lazycodex-ai install before applying LFP, then installs/enables this pack in Codex and applies configured overrides to existing agents. Agent model application preserves top-level Codex defaults unless --sync-global-defaults is passed.`;
+  This package extends LazyCodex with OMO agent, model, and visual capabilities for Codex. setup runs npx lazycodex-ai install before applying LFP, then installs/enables this pack in Codex and applies configured three primary model fields to existing agents. Agent model application preserves top-level Codex defaults unless --sync-global-defaults is passed.`;
 
 if (isDirectRun()) {
   runCli(process.argv.slice(2)).catch((error) => {

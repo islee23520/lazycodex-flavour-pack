@@ -1,7 +1,7 @@
 {
   "name": "@islee23520/lfp",
   "version": "0.3.11",
-  "description": "LazyCodex extension plugin that brings the full OMO feature set into Codex: complete agent roster, category routing, model fallback, art team, and visual specialists.",
+  "description": "LazyCodex extension plugin that brings the full OMO feature set into Codex: complete agent roster, category routing, MCP fallback resolver for saved override configurations, art team, and visual specialists.",
   "author": "islee23520",
   "homepage": "https://linalab.io",
   "repository": "https://github.com/islee23520/lazycodex-flavour-pack",
@@ -17,8 +17,8 @@
   "hooks": "./hooks/hooks.json",
   "interface": {
     "displayName": "LFP — Full OMO Bridge for Codex",
-    "shortDescription": "Extends LazyCodex with the complete OMO feature set: all agents, category routing, fallback chains, art team, and visual specialists.",
-    "longDescription": "LFP bridges the gap between LazyCodex (OMO Light edition) and the full OMO feature set. It installs LFP-owned agents (sisyphus, visual specialists, art team), manages model overrides on upstream agents, provides category-based model routing guidance, exposes MCP tools for model fallback resolution, runs interactive TUI setup, performs atomic runtime promotion with rollback, and orchestrates multi-agent workflows.",
+    "shortDescription": "Extends LazyCodex with the complete OMO feature set: all agents, category routing, MCP fallback resolver for saved override configurations, art team, and visual specialists.",
+    "longDescription": "LFP bridges the gap between LazyCodex (OMO Light edition) and the full OMO feature set. It installs LFP-owned agents (sisyphus, visual specialists, art team), manages primary model overrides on upstream agents, provides category-based model routing guidance, exposes an MCP tool for manual model fallback resolution from saved override configurations, runs interactive TUI setup, performs atomic runtime promotion with rollback, and orchestrates multi-agent workflows.",
     "developerName": "islee23520",
     "category": "Developer Tools",
     "capabilities": [
@@ -58,7 +58,7 @@
     "tools": [
       {
         "name": "model_fallback_resolver",
-        "description": "Given an agent name and optional error reason (quota, rate-limit, 429, error), returns the effective model to use right now (primary or the per-agent fallback defined in LFP ledger). Never writes anything. Safe to call from any agent on quota/rate/provider failure.",
+        "description": "MCP tool for manual fallback lookup. Given an agent name and optional error reason (quota, rate-limit, 429, error), returns the effective model from saved override configurations (primary or configured fallback). Never writes anything. Safe to call from any agent on quota/rate/provider failure.",
         "input_schema": {
           "type": "object",
           "properties": {

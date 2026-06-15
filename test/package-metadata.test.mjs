@@ -4,6 +4,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { readOverrideConfig } from "../scripts/model-override-config.mjs";
+import { escapeRegExp } from "../scripts/toml-string-utils.mjs";
 
 const packageJson = JSON.parse(readFileSync(path.resolve("package.json"), "utf8"));
 const pluginJson = JSON.parse(readFileSync(path.resolve(".codex-plugin", "plugin.json"), "utf8"));
@@ -11,6 +12,8 @@ const hooksJson = JSON.parse(readFileSync(path.resolve("hooks", "hooks.json"), "
 const legacyOmoOverridesJson = JSON.parse(readFileSync(path.resolve("agent-overrides", "omo.json"), "utf8"));
 const cliText = readFileSync(path.resolve("scripts/cli.mjs"), "utf8");
 const readmeText = readFileSync(path.resolve("README.md"), "utf8");
+const agentsText = readFileSync(path.resolve("AGENTS.md"), "utf8");
+const roadmapText = readFileSync(path.resolve("ROADMAP.md"), "utf8");
 const publishWorkflowPath = path.resolve(".github", "workflows", "publish.yml");
 
 test("given npm package metadata when validating publish settings then package is public", () => {
@@ -81,6 +84,7 @@ test("given npm package metadata when validating release files then package incl
     "scripts/setup-tui.mjs",
     "scripts/sync-agent-overrides-hook.mjs",
     "scripts/sync-agent-overrides.mjs",
+    "scripts/toml-string-utils.mjs",
     "scripts/user-prompt-submit.mjs",
     "scripts/user-model-overrides.mjs",
     "scripts/visual-engineering-hook.mjs",
@@ -109,6 +113,19 @@ test("given scoped npm package name when validating docs and CLI help then npx c
   assert.match(readmeText, new RegExp(escapeRegExp(npxCommand)));
   assert.doesNotMatch(cliText, /npx lfp@latest/);
   assert.doesNotMatch(readmeText, /npx lfp@latest/);
+});
+
+test("given documentation when validating agent model field scope then stale six-field contract is absent", () => {
+  for (const [name, text] of [
+    ["README.md", readmeText],
+    ["AGENTS.md", agentsText],
+    ["ROADMAP.md", roadmapText]
+  ]) {
+    assert.doesNotMatch(text, /six public/i, `${name} must not describe a six-public-field contract`);
+    assert.doesNotMatch(text, /six fields/i, `${name} must not describe a six-field contract`);
+  }
+
+  assert.match(agentsText, /three primary model fields/);
 });
 
 test("given npm package metadata when validating internal files then code maps are excluded", () => {
@@ -154,10 +171,6 @@ test("given publish automation docs when validating operator guidance then readm
   assert.match(readmeText, /islee23520\/lazycodex-flavour-pack/);
   assert.match(readmeText, /release published/);
 });
-
-function escapeRegExp(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
 
 function getReferencedRuntimeScripts() {
   const scriptPaths = [];
