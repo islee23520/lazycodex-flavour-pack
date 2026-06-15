@@ -4,60 +4,85 @@ import { getCompatibleReasoningEffort } from "./model-reasoning-compat.mjs";
 const XHIGH_REASONING_AGENT_NAMES = new Set(["momus", "plan", "sisyphus"]);
 const REASONING_AGENT_NAMES = new Set(["metis", "momus", "plan", "sisyphus", "ulw-plan", "review-work"]);
 
+const DEEP_REASONING_POLICY = {
+  reasoning: "xhigh",
+  tier: "default",
+  primary: [
+    { id: "grok-4.20-0309-reasoning" },
+    { family: "grok", capability: "reasoning" },
+    { family: "glm", capability: "reasoning" },
+    { family: "gpt", capability: "reasoning", pattern: /^(?!.*mini).*$/i }
+  ]
+};
+
 const ROLE_POLICIES = {
-  explorer: rolePolicy("low", "default", [
-    { id: "grok-3-mini-fast" },
-    { family: "grok", capability: "fast" },
-    { family: "gpt", capability: "fast" },
-    { family: "glm", pattern: /(?:turbo|mini|fast|5\.1)/i },
-    { family: "gpt" },
-    { family: "glm" }
-  ]),
-  librarian: rolePolicy("medium", "default", [
-    { family: "grok", capability: "fast" },
-    { family: "gpt", capability: "fast" },
-    { family: "glm" },
-    { family: "gpt" }
-  ]),
-  metis: rolePolicy("high", "default", [
-    { family: "glm", capability: "reasoning" },
-    { family: "grok", capability: "reasoning" },
-    { family: "gpt", capability: "reasoning", pattern: /^(?!.*mini).*$/i }
-  ]),
-  plan: rolePolicy("xhigh", "default", [
-    { id: "grok-4.20-0309-reasoning" },
-    { family: "grok", capability: "reasoning" },
-    { family: "glm", capability: "reasoning" },
-    { family: "gpt", capability: "reasoning", pattern: /^(?!.*mini).*$/i }
-  ]),
-  sisyphus: rolePolicy("xhigh", "default", [
-    { id: "grok-4.20-0309-reasoning" },
-    { family: "grok", capability: "reasoning" },
-    { family: "glm", capability: "reasoning" },
-    { family: "gpt", capability: "reasoning", pattern: /^(?!.*mini).*$/i }
-  ]),
-  momus: rolePolicy("xhigh", "default", [
-    { id: "gpt-5.5" },
-    { family: "gpt", capability: "reasoning", pattern: /^(?!.*mini).*$/i },
-    { family: "grok", capability: "reasoning" },
-    { family: "glm", capability: "reasoning" }
-  ]),
-  "codex-ultrawork-reviewer": rolePolicy("high", "default", [
-    { id: "gpt-5.5" },
-    { family: "gpt", capability: "reasoning", pattern: /^(?!.*codex-spark).*$/i },
-    { family: "grok", capability: "reasoning" },
-    { family: "glm", capability: "reasoning" }
-  ])
+  explorer: {
+    reasoning: "low",
+    tier: "default",
+    primary: [
+      { id: "grok-3-mini-fast" },
+      { family: "grok", capability: "fast" },
+      { family: "gpt", capability: "fast" },
+      { family: "glm", pattern: /(?:turbo|mini|fast|5\.1)/i },
+      { family: "gpt" },
+      { family: "glm" }
+    ]
+  },
+  librarian: {
+    reasoning: "medium",
+    tier: "default",
+    primary: [
+      { family: "grok", capability: "fast" },
+      { family: "gpt", capability: "fast" },
+      { family: "glm" },
+      { family: "gpt" }
+    ]
+  },
+  metis: {
+    reasoning: "high",
+    tier: "default",
+    primary: [
+      { family: "glm", capability: "reasoning" },
+      { family: "grok", capability: "reasoning" },
+      { family: "gpt", capability: "reasoning", pattern: /^(?!.*mini).*$/i }
+    ]
+  },
+  plan: DEEP_REASONING_POLICY,
+  sisyphus: DEEP_REASONING_POLICY,
+  momus: {
+    reasoning: "xhigh",
+    tier: "default",
+    primary: [
+      { id: "gpt-5.5" },
+      { family: "gpt", capability: "reasoning", pattern: /^(?!.*mini).*$/i },
+      { family: "grok", capability: "reasoning" },
+      { family: "glm", capability: "reasoning" }
+    ]
+  },
+  "codex-ultrawork-reviewer": {
+    reasoning: "high",
+    tier: "default",
+    primary: [
+      { id: "gpt-5.5" },
+      { family: "gpt", capability: "reasoning", pattern: /^(?!.*codex-spark).*$/i },
+      { family: "grok", capability: "reasoning" },
+      { family: "glm", capability: "reasoning" }
+    ]
+  }
 };
 
 for (const role of ["visual-engineering", "visual-looker", "artistry", "artistry-gen", "artistry-qa"]) {
-  ROLE_POLICIES[role] = rolePolicy("high", "default", [
-    { id: "gemini-pro-agent" },
-    { family: "gemini", capability: "reasoning" },
-    { family: "gemini", capability: "vision" },
-    { family: "grok", capability: "reasoning" },
-    { family: "gpt", capability: "reasoning", pattern: /^(?!.*mini).*$/i }
-  ]);
+  ROLE_POLICIES[role] = {
+    reasoning: "high",
+    tier: "default",
+    primary: [
+      { id: "gemini-pro-agent" },
+      { family: "gemini", capability: "reasoning" },
+      { family: "gemini", capability: "vision" },
+      { family: "grok", capability: "reasoning" },
+      { family: "gpt", capability: "reasoning", pattern: /^(?!.*mini).*$/i }
+    ]
+  };
 }
 
 export function buildRecommendedModelOverrides(overrides, models) {
@@ -81,16 +106,11 @@ export function recommendRoleModelFields(agentName, models) {
   const selected = primary ?? inventory[0] ?? null;
   if (selected === null) return {};
   const model = selected.id;
-  const recommendation = {
+  return {
     model,
     model_reasoning_effort: getCompatibleReasoningEffort(model, policy.reasoning),
     service_tier: policy.tier
   };
-  return recommendation;
-}
-
-function rolePolicy(reasoning, tier, primary) {
-  return { reasoning, tier, primary };
 }
 
 function legacyPolicy(agentName) {

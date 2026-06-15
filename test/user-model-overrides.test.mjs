@@ -5,6 +5,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { configureAgentModelOverrides, getUserOverrideConfigPath } from "../scripts/agent-model-config.mjs";
+import { escapeRegExp } from "../scripts/toml-string-utils.mjs";
 import { getLegacyUserOverrideConfigPath, restoreAgentModelApplication } from "../scripts/user-model-overrides.mjs";
 
 test("given saved user override config when setup runs again then restores model fields without stale agents dir", async () => {
@@ -378,8 +379,4 @@ function savedOverrideJsonWithAllFields(model, reasoning, tier, fallback, fallba
       }
     }
   }, null, 2)}\n`;
-}
-
-function escapeRegExp(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

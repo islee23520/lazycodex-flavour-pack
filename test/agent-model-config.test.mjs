@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -177,7 +177,7 @@ test("given setup recommendation flow when user presses enter per agent then wri
     assert.match(updated, /\[agents\.explorer]\nmodel = "gpt-5\.4-mini"\nmodel_reasoning_effort = "low"\nservice_tier = "default"/);
     assert.match(updated, /\[agents\.metis]\nmodel = "grok-4\.3"\nmodel_reasoning_effort = "high"\nservice_tier = "default"/);
     assert.doesNotMatch(updated, /^model_fallback/m);
-    assert.match(output.lines.join("\n"), /Recommendation: gpt-5\.4-mini/);
+    assert.match(output.lines.join("\n"), /LFP recommendation: gpt-5\.4-mini/);
     assert.match(output.lines.join("\n"), /Available models \(enter number or exact model id\):/);
     assert.match(output.lines.join("\n"), /Agent: explorer/);
   } finally {

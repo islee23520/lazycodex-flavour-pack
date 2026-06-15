@@ -2,6 +2,7 @@ import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import { AGENT_MODEL_FIELDS } from "./model-field-scope.mjs";
+import { readTomlString } from "./toml-string-utils.mjs";
 
 const WRITABLE_FIELDS = [...AGENT_MODEL_FIELDS];
 const LFP_AGENT_NAMES = new Set(["artistry", "artistry-gen", "artistry-qa", "sisyphus", "visual-engineering", "visual-looker"]);
@@ -89,17 +90,8 @@ function safeReadDir(sourceDir) {
   }
 }
 
-function readTomlString(text, key) {
-  const match = new RegExp(`^${escapeRegExp(key)}\\s*=\\s*"([^"]*)"\\s*$`, "m").exec(text);
-  return match?.[1] ?? null;
-}
-
 function readModelFields(text) {
   const fields = {};
   for (const key of WRITABLE_FIELDS) fields[key] = readTomlString(text, key);
   return fields;
-}
-
-function escapeRegExp(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

@@ -1,6 +1,7 @@
 import os from "node:os";
 import path from "node:path";
 import { readFileSync } from "node:fs";
+import { getTableBlock, readTomlString, readTopLevelTomlString } from "./toml-string-utils.mjs";
 
 const DEFAULT_CONFIG_NAME = "config.toml";
 
@@ -104,24 +105,4 @@ function readBearerTokenFromEnv(provider, env) {
 
 function withTrailingSlash(value) {
   return value.endsWith("/") ? value : `${value}/`;
-}
-
-function getTableBlock(text, tableName) {
-  const pattern = new RegExp(`(^|\\n)\\[${escapeRegExp(tableName)}]\\n([\\s\\S]*?)(?=\\n\\[[^\\n]+]|$)`);
-  return pattern.exec(text)?.[2] ?? "";
-}
-
-function readTopLevelTomlString(text, key) {
-  const firstTable = /^\[[^\n]+]/m.exec(text);
-  const topLevel = firstTable === null ? text : text.slice(0, firstTable.index);
-  return readTomlString(topLevel, key);
-}
-
-function readTomlString(text, key) {
-  const match = new RegExp(`^${escapeRegExp(key)}\\s*=\\s*"([^"]*)"\\s*$`, "m").exec(text);
-  return match?.[1] ?? null;
-}
-
-function escapeRegExp(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

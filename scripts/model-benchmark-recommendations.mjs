@@ -16,8 +16,8 @@ export function recommendFromAvailableModels({ roles, models, currentOverrides }
     recommendations[role] = {
       ...fields,
       benchmark: {
-        avg_score: candidate.score,
-        avg_latency_ms: candidate.relative_latency_ms,
+        routing_score: candidate.score,
+        relative_rank_ms: candidate.relative_latency_ms,
         ok_rate: 1,
         source: "prebenchmarked-family-routing"
       },

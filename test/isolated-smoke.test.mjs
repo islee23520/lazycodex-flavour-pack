@@ -5,6 +5,8 @@ import path from "node:path";
 import test from "node:test";
 import assert from "node:assert/strict";
 
+import { escapeRegExp } from "../scripts/toml-string-utils.mjs";
+
 const SMOKE_SCRIPT = path.resolve("scripts", "isolated-smoke.mjs");
 const LAZYCODEX_INSTALL_STUB = path.resolve("test/fixtures/lazycodex-install-stub.mjs");
 
@@ -40,7 +42,3 @@ test("given isolated smoke command when run then setup and doctor pass without r
     rmSync(sentinelRoot, { recursive: true, force: true });
   }
 });
-
-function escapeRegExp(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}

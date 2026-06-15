@@ -257,13 +257,6 @@ async function maybeRestoreUserOverrideConfig(configPath, userConfigPath, option
   return "adjust";
 }
 
-function logAgentRecommendation(output, recommendation) {
-  if (!recommendation.model) return;
-  output?.log?.(
-    `  Recommendation: ${recommendation.model} (reasoning: ${recommendation.model_reasoning_effort}, tier: ${recommendation.service_tier})`
-  );
-}
-
 function logAgentCurrentAndRecommendation(output, agentName, currentFields, recommendation) {
   const current = getPrimaryFields(currentFields, []);
   logAgentGuide(output, agentName, {
@@ -279,7 +272,6 @@ function logAgentCurrentAndRecommendation(output, agentName, currentFields, reco
       `  LFP recommendation: ${recommendation.model} (reasoning: ${recommendation.model_reasoning_effort}, tier: ${recommendation.service_tier})`
     );
   }
-  logAgentRecommendation(output, recommendation);
 }
 
 export { discoverAdditionalAgents, writeOverrideFields };

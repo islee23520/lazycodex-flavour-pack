@@ -8,6 +8,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { parseSyncArgs } from "../scripts/cli-args.mjs";
+import { escapeRegExp } from "../scripts/toml-string-utils.mjs";
 
 const CLI = path.resolve("scripts/cli.mjs");
 const LAZYCODEX_INSTALL_STUB = path.resolve("test/fixtures/lazycodex-install-stub.mjs");
@@ -920,10 +921,6 @@ function spawnCli(args, options = {}) {
       resolve({ status, stdout, stderr });
     });
   });
-}
-
-function escapeRegExp(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function savedOverrideJson(overrides) {

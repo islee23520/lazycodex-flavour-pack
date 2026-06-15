@@ -5,6 +5,8 @@ import { spawnSync } from "node:child_process";
 import test from "node:test";
 import assert from "node:assert/strict";
 
+import { escapeRegExp } from "../scripts/toml-string-utils.mjs";
+
 const CLI = path.resolve("scripts/cli.mjs");
 const LAZYCODEX_INSTALL_STUB = path.resolve("test/fixtures/lazycodex-install-stub.mjs");
 
@@ -136,8 +138,4 @@ function runCli(args, codexHome) {
     },
     encoding: "utf8"
   });
-}
-
-function escapeRegExp(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

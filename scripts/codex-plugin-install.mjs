@@ -19,6 +19,7 @@ import {
   prepareRuntimePromotion,
   rollbackRuntimePromotion
 } from "./runtime-promotion.mjs";
+import { escapeRegExp, getTableBlock, readTomlString } from "./toml-string-utils.mjs";
 
 export const MARKETPLACE_ID = "islee23520";
 export const PLUGIN_ID = "lfp";
@@ -266,11 +267,6 @@ function upsertTable(text, tableName, lines) {
   return `${text}${separator}${block}`;
 }
 
-function getTableBlock(text, tableName) {
-  const pattern = new RegExp(`(^|\\n)\\[${escapeRegExp(tableName)}\\]\\n([\\s\\S]*?)(?=\\n\\[[^\\n]+\\]|$)`);
-  return pattern.exec(text)?.[2] ?? "";
-}
-
 function readTextIfExists(filePath) {
   try {
     return readFileSync(filePath, "utf8");
@@ -278,13 +274,4 @@ function readTextIfExists(filePath) {
     if (error?.code === "ENOENT") return "";
     throw error;
   }
-}
-
-function readTomlString(text, key) {
-  const match = new RegExp(`^${escapeRegExp(key)}\\s*=\\s*"([^"]*)"\\s*$`, "m").exec(text);
-  return match?.[1] ?? null;
-}
-
-function escapeRegExp(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

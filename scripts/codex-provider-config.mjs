@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import { escapeRegExp, getTableBlock, readTomlString, readTopLevelTomlString } from "./toml-string-utils.mjs";
 
 export const OPENAI_COMPAT_PROVIDER_CONFIG = "codex-openai-compat-provider.toml";
 
@@ -96,28 +97,8 @@ function upsertTable(text, tableName, lines) {
   return `${text}${separator}${block}`;
 }
 
-function getTableBlock(text, tableName) {
-  const pattern = new RegExp(`(^|\\n)\\[${escapeRegExp(tableName)}\\]\\n([\\s\\S]*?)(?=\\n\\[[^\\n]+\\]|$)`);
-  return pattern.exec(text)?.[2] ?? "";
-}
-
-function readTomlString(text, key) {
-  const match = new RegExp(`^${escapeRegExp(key)}\\s*=\\s*"([^"]*)"\\s*$`, "m").exec(text);
-  return match?.[1] ?? null;
-}
-
-function readTopLevelTomlString(text, key) {
-  const firstTable = /^\[[^\n]+]/m.exec(text);
-  const topLevel = firstTable === null ? text : text.slice(0, firstTable.index);
-  return readTomlString(topLevel, key);
-}
-
 function readTomlBoolean(text, key) {
   const match = new RegExp(`^${escapeRegExp(key)}\\s*=\\s*(true|false)\\s*$`, "m").exec(text);
   if (match === null) return null;
   return match[1] === "true";
-}
-
-function escapeRegExp(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

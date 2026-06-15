@@ -7,6 +7,7 @@ import { AGENT_MODEL_FIELDS, VIRTUAL_OVERRIDE_SECTIONS } from "./model-field-sco
 import { getProviderModelInventoryState } from "./model-provider.mjs";
 import { classifyModelInventory } from "./model-inventory.mjs";
 import { readOverrideConfig } from "./model-override-config.mjs";
+import { readTomlString } from "./toml-string-utils.mjs";
 
 export function printCodexAppsCacheQuarantine() {
   const result = quarantineDuplicateCodexAppsToolCaches();
@@ -199,22 +200,11 @@ function collectAgentModelDrift(configPath) {
       agentName,
       filePath,
       fields: driftFields,
-      kinds: summarizeDriftKinds(driftFields)
+      kinds: ["model"]
     });
   }
 
   return { items };
-}
-
-function summarizeDriftKinds(fields) {
-  const kinds = new Set();
-  for (const field of fields) kinds.add(field.startsWith("model_fallback") ? "fallback" : "model");
-  return [...kinds];
-}
-
-function readTomlString(text, key) {
-  const match = new RegExp(`^${escapeRegExp(key)}\\s*=\\s*"([^"]*)"\\s*$`, "m").exec(text);
-  return match?.[1] ?? null;
 }
 
 function redactSecretText(value) {
@@ -222,8 +212,4 @@ function redactSecretText(value) {
     .replace(/Bearer\s+[A-Za-z0-9._~+/=-]+/gi, "Bearer [REDACTED]")
     .replace(/sk-[A-Za-z0-9._~+/=-]+/g, "sk-[REDACTED]")
     .replace(/([?&](?:api[_-]?key|token|auth|authorization)=)[^&\s]+/gi, "$1[REDACTED]");
-}
-
-function escapeRegExp(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
