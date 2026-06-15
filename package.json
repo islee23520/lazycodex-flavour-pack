@@ -1,7 +1,7 @@
 {
   "name": "@islee23520/lfp",
   "version": "0.3.11",
-  "description": "LazyCodex flavour pack with lightweight agent override sync.",
+  "description": "LazyCodex extension plugin — brings the full OMO feature set into Codex: agents, categories, fallback chains, art team, visual specialists.",
   "type": "module",
   "license": "MIT",
   "author": "islee23520",

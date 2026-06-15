@@ -1,8 +1,10 @@
 # LFP
 
-LazyCodex Flavour Pack. A small overlay for LazyCodex/Codex.
+LazyCodex extension plugin that brings the full OMO feature set into Codex.
 
-LFP runs `npx lazycodex-ai install` first, then registers this plugin in Codex, installs LFP-owned helper agents, optionally configures a generic OpenAI-compatible provider only after operator consent, and syncs only the six public model fields on existing upstream agent TOMLs.
+LazyCodex is the OMO Light edition for Codex — it intentionally ships only a portable subset (rules, ultrawork, lsp, 6 core agents) because it targets GPT-only workflows. LFP bridges the rest: the complete agent roster, category-based model routing, declarative fallback chains, runtime fallback, art team orchestration, visual specialists, provider configuration, and model benchmarking.
+
+LFP runs `npx lazycodex-ai install` first, then registers this plugin in Codex, installs LFP-owned agents, optionally configures a generic OpenAI-compatible provider only after operator consent, and syncs model fields on existing upstream agent TOMLs.
 
 Repository and LFP-owned issues live at <https://github.com/islee23520/lazycodex-flavour-pack>. If a failure is caused by upstream LazyCodex/OMO behavior rather than this flavour pack, register that issue on the upstream LazyCodex tracker instead.
 
