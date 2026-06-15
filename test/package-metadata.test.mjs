@@ -69,6 +69,7 @@ test("given npm package metadata when validating release files then package incl
     "scripts/model-fallback-resolver.mjs",
     "scripts/model-override-config.mjs",
     "scripts/model-override-schema.mjs",
+    "scripts/model-inventory.mjs",
     "scripts/model-provider.mjs",
     "scripts/model-reasoning-compat.mjs",
     "scripts/model-recommendations.mjs",
@@ -98,6 +99,7 @@ test("given plugin manifest when validating release metadata then bundled manife
   assert.equal(pluginJson.name, packageJson.name);
   assert.equal(pluginJson.version, packageJson.version);
   assert.equal(pluginJson.hooks, "./hooks/hooks.json");
+  assert.equal(pluginJson["x-lfp"].additionalAgents.includes("./agent-configs/sisyphus.toml"), true);
 });
 
 test("given scoped npm package name when validating docs and CLI help then npx commands use package identity", () => {

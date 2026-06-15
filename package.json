@@ -57,6 +57,7 @@
     "scripts/model-fallback-resolver.mjs",
     "scripts/model-override-config.mjs",
     "scripts/model-override-schema.mjs",
+    "scripts/model-inventory.mjs",
     "scripts/model-provider.mjs",
     "scripts/model-reasoning-compat.mjs",
     "scripts/model-recommendations.mjs",
