@@ -21,6 +21,7 @@ import {
   printInstallSmokeState,
   printOpenAiCompatProviderState,
   printProviderInventoryVisibility,
+  printRolePolicyConfig,
   printVisualSmokeState
 } from "./cli-reporting.mjs";
 
@@ -149,6 +150,7 @@ async function runDoctor(argv) {
   hasIssue ||= state.openAiCompatProvider.status === "drifted";
   await printProviderInventoryVisibility({ commandName: "doctor" });
   printApplierPreservationStatus({ commandName: "doctor" });
+  printRolePolicyConfig({ commandName: "doctor" });
   const installSmokeOk = printInstallSmokeState();
   hasIssue ||= !installSmokeOk;
   const visualSmokeOk = printVisualSmokeState();

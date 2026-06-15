@@ -7,6 +7,7 @@ import { AGENT_MODEL_FIELDS, VIRTUAL_OVERRIDE_SECTIONS } from "./model-field-sco
 import { getProviderModelInventoryState } from "./model-provider.mjs";
 import { classifyModelInventory } from "./model-inventory.mjs";
 import { readOverrideConfig } from "./model-override-config.mjs";
+import { readRolePolicyConfig, ROLE_POLICY_REPORT_ORDER } from "./role-policy-config.mjs";
 import { readTomlString } from "./toml-string-utils.mjs";
 
 export function printCodexAppsCacheQuarantine() {
@@ -137,6 +138,21 @@ export function printApplierPreservationStatus(options = {}) {
     console.log(`lfp ${commandName}: global defaults: preserved (agent-only mode)`);
   }
   console.log(`lfp ${commandName}: OMO hook state: preserved`);
+}
+
+export function printRolePolicyConfig(options = {}) {
+  const commandName = options.commandName ?? "doctor";
+  const config = readRolePolicyConfig({ env: process.env, ...options });
+  const source = config.source.userPath === null ? "packaged defaults" : `user overrides (${config.source.userPath})`;
+
+  console.log(`lfp ${commandName}: role policies: ${source}`);
+  for (const role of ROLE_POLICY_REPORT_ORDER) {
+    const fields = config.policies[role];
+    if (fields === undefined) continue;
+    console.log(`  ${role}: reasoning=${fields.reasoning}, tier=${fields.tier}`);
+  }
+
+  return { ok: true, config };
 }
 
 export function printInstallSmokeState() {

@@ -6,10 +6,10 @@ const RECOMMENDATION_FIELDS = [
   "service_tier"
 ];
 
-export function recommendFromAvailableModels({ roles, models, currentOverrides }) {
+export function recommendFromAvailableModels({ roles, models, currentOverrides, env }) {
   const recommendations = {};
   for (const role of roles) {
-    const fields = recommendRoleModelFields(role, models);
+    const fields = recommendRoleModelFields(role, models, { env });
     if (fields.model === undefined) continue;
     const candidate = scoreModel(fields.model, models.indexOf(fields.model));
     const current = currentOverrides[role] ?? {};

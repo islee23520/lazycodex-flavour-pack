@@ -56,6 +56,8 @@ When interactive OMO model setup changes override values, LFP also saves a schem
 
 `agent-config` runs the same OMO override selector without reinstalling the LFP-owned helper agents. It lists already-configured override targets and can opt additional installed upstream agent TOMLs into the override file. Agent TOML writes are restricted to the three primary model fields.
 
+Role recommendation policy defaults live in `agent-configs/lfp-role-policies.toml`. Operators can override `reasoning` and `tier` per role by creating `${CODEX_HOME}/lfp/lfp-role-policies.toml` with `[policies.<role>]` sections. Model preference order stays code-managed.
+
 `dry-setup` previews pending writes. `doctor` reports plugin install state, upstream LazyCodex/OMO readiness, provider status, visual-agent smoke checks, and pending override work.
 
 `smoke:isolated` runs setup, saved user override restore, override sync, doctor, and Codex Apps cache cleanup against a temporary `CODEX_HOME`; it does not touch the real Codex install.

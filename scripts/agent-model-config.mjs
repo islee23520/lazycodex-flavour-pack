@@ -59,7 +59,7 @@ export async function configureAgentModelOverrides(configPath, options = {}) {
   };
   const recommendations =
     (options.recommendModels === true || options.offerAutoRecommend === true) && models.length > 0
-      ? buildRecommendedModelOverrides(recommendationTargets, models)
+      ? buildRecommendedModelOverrides(recommendationTargets, models, options)
       : {};
 
   if (defaultModelNames.length > 0) {

@@ -1,0 +1,47 @@
+[policies.explorer]
+reasoning = "low"
+tier = "fast"
+
+[policies.librarian]
+reasoning = "low"
+tier = "fast"
+
+[policies.metis]
+reasoning = "high"
+tier = "default"
+
+[policies.plan]
+reasoning = "xhigh"
+tier = "default"
+
+[policies.sisyphus]
+reasoning = "xhigh"
+tier = "default"
+
+[policies.momus]
+reasoning = "xhigh"
+tier = "default"
+
+[policies.codex-ultrawork-reviewer]
+reasoning = "high"
+tier = "default"
+
+[policies.visual-engineering]
+reasoning = "high"
+tier = "default"
+
+[policies.visual-looker]
+reasoning = "high"
+tier = "default"
+
+[policies.artistry]
+reasoning = "high"
+tier = "default"
+
+[policies.artistry-gen]
+reasoning = "high"
+tier = "default"
+
+[policies.artistry-qa]
+reasoning = "high"
+tier = "default"

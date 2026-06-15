@@ -1,24 +1,19 @@
 import { classifyModelInventory } from "./model-inventory.mjs";
 import { getCompatibleReasoningEffort } from "./model-reasoning-compat.mjs";
+import { readRolePolicyConfig } from "./role-policy-config.mjs";
 
 const XHIGH_REASONING_AGENT_NAMES = new Set(["momus", "plan", "sisyphus"]);
 const REASONING_AGENT_NAMES = new Set(["metis", "momus", "plan", "sisyphus", "ulw-plan", "review-work"]);
 
-const DEEP_REASONING_POLICY = {
-  reasoning: "xhigh",
-  tier: "default",
-  primary: [
-    { id: "grok-4.20-0309-reasoning" },
-    { family: "grok", capability: "reasoning" },
-    { family: "glm", capability: "reasoning" },
-    { family: "gpt", capability: "reasoning", pattern: /^(?!.*mini).*$/i }
-  ]
-};
+const DEEP_REASONING_PREFERENCES = [
+  { id: "grok-4.20-0309-reasoning" },
+  { family: "grok", capability: "reasoning" },
+  { family: "glm", capability: "reasoning" },
+  { family: "gpt", capability: "reasoning", pattern: /^(?!.*mini).*$/i }
+];
 
-const ROLE_POLICIES = {
+const ROLE_MODEL_PREFERENCES = {
   explorer: {
-    reasoning: "low",
-    tier: "fast",
     primary: [
       { id: "grok-3-mini-fast" },
       { family: "grok", capability: "fast" },
@@ -29,8 +24,6 @@ const ROLE_POLICIES = {
     ]
   },
   librarian: {
-    reasoning: "low",
-    tier: "fast",
     primary: [
       { family: "grok", capability: "fast" },
       { family: "gpt", capability: "fast" },
@@ -39,19 +32,15 @@ const ROLE_POLICIES = {
     ]
   },
   metis: {
-    reasoning: "high",
-    tier: "default",
     primary: [
       { family: "glm", capability: "reasoning" },
       { family: "grok", capability: "reasoning" },
       { family: "gpt", capability: "reasoning", pattern: /^(?!.*mini).*$/i }
     ]
   },
-  plan: DEEP_REASONING_POLICY,
-  sisyphus: DEEP_REASONING_POLICY,
+  plan: { primary: DEEP_REASONING_PREFERENCES },
+  sisyphus: { primary: DEEP_REASONING_PREFERENCES },
   momus: {
-    reasoning: "xhigh",
-    tier: "default",
     primary: [
       { id: "gpt-5.5" },
       { family: "gpt", capability: "reasoning", pattern: /^(?!.*mini).*$/i },
@@ -60,8 +49,6 @@ const ROLE_POLICIES = {
     ]
   },
   "codex-ultrawork-reviewer": {
-    reasoning: "high",
-    tier: "default",
     primary: [
       { id: "gpt-5.5" },
       { family: "gpt", capability: "reasoning", pattern: /^(?!.*codex-spark).*$/i },
@@ -72,9 +59,7 @@ const ROLE_POLICIES = {
 };
 
 for (const role of ["visual-engineering", "visual-looker", "artistry", "artistry-gen", "artistry-qa"]) {
-  ROLE_POLICIES[role] = {
-    reasoning: "high",
-    tier: "default",
+  ROLE_MODEL_PREFERENCES[role] = {
     primary: [
       { id: "gemini-pro-agent" },
       { family: "gemini", capability: "reasoning" },
@@ -85,10 +70,11 @@ for (const role of ["visual-engineering", "visual-looker", "artistry", "artistry
   };
 }
 
-export function buildRecommendedModelOverrides(overrides, models) {
+export function buildRecommendedModelOverrides(overrides, models, options = {}) {
+  const policyConfig = options.policyConfig ?? readRolePolicyConfig(options);
   const recommendations = {};
   for (const agentName of Object.keys(overrides ?? {})) {
-    recommendations[agentName] = recommendRoleModelFields(agentName, models);
+    recommendations[agentName] = recommendRoleModelFields(agentName, models, { ...options, policyConfig });
   }
   return recommendations;
 }
@@ -99,28 +85,45 @@ export function applyRecommendedModelOverrides(overrides, recommendations) {
   }
 }
 
-export function recommendRoleModelFields(agentName, models) {
+export function recommendRoleModelFields(agentName, models, options = {}) {
   const inventory = classifyModelInventory(models);
-  const policy = ROLE_POLICIES[agentName] ?? legacyPolicy(agentName);
-  const primary = selectPreferredModel(policy.primary, inventory);
+  const policyConfig = options.policyConfig ?? readRolePolicyConfig(options);
+  const modelPreferences = ROLE_MODEL_PREFERENCES[agentName] ?? legacyModelPolicy(agentName);
+  const fieldPolicy = getRoleFieldPolicy(agentName, policyConfig);
+  const primary = selectPreferredModel(modelPreferences.primary, inventory);
   const selected = primary ?? inventory[0] ?? null;
   if (selected === null) return {};
   const model = selected.id;
   return {
     model,
-    model_reasoning_effort: getCompatibleReasoningEffort(model, policy.reasoning),
-    service_tier: policy.tier
+    model_reasoning_effort: getCompatibleReasoningEffort(model, fieldPolicy.reasoning),
+    service_tier: fieldPolicy.tier
   };
 }
 
-function legacyPolicy(agentName) {
+function getRoleFieldPolicy(agentName, policyConfig) {
+  const configured = policyConfig.policies[agentName];
+  const fallback = legacyFieldPolicy(agentName);
+  return {
+    reasoning: configured?.reasoning ?? fallback.reasoning,
+    tier: configured?.tier ?? fallback.tier
+  };
+}
+
+function legacyFieldPolicy(agentName) {
   const reasoningAgent = REASONING_AGENT_NAMES.has(agentName);
   let reasoning = "low";
   if (reasoningAgent) reasoning = "high";
   if (XHIGH_REASONING_AGENT_NAMES.has(agentName)) reasoning = "xhigh";
   return {
     reasoning,
-    tier: reasoningAgent ? "default" : "fast",
+    tier: reasoningAgent ? "default" : "fast"
+  };
+}
+
+function legacyModelPolicy(agentName) {
+  const reasoningAgent = REASONING_AGENT_NAMES.has(agentName);
+  return {
     primary: reasoningAgent
       ? [
           { family: "gpt", capability: "reasoning", pattern: /^(?!.*mini).*$/i },

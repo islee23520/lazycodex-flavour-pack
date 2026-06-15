@@ -77,6 +77,7 @@ test("given npm package metadata when validating release files then package incl
     "scripts/model-reasoning-compat.mjs",
     "scripts/model-recommendations.mjs",
     "scripts/provider-consent.mjs",
+    "scripts/role-policy-config.mjs",
     "scripts/runtime-promotion.mjs",
     "scripts/setup-command.mjs",
     "scripts/setup-provider-tui.mjs",
@@ -170,6 +171,17 @@ test("given publish automation docs when validating operator guidance then readm
   assert.doesNotMatch(readmeText, /NPM_TOKEN/);
   assert.match(readmeText, /islee23520\/lazycodex-flavour-pack/);
   assert.match(readmeText, /release published/);
+});
+
+test("given role policy defaults when validating package metadata then packaged config exists", () => {
+  const rolePolicyPath = path.resolve("agent-configs", "lfp-role-policies.toml");
+  assert.equal(existsSync(rolePolicyPath), true);
+  const text = readFileSync(rolePolicyPath, "utf8");
+  assert.match(text, /\[policies\.explorer\]/);
+  assert.match(text, /reasoning = "low"/);
+  assert.match(text, /tier = "fast"/);
+  assert.match(text, /\[policies\.plan\]/);
+  assert.match(text, /reasoning = "xhigh"/);
 });
 
 function getReferencedRuntimeScripts() {

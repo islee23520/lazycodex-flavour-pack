@@ -62,6 +62,7 @@
     "scripts/model-reasoning-compat.mjs",
     "scripts/model-recommendations.mjs",
     "scripts/provider-consent.mjs",
+    "scripts/role-policy-config.mjs",
     "scripts/runtime-promotion.mjs",
     "scripts/setup-command.mjs",
     "scripts/setup-provider-tui.mjs",

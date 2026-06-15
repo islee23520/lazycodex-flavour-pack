@@ -1,8 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import os from "node:os";
+import path from "node:path";
 
 import { classifyModelInventory } from "../scripts/model-inventory.mjs";
 import { buildRecommendedModelOverrides } from "../scripts/model-recommendations.mjs";
+import { clearRolePolicyConfigCache } from "../scripts/role-policy-config.mjs";
 
 test("given OMO xhigh agents when recommending models then preserves upstream xhigh reasoning", () => {
   const recommendations = buildRecommendedModelOverrides(
@@ -96,6 +100,56 @@ test("given only one usable model when recommending role models then does not fo
   assert.equal("model_fallback" in recommendations.explorer, false);
   assert.equal("model_fallback_reasoning_effort" in recommendations.explorer, false);
   assert.equal("model_fallback_service_tier" in recommendations.explorer, false);
+});
+
+test("given user role policy when recommending role models then uses configured reasoning and tier", () => {
+  const codexHome = mkdtempSync(path.join(os.tmpdir(), "lfp-role-policy-"));
+  try {
+    mkdirSync(path.join(codexHome, "lfp"), { recursive: true });
+    writeFileSync(
+      path.join(codexHome, "lfp", "lfp-role-policies.toml"),
+      '[policies.explorer]\nreasoning = "medium"\ntier = "default"\n'
+    );
+    clearRolePolicyConfigCache();
+
+    const recommendations = buildRecommendedModelOverrides(
+      { explorer: {} },
+      ["grok-3-mini-fast", "gpt-5.5"],
+      { env: { CODEX_HOME: codexHome } }
+    );
+
+    assert.equal(recommendations.explorer.model, "grok-3-mini-fast");
+    assert.equal(recommendations.explorer.model_reasoning_effort, "medium");
+    assert.equal(recommendations.explorer.service_tier, "default");
+  } finally {
+    clearRolePolicyConfigCache();
+    rmSync(codexHome, { recursive: true, force: true });
+  }
+});
+
+test("given user xhigh role policy for GLM when recommending role models then downgrades incompatible reasoning", () => {
+  const codexHome = mkdtempSync(path.join(os.tmpdir(), "lfp-role-policy-"));
+  try {
+    mkdirSync(path.join(codexHome, "lfp"), { recursive: true });
+    writeFileSync(
+      path.join(codexHome, "lfp", "lfp-role-policies.toml"),
+      '[policies.metis]\nreasoning = "xhigh"\n'
+    );
+    clearRolePolicyConfigCache();
+
+    const recommendations = buildRecommendedModelOverrides(
+      { metis: {} },
+      ["glm-5.2", "gpt-5.5"],
+      { env: { CODEX_HOME: codexHome } }
+    );
+
+    assert.equal(recommendations.metis.model, "glm-5.2");
+    assert.equal(recommendations.metis.model_reasoning_effort, "high");
+    assert.equal(recommendations.metis.service_tier, "default");
+  } finally {
+    clearRolePolicyConfigCache();
+    rmSync(codexHome, { recursive: true, force: true });
+  }
 });
 
 test("given CLIPROXY-like model ids when classifying inventory then reports stable families providers and capabilities", () => {

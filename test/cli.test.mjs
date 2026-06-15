@@ -8,6 +8,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { parseSyncArgs } from "../scripts/cli-args.mjs";
+import { clearRolePolicyConfigCache } from "../scripts/role-policy-config.mjs";
 import { escapeRegExp } from "../scripts/toml-string-utils.mjs";
 
 const CLI = path.resolve("scripts/cli.mjs");
@@ -678,6 +679,70 @@ test("given CLI doctor when changes are pending then reports setup work without 
   }
 });
 
+test("given packaged role policies when doctor runs then reports packaged policy values", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-cli-"));
+  try {
+    const codexHome = path.join(root, "codex-home");
+    const sourceDir = path.join(root, "agents");
+    const configPath = path.join(root, "config.json");
+    const agentPath = path.join(sourceDir, "explorer.toml");
+    mkdirSync(sourceDir);
+    writeFileSync(agentPath, 'name = "explorer"\nmodel = "grok-4.3"\n');
+    writeFileSync(
+      configPath,
+      JSON.stringify({
+        source: { agentsDir: sourceDir },
+        overrides: { explorer: { model: "grok-4.3" } }
+      })
+    );
+
+    const result = spawnSync(process.execPath, [CLI, "doctor", "--config", configPath], {
+      env: cliEnv(codexHome),
+      encoding: "utf8"
+    });
+
+    assert.match(result.stdout, /lfp doctor: role policies: packaged defaults/);
+    assert.match(result.stdout, /explorer: reasoning=low, tier=fast/);
+    assert.match(result.stdout, /plan: reasoning=xhigh, tier=default/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("given user role policies when doctor runs then reports user override values", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-cli-"));
+  try {
+    const codexHome = path.join(root, "codex-home");
+    const sourceDir = path.join(root, "agents");
+    const configPath = path.join(root, "config.json");
+    const agentPath = path.join(sourceDir, "explorer.toml");
+    const userRolePolicyPath = path.join(codexHome, "lfp", "lfp-role-policies.toml");
+    mkdirSync(sourceDir);
+    mkdirSync(path.dirname(userRolePolicyPath), { recursive: true });
+    writeFileSync(agentPath, 'name = "explorer"\nmodel = "grok-4.3"\n');
+    writeFileSync(userRolePolicyPath, '[policies.explorer]\nreasoning = "medium"\ntier = "default"\n');
+    writeFileSync(
+      configPath,
+      JSON.stringify({
+        source: { agentsDir: sourceDir },
+        overrides: { explorer: { model: "grok-4.3" } }
+      })
+    );
+    clearRolePolicyConfigCache();
+
+    const result = spawnSync(process.execPath, [CLI, "doctor", "--config", configPath], {
+      env: cliEnv(codexHome),
+      encoding: "utf8"
+    });
+
+    assert.match(result.stdout, /lfp doctor: role policies: user overrides/);
+    assert.match(result.stdout, /explorer: reasoning=medium, tier=default/);
+    assert.match(result.stdout, /plan: reasoning=xhigh, tier=default/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("given doctor sees provider inventory and model drift then reports applier visibility without leaking tokens", async () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-cli-doctor-provider-"));
   const server = await startModelsServer(["glm-5.2", "grok-3-mini-fast", "gemini-pro-agent"]);
@@ -884,7 +949,6 @@ test("given first-run no saved user override when setup then doctor runs then re
     assert.match(doctor.stdout, /agent overrides: already applied/);
     assert.doesNotMatch(doctor.stdout, /Adjust LFP model overrides now/i);
     assert.doesNotMatch(doctor.stdout, /using packaged defaults/i);
-    assert.doesNotMatch(doctor.stdout, /packaged defaults/i);
     assert.doesNotMatch(doctor.stdout, /user-saved overrides active/i);
   } finally {
     rmSync(root, { recursive: true, force: true });
