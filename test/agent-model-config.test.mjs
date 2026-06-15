@@ -162,11 +162,11 @@ test("given setup recommendation flow when user presses enter per agent then wri
     const updated = readFileSync(configPath, "utf8");
 
     assert.equal(config.overrides.explorer.model, "gpt-5.4-mini");
-    assert.equal(config.overrides.explorer.service_tier, "default");
+    assert.equal(config.overrides.explorer.service_tier, "fast");
     assert.equal(config.overrides.explorer.model_reasoning_effort, "low");
     assert.equal(config.overrides.librarian.model, "gpt-5.4-mini");
-    assert.equal(config.overrides.librarian.service_tier, "default");
-    assert.equal(config.overrides.librarian.model_reasoning_effort, "medium");
+    assert.equal(config.overrides.librarian.service_tier, "fast");
+    assert.equal(config.overrides.librarian.model_reasoning_effort, "low");
     assert.equal(config.overrides.metis.model, "grok-4.3");
     assert.equal(config.overrides.metis.service_tier, "default");
     assert.equal(config.overrides.metis.model_reasoning_effort, "high");
@@ -174,7 +174,7 @@ test("given setup recommendation flow when user presses enter per agent then wri
     assert.ok(configOutput.questions.some((question) => /explorer model \[1]/.test(question)));
     assert.ok(configOutput.questions.some((question) => /librarian model \[1]/.test(question)));
     assert.ok(configOutput.questions.some((question) => /metis model \[3]/.test(question)));
-    assert.match(updated, /\[agents\.explorer]\nmodel = "gpt-5\.4-mini"\nmodel_reasoning_effort = "low"\nservice_tier = "default"/);
+    assert.match(updated, /\[agents\.explorer]\nmodel = "gpt-5\.4-mini"\nmodel_reasoning_effort = "low"\nservice_tier = "fast"/);
     assert.match(updated, /\[agents\.metis]\nmodel = "grok-4\.3"\nmodel_reasoning_effort = "high"\nservice_tier = "default"/);
     assert.doesNotMatch(updated, /^model_fallback/m);
     assert.match(output.lines.join("\n"), /LFP recommendation: gpt-5\.4-mini/);

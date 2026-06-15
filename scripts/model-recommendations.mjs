@@ -18,7 +18,7 @@ const DEEP_REASONING_POLICY = {
 const ROLE_POLICIES = {
   explorer: {
     reasoning: "low",
-    tier: "default",
+    tier: "fast",
     primary: [
       { id: "grok-3-mini-fast" },
       { family: "grok", capability: "fast" },
@@ -29,8 +29,8 @@ const ROLE_POLICIES = {
     ]
   },
   librarian: {
-    reasoning: "medium",
-    tier: "default",
+    reasoning: "low",
+    tier: "fast",
     primary: [
       { family: "grok", capability: "fast" },
       { family: "gpt", capability: "fast" },

@@ -43,6 +43,7 @@ test("given CLIPROXY-like inventory when recommending role models then recommend
   );
 
   assert.equal(recommendations.explorer.model, "grok-3-mini-fast");
+  assert.equal(recommendations.explorer.service_tier, "fast");
   assert.equal("model_fallback" in recommendations.explorer, false);
 
   assert.equal(recommendations.metis.model, "glm-5.2");
