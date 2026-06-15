@@ -1,3 +1,4 @@
+const XHIGH_REASONING_AGENT_NAMES = new Set(["momus", "plan"]);
 const REASONING_AGENT_NAMES = new Set(["metis", "momus", "plan", "ulw-plan", "review-work"]);
 
 const UTILITY_MODEL_PATTERNS = [
@@ -33,9 +34,12 @@ export function applyRecommendedModelOverrides(overrides, recommendations) {
 
 function recommendAgentModelFields(agentName, models) {
   const reasoningAgent = REASONING_AGENT_NAMES.has(agentName);
+  let reasoningEffort = "low";
+  if (reasoningAgent) reasoningEffort = "high";
+  if (XHIGH_REASONING_AGENT_NAMES.has(agentName)) reasoningEffort = "xhigh";
   return {
     model: selectModel(models, reasoningAgent ? REASONING_MODEL_PATTERNS : UTILITY_MODEL_PATTERNS),
-    model_reasoning_effort: reasoningAgent ? "high" : "low",
+    model_reasoning_effort: reasoningEffort,
     service_tier: reasoningAgent ? "default" : "fast"
   };
 }

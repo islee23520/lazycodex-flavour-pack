@@ -17,7 +17,7 @@ const ROLE_PROFILES = {
     families: ["glm-5.2", "glm-5.1", "grok-4.20-0309-reasoning", "gpt-5.4", "gpt-5.5"]
   },
   plan: {
-    reasoning: "high",
+    reasoning: "xhigh",
     tier: "default",
     families: ["grok-4.20-0309-reasoning", "gpt-5.5", "gpt-5.4", "glm-5.2"]
   },

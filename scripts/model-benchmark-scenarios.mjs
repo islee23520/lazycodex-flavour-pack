@@ -21,7 +21,7 @@ export const BENCHMARK_SCENARIOS = {
     prompt:
       'Create a compact 3-step plan to benchmark LFP model routing. Include measuring latency, scoring correctness, and applying overrides only when the winner beats current config.',
     checks: ["latency", "score", "overrides"],
-    currentFallback: { model_reasoning_effort: "high", service_tier: "default" }
+    currentFallback: { model_reasoning_effort: "xhigh", service_tier: "default" }
   },
   momus: {
     prompt:
