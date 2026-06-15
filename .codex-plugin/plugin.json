@@ -34,7 +34,8 @@
       "Sync LazyCodex agent model overrides.",
       "Use visual-engineering for screenshot-backed review.",
       "Use visual-looker for Gemini multimodal visual evidence inspection.",
-      "Use artistry for art direction, artistry-gen for Computer Use production, artistry-qa for visual inspection."
+      "Use artistry for art direction, artistry-gen for Computer Use production, artistry-qa for visual inspection.",
+      "Use sisyphus for Sisyphus-style implementation loops and independent done-claim verification."
     ],
     "brandColor": "#2563EB",
     "screenshots": []
@@ -50,7 +51,8 @@
       "./agent-configs/visual-looker.toml",
       "./agent-configs/artistry.toml",
       "./agent-configs/artistry-gen.toml",
-      "./agent-configs/artistry-qa.toml"
+      "./agent-configs/artistry-qa.toml",
+      "./agent-configs/sisyphus.toml"
     ],
     "tools": [
       {
@@ -61,7 +63,7 @@
           "properties": {
             "agent": {
               "type": "string",
-              "description": "Agent name, e.g. explorer, metis, plan, visual-engineering, visual-looker, momus"
+              "description": "Agent name, e.g. explorer, metis, plan, sisyphus, visual-engineering, visual-looker, momus"
             },
             "reason": {
               "type": "string",

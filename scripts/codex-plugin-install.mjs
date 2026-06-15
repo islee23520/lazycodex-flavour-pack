@@ -25,7 +25,14 @@ export const PLUGIN_ID = "lfp";
 export const PLUGIN_REF = `${PLUGIN_ID}@${MARKETPLACE_ID}`;
 
 const DEFAULT_PACKAGE_ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const ADDITIONAL_AGENT_CONFIGS = ["visual-engineering.toml", "visual-looker.toml", "artistry.toml", "artistry-gen.toml", "artistry-qa.toml"];
+const ADDITIONAL_AGENT_CONFIGS = [
+  "visual-engineering.toml",
+  "visual-looker.toml",
+  "artistry.toml",
+  "artistry-gen.toml",
+  "artistry-qa.toml",
+  "sisyphus.toml"
+];
 const PROTECTED_UPSTREAM_AGENT_CONFIGS = ["explorer.toml"];
 const LAZYCODEX_PLUGIN_REFS = new Set(["omo@sisyphuslabs", "lazycodex-ai"]);
 const VISUAL_AGENT_CONFIGS = ["artistry.toml", "artistry-gen.toml", "artistry-qa.toml", "visual-engineering.toml", "visual-looker.toml"];

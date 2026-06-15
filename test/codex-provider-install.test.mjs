@@ -215,6 +215,7 @@ function createPackageRoot(root, provider) {
   writeFileSync(path.join(packageRoot, "agent-configs", "artistry.toml"), 'name = "artistry"\nmodel = "gemini-pro-agent"\n');
   writeFileSync(path.join(packageRoot, "agent-configs", "artistry-gen.toml"), 'name = "artistry-gen"\nmodel = "gemini-pro-agent"\n');
   writeFileSync(path.join(packageRoot, "agent-configs", "artistry-qa.toml"), 'name = "artistry-qa"\nmodel = "gemini-pro-agent"\n');
+  writeFileSync(path.join(packageRoot, "agent-configs", "sisyphus.toml"), 'name = "sisyphus"\nmodel = "grok-4.20-0309-reasoning"\n');
   writeFileSync(
     path.join(packageRoot, "agent-configs", "codex-openai-compat-provider.toml"),
     [
