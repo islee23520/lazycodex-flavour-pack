@@ -4,7 +4,7 @@ import { createInterface } from "node:readline";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { getCodexPluginState, PLUGIN_REF } from "./codex-plugin-install.mjs";
-import { syncAgentOverrides } from "./sync-agent-overrides.mjs";
+import { syncAgentOverrides, syncGlobalModelDefaults } from "./sync-agent-overrides.mjs";
 import { configureArtTeam } from "./art-team-config.mjs";
 import { configureAgentModelOverrides } from "./agent-model-config.mjs";
 import { runBenchmarkCommand } from "./model-benchmark.mjs";
@@ -16,8 +16,11 @@ import {
   printCodexAppsCacheFixPreview,
   printArtTeamConfig,
   printCodexAppsCacheState,
+  printAgentModelDrift,
+  printApplierPreservationStatus,
   printInstallSmokeState,
   printOpenAiCompatProviderState,
+  printProviderInventoryVisibility,
   printVisualSmokeState
 } from "./cli-reporting.mjs";
 
@@ -26,10 +29,10 @@ const DEFAULT_CONFIG = path.join(ROOT, "agent-configs", "omo-agent-model-overrid
 const HELP = `lfp
 
 Usage:
-  lfp setup [--config <path>] [--skip-art-prompt] [--skip-model-prompt] [--no-tui]
-  lfp dry-setup [--config <path>]
+  lfp setup [--config <path>] [--agent-models-only|--sync-global-defaults] [--skip-art-prompt] [--skip-model-prompt] [--no-tui]
+  lfp dry-setup [--config <path>] [--agent-models-only|--sync-global-defaults]
   lfp doctor [--config <path>] [--fix-cache [--apply]]
-  lfp agent-config [--config <path>]
+  lfp agent-config [--config <path>] [--agent-models-only|--sync-global-defaults]
   lfp benchmark-models [--recommend-only] [--roles <csv>] [--models <csv>] [--samples <n>] [--output <path>] [--dry-run] [--apply]
   lfp art-config
   lfp help
@@ -63,6 +66,8 @@ Flags:
   --skip-model-prompt  Skip the interactive OMO override model prompt during setup.
   --skip-lazycodex-install  Local development only: install this checkout without running LazyCodex install first.
   --no-tui  Force legacy line-output setup even when running in an interactive terminal.
+  --agent-models-only  Apply only installed agent TOMLs and saved overrides; preserve Codex global defaults. This is the default.
+  --sync-global-defaults  Explicit legacy mode: also sync default and ULW virtual sections into Codex config.toml.
   --roles  With benchmark-models, comma-separated role names to test.
   --models  With benchmark-models, comma-separated model ids to test.
   --samples  With benchmark-models, repeated samples per role/model.
@@ -71,7 +76,7 @@ Flags:
   --dry-run  With benchmark-models, score scenarios without provider calls.
   --apply  With benchmark-models, write winning model fields to saved LFP overrides.
 
-This package is a lightweight overlay. setup runs npx lazycodex-ai install before applying LFP, then installs/enables this pack in Codex and applies configured overrides to existing agents.`;
+This package is a lightweight overlay. setup runs npx lazycodex-ai install before applying LFP, then installs/enables this pack in Codex and applies configured overrides to existing agents. Agent model application preserves top-level Codex defaults unless --sync-global-defaults is passed.`;
 
 if (isDirectRun()) {
   runCli(process.argv.slice(2)).catch((error) => {
@@ -99,7 +104,7 @@ export async function runCli(argv) {
   }
 
   if (command === "doctor") {
-    runDoctor(args);
+    await runDoctor(args);
     return;
   }
 
@@ -109,7 +114,8 @@ export async function runCli(argv) {
   }
 
   if (command === "benchmark-models") {
-    await runBenchmarkCommand(args);
+    const result = await runBenchmarkCommand(args, { output: console });
+    if (result.applied.length > 0) console.log("global defaults: preserved (agent-only mode)");
     return;
   }
 
@@ -121,7 +127,7 @@ export async function runCli(argv) {
   throw new Error(`Unknown command: ${command}\n\n${HELP}`);
 }
 
-function runDoctor(argv) {
+async function runDoctor(argv) {
   const args = parseDoctorArgs(argv);
   if (args.check !== undefined) throw new Error("doctor does not accept --check; use dry-setup instead");
   if (args.apply && !args.fixCache) throw new Error("doctor --apply requires --fix-cache");
@@ -141,6 +147,8 @@ function runDoctor(argv) {
   hasIssue ||= !state.pluginFilesInstalled || !state.additionalAgentsInstalled || !state.marketplaceConfigured || !state.pluginEnabled;
   printOpenAiCompatProviderState(state);
   hasIssue ||= state.openAiCompatProvider.status === "drifted";
+  await printProviderInventoryVisibility({ commandName: "doctor" });
+  printApplierPreservationStatus({ commandName: "doctor" });
   const installSmokeOk = printInstallSmokeState();
   hasIssue ||= !installSmokeOk;
   const visualSmokeOk = printVisualSmokeState();
@@ -151,7 +159,10 @@ function runDoctor(argv) {
   printArtTeamConfig();
 
   try {
-    const result = syncAgentOverrides(effectiveConfig?.configPath ?? configPath, { check: true });
+    const effectiveConfigPath = effectiveConfig?.configPath ?? configPath;
+    const driftResult = printAgentModelDrift(effectiveConfigPath, { commandName: "doctor" });
+    hasIssue ||= !driftResult.ok;
+    const result = syncAgentOverrides(effectiveConfigPath, { check: true });
     if (result.changed.length === 0) {
       console.log("lfp doctor: agent overrides: already applied");
     } else {
@@ -192,7 +203,12 @@ async function runAgentConfig(argv) {
 
   try {
     console.log("Reconfiguring LazyCodex/OMO agent model overrides...\n");
-    await configureAgentModelOverrides(configPath, { readline: rl, output: console });
+    if (process.stdin.isTTY) {
+      await configureAgentModelOverrides(configPath, { readline: rl, output: console });
+    } else {
+      await configureAgentModelOverrides(configPath, { interactive: false });
+      console.log("agent-config: non-interactive; applying configured values.");
+    }
   } finally {
     rl.close();
   }
@@ -200,6 +216,12 @@ async function runAgentConfig(argv) {
   const result = syncAgentOverrides(configPath, { check: false });
   for (const item of result.changed) console.log(`updated ${item}`);
   if (result.changed.length === 0) console.log("agent overrides already applied");
+  if (args.syncGlobalDefaults) {
+    const globalResult = syncGlobalModelDefaults(configPath, { check: false });
+    for (const item of globalResult.changed) console.log(`updated global model defaults in ${item}`);
+  } else {
+    console.log("global defaults: preserved (agent-only mode)");
+  }
 }
 
 function getDefaultInstalledOverrideConfigPath() {

@@ -11,7 +11,10 @@ import { resolveProviderOverride, shouldInstallOpenAiCompatProvider } from "./se
 import {
   printCodexAppsCacheQuarantine,
   printInstallSmokeState,
-  printOpenAiCompatProviderState
+  printOpenAiCompatProviderState,
+  printAgentModelDrift,
+  printApplierPreservationStatus,
+  printProviderInventoryVisibility
 } from "./cli-reporting.mjs";
 import { runSetupTui, shouldUseSetupTui } from "./setup-tui.mjs";
 import { syncAgentOverrides, syncGlobalModelDefaults } from "./sync-agent-overrides.mjs";
@@ -83,6 +86,9 @@ export async function runSetupLineMode(args, { check, root, defaultConfig }, opt
 
   if (check) {
     printPendingSetupActions(pending);
+    await printProviderInventoryVisibility({ commandName: "dry-setup" });
+    printApplierPreservationStatus({ commandName: "dry-setup", syncGlobalDefaults: args.syncGlobalDefaults });
+    printAgentModelDrift(effectiveConfig?.configPath ?? configPath, { commandName: "dry-setup" });
   } else {
     const installedPath = await installAndMaybePrompt(args, root, configPath, installOpenAiCompatProvider, pending, options, providerOverride);
     if (installedPath === null) return;
@@ -91,7 +97,7 @@ export async function runSetupLineMode(args, { check, root, defaultConfig }, opt
 
   const effectiveConfigPath = effectiveConfig?.configPath ?? configPath;
   const result = check ? pendingOverrides : syncAgentOverrides(configPath, { check: false });
-  const globalResult = syncGlobalDefaults(effectiveConfigPath, check);
+  const globalResult = syncGlobalDefaults(effectiveConfigPath, check, args);
   effectiveConfig?.cleanup();
   printSetupChanges(result, globalResult, check);
 
@@ -224,20 +230,29 @@ function printPendingSetupActions(pending) {
   }
 }
 
-function syncGlobalDefaults(configPath, check) {
+function syncGlobalDefaults(configPath, check, args) {
+  if (!shouldSyncGlobalDefaults(args)) return { changed: [], preserved: true };
+
   try {
-    return syncGlobalModelDefaults(configPath, { check });
+    return { ...syncGlobalModelDefaults(configPath, { check }), preserved: false };
   } catch (error) {
     if (!check) console.error(`lfp setup: failed to apply global model defaults: ${error.message}`);
-    return null;
+    return { changed: [], preserved: false, error };
   }
+}
+
+function shouldSyncGlobalDefaults(args) {
+  return args.syncGlobalDefaults === true;
 }
 
 function printSetupChanges(result, globalResult, check) {
   for (const item of result.changed) console.log(`${check ? "would update" : "updated"} ${item}`);
-  if (!globalResult?.changed || globalResult.changed.length === 0) return;
+  if (globalResult?.preserved) {
+    if (check) console.log("global defaults: preserved (agent-only mode)");
+    return;
+  }
 
-  for (const item of globalResult.changed) {
+  for (const item of globalResult?.changed ?? []) {
     console.log(`${check ? "would update global model defaults in" : "updated global model defaults in"} ${item}`);
   }
 }

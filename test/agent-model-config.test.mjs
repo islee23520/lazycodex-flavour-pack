@@ -10,6 +10,7 @@ import {
   normalizeModelsPayload,
   readActiveModelProvider
 } from "../scripts/agent-model-config.mjs";
+import { writeOverrideFields } from "../scripts/agent-model-config-io.mjs";
 
 test("given Codex provider config when reading active model provider then returns model endpoint settings", () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-models-"));
@@ -161,22 +162,67 @@ test("given setup recommendation flow when user presses enter per agent then wri
     const updated = readFileSync(configPath, "utf8");
 
     assert.equal(config.overrides.explorer.model, "gpt-5.4-mini");
-    assert.equal(config.overrides.explorer.service_tier, "fast");
+    assert.equal(config.overrides.explorer.service_tier, "default");
     assert.equal(config.overrides.explorer.model_reasoning_effort, "low");
     assert.equal(config.overrides.librarian.model, "gpt-5.4-mini");
-    assert.equal(config.overrides.librarian.service_tier, "fast");
-    assert.equal(config.overrides.librarian.model_reasoning_effort, "low");
-    assert.equal(config.overrides.metis.model, "gpt-5.5");
+    assert.equal(config.overrides.librarian.service_tier, "default");
+    assert.equal(config.overrides.librarian.model_reasoning_effort, "medium");
+    assert.equal(config.overrides.metis.model, "grok-4.3");
     assert.equal(config.overrides.metis.service_tier, "default");
     assert.equal(config.overrides.metis.model_reasoning_effort, "high");
+    assert.equal("model_fallback" in config.overrides.metis, false);
     assert.ok(configOutput.questions.some((question) => /explorer model \[1]/.test(question)));
     assert.ok(configOutput.questions.some((question) => /librarian model \[1]/.test(question)));
-    assert.ok(configOutput.questions.some((question) => /metis model \[2]/.test(question)));
-    assert.match(updated, /\[agents\.explorer]\nmodel = "gpt-5\.4-mini"\nmodel_reasoning_effort = "low"\nservice_tier = "fast"/);
-    assert.match(updated, /\[agents\.metis]\nmodel = "gpt-5\.5"\nmodel_reasoning_effort = "high"\nservice_tier = "default"/);
+    assert.ok(configOutput.questions.some((question) => /metis model \[3]/.test(question)));
+    assert.match(updated, /\[agents\.explorer]\nmodel = "gpt-5\.4-mini"\nmodel_reasoning_effort = "low"\nservice_tier = "default"/);
+    assert.match(updated, /\[agents\.metis]\nmodel = "grok-4\.3"\nmodel_reasoning_effort = "high"\nservice_tier = "default"/);
+    assert.doesNotMatch(updated, /^model_fallback/m);
     assert.match(output.lines.join("\n"), /Recommendation: gpt-5\.4-mini/);
     assert.match(output.lines.join("\n"), /Available models \(enter number or exact model id\):/);
     assert.match(output.lines.join("\n"), /Agent: explorer/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("given recommended agent when user presses enter then shows current versus recommendation without fallback fields", async () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-models-"));
+  try {
+    const configPath = path.join(root, "overrides.toml");
+    writeFileSync(
+      configPath,
+      [
+        "[source]",
+        `agents_dir = "${root}"`,
+        "",
+        "[agents.plan]",
+        'model = "old-plan-model"',
+        'model_reasoning_effort = "medium"',
+        'service_tier = "fast"',
+        ""
+      ].join("\n")
+    );
+    const output = captureOutput();
+
+    const config = await configureAgentModelOverrides(configPath, {
+      models: ["grok-4.20-0309-reasoning", "gpt-5.5", "glm-5.2"],
+      readline: fakeReadline(["", "", ""]),
+      output,
+      recommendModels: true,
+      persistUserOverrides: false
+    });
+    const updated = readFileSync(configPath, "utf8");
+    const outputText = output.lines.join("\n");
+
+    assert.equal(config.overrides.plan.model, "grok-4.20-0309-reasoning");
+    assert.equal(config.overrides.plan.model_reasoning_effort, "xhigh");
+    assert.equal(config.overrides.plan.service_tier, "default");
+    assert.equal("model_fallback" in config.overrides.plan, false);
+    assert.match(outputText, /Original\/current: old-plan-model \(reasoning: medium, tier: fast\)/);
+    assert.match(outputText, /LFP recommendation: grok-4\.20-0309-reasoning \(reasoning: xhigh, tier: default\)/);
+    assert.doesNotMatch(outputText, /fallback/i);
+    assert.equal(configOutput.questions.some((question) => /plan fallback model/.test(question)), false);
+    assert.doesNotMatch(updated, /^model_fallback/m);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -211,6 +257,45 @@ test("given setup recommendation flow when user overrides one agent then keeps m
     assert.equal(config.overrides.explorer.model, "grok-4.3");
     assert.equal(config.overrides.explorer.service_tier, "default");
     assert.equal(config.overrides.explorer.model_reasoning_effort, "medium");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("given override fields with fallback values when writing TOML then writes supported agent model fields only", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-model-writer-"));
+  try {
+    const configPath = path.join(root, "overrides.toml");
+    writeFileSync(
+      configPath,
+      [
+        "[source]",
+        `agents_dir = "${root}"`,
+        "",
+        "[agents.explorer]",
+        'model = "old-model"',
+        'model_reasoning_effort = "medium"',
+        'service_tier = "default"',
+        ""
+      ].join("\n")
+    );
+
+    writeOverrideFields(configPath, {
+      explorer: {
+        model: "new-model",
+        model_reasoning_effort: "low",
+        service_tier: "fast",
+        model_fallback: "fallback-model",
+        model_fallback_reasoning_effort: "low",
+        model_fallback_service_tier: "default"
+      }
+    });
+    const updated = readFileSync(configPath, "utf8");
+
+    assert.match(updated, /model = "new-model"/);
+    assert.match(updated, /model_reasoning_effort = "low"/);
+    assert.match(updated, /service_tier = "fast"/);
+    assert.doesNotMatch(updated, /^model_fallback/m);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -257,7 +342,7 @@ test("given setup confirm configured flow when user presses enter then re-applie
     assert.equal(config.overrides.metis.model_reasoning_effort, "low");
     assert.ok(configOutput.questions.some((question) => /explorer model \[3]/.test(question)));
     assert.ok(configOutput.questions.some((question) => /metis model \[1]/.test(question)));
-    assert.match(output.lines.join("\n"), /Recommendation: gpt-5\.5/);
+    assert.doesNotMatch(output.lines.join("\n"), /Recommended fallback/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -350,6 +435,53 @@ test("given additional installed OMO agent when user opts in then appends overri
     assert.match(updated, /\[agents\.metis]\nmodel = "gpt-5\.4-mini"\nmodel_reasoning_effort = "high"\nservice_tier = "fast"/);
     assert.ok(configOutput.questions.some((question) => /metis \(current: gpt-5\.5\)/.test(question)));
     assert.doesNotMatch(updated, /\[agents\.artistry]/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("given discovered reviewer agent has recommendation when user opts in then writes primary fields only", async () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-models-"));
+  try {
+    const configPath = path.join(root, "overrides.toml");
+    writeFileSync(
+      path.join(root, "codex-ultrawork-reviewer.toml"),
+      [
+        'name = "codex-ultrawork-reviewer"',
+        'model = "old-reviewer-model"',
+        'model_reasoning_effort = "medium"',
+        'service_tier = "fast"',
+        ""
+      ].join("\n")
+    );
+    writeFileSync(
+      configPath,
+      [
+        "[source]",
+        `agents_dir = "${root}"`,
+        ""
+      ].join("\n")
+    );
+    const output = captureOutput();
+
+    const config = await configureAgentModelOverrides(configPath, {
+      models: ["gpt-5.5", "grok-4.20-0309-reasoning", "glm-5.2"],
+      readline: fakeReadline(["y", "", "", ""]),
+      output,
+      recommendModels: true,
+      persistUserOverrides: false
+    });
+    const updated = readFileSync(configPath, "utf8");
+    const outputText = output.lines.join("\n");
+
+    assert.equal(config.overrides["codex-ultrawork-reviewer"].model, "gpt-5.5");
+    assert.equal("model_fallback" in config.overrides["codex-ultrawork-reviewer"], false);
+    assert.match(outputText, /Agent: codex-ultrawork-reviewer/);
+    assert.match(outputText, /Original\/current: old-reviewer-model \(reasoning: medium, tier: fast\)/);
+    assert.doesNotMatch(outputText, /Recommended fallback/);
+    assert.equal(configOutput.questions.some((question) => /codex-ultrawork-reviewer fallback model/.test(question)), false);
+    assert.match(updated, /\[agents\.codex-ultrawork-reviewer]/);
+    assert.doesNotMatch(updated, /^model_fallback/m);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

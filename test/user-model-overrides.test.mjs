@@ -5,7 +5,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { configureAgentModelOverrides, getUserOverrideConfigPath } from "../scripts/agent-model-config.mjs";
-import { getLegacyUserOverrideConfigPath } from "../scripts/user-model-overrides.mjs";
+import { getLegacyUserOverrideConfigPath, restoreAgentModelApplication } from "../scripts/user-model-overrides.mjs";
 
 test("given saved user override config when setup runs again then restores model fields without stale agents dir", async () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-user-models-"));
@@ -76,6 +76,34 @@ test("given saved user override when user declines adjust then keeps saved setti
     assert.ok(output.questions.some((question) => /Adjust LFP model overrides now/.test(question)));
     assert.ok(!output.questions.some((question) => /explorer model/.test(question)));
     assert.match(readFileSync(configPath, "utf8"), /model = "gpt-5\.4-mini"/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("given saved user override includes fallback fields when user declines adjust then restores fallback fields", async () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-user-models-"));
+  try {
+    const codexHome = path.join(root, "codex-home");
+    const configPath = path.join(root, "overrides.toml");
+    const savedPath = path.join(codexHome, "lfp", "omo-agent-model-overrides.json");
+    writeFileSync(configPath, overrideText("${CODEX_HOME}/agents", "grok-4.3", "low", "default"));
+    mkdirSync(path.dirname(savedPath), { recursive: true });
+    writeFileSync(savedPath, savedOverrideJsonWithFallback());
+
+    const result = await configureAgentModelOverrides(configPath, {
+      env: { ...process.env, CODEX_HOME: codexHome },
+      models: ["gpt-5.5", "grok-4.20-0309-reasoning"],
+      readline: fakeReadline(["n"]),
+      output: captureOutput()
+    });
+    const restoredText = readFileSync(configPath, "utf8");
+
+    assert.equal(result.overrides.plan.model, "gpt-5.5");
+    assert.equal(result.overrides.plan.model_fallback, "grok-4.20-0309-reasoning");
+    assert.match(restoredText, /model_fallback = "grok-4\.20-0309-reasoning"/);
+    assert.match(restoredText, /model_fallback_reasoning_effort = "high"/);
+    assert.match(restoredText, /model_fallback_service_tier = "default"/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -158,6 +186,100 @@ test("given legacy LFP TOML saved user override exists when configuring then mig
   }
 });
 
+test("given previous saved override config when restoring agent model application then saved config and installed TOML return to previous fields", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-user-models-rollback-"));
+  try {
+    const codexHome = path.join(root, "codex-home");
+    const agentsDir = path.join(codexHome, "agents");
+    const configPath = path.join(root, "overrides.toml");
+    const previousPath = path.join(root, "previous-overrides.json");
+    const currentSavedPath = path.join(codexHome, "lfp", "omo-agent-model-overrides.json");
+    mkdirSync(agentsDir, { recursive: true });
+    mkdirSync(path.dirname(currentSavedPath), { recursive: true });
+    writeFileSync(
+      path.join(agentsDir, "explorer.toml"),
+      [
+        'name = "explorer"',
+        'model = "new-primary"',
+        'model_reasoning_effort = "high"',
+        'service_tier = "fast"',
+        'model_fallback = "new-fallback"',
+        'model_fallback_reasoning_effort = "medium"',
+        'model_fallback_service_tier = "fast"',
+        ""
+      ].join("\n")
+    );
+    writeFileSync(
+      configPath,
+      [
+        "[source]",
+        'agents_dir = "${CODEX_HOME}/agents"',
+        "",
+        "[agents.explorer]",
+        'model = "new-primary"',
+        'model_reasoning_effort = "high"',
+        'service_tier = "fast"',
+        'model_fallback = "new-fallback"',
+        'model_fallback_reasoning_effort = "medium"',
+        'model_fallback_service_tier = "fast"',
+        ""
+      ].join("\n")
+    );
+    writeFileSync(currentSavedPath, savedOverrideJsonWithAllFields("new-primary", "high", "fast", "new-fallback", "medium", "fast"));
+    writeFileSync(previousPath, savedOverrideJsonWithAllFields("previous-primary", "low", "default", "previous-fallback", "low", "default"));
+
+    const result = restoreAgentModelApplication(configPath, previousPath, {
+      env: { ...process.env, CODEX_HOME: codexHome }
+    });
+    const agentText = readFileSync(path.join(agentsDir, "explorer.toml"), "utf8");
+    const savedJson = JSON.parse(readFileSync(currentSavedPath, "utf8"));
+
+    assert.deepEqual(result.changed, [path.join(agentsDir, "explorer.toml")]);
+    assert.equal(result.savedConfigPath, currentSavedPath);
+    assert.equal(savedJson.overrides.explorer.model, "previous-primary");
+    assert.equal(savedJson.overrides.explorer.model_fallback, "previous-fallback");
+    assert.match(agentText, /model = "previous-primary"/);
+    assert.match(agentText, /model_reasoning_effort = "low"/);
+    assert.match(agentText, /service_tier = "default"/);
+    assert.doesNotMatch(agentText, /^model_fallback/m);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("given malformed previous saved override config when restoring then leaves current saved config and installed TOML unchanged", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-user-models-rollback-"));
+  try {
+    const codexHome = path.join(root, "codex-home");
+    const agentsDir = path.join(codexHome, "agents");
+    const configPath = path.join(root, "overrides.toml");
+    const previousPath = path.join(root, "previous-overrides.json");
+    const currentSavedPath = path.join(codexHome, "lfp", "omo-agent-model-overrides.json");
+    mkdirSync(agentsDir, { recursive: true });
+    mkdirSync(path.dirname(currentSavedPath), { recursive: true });
+    const currentAgentText = [
+      'name = "explorer"',
+      'model = "current-primary"',
+      'model_fallback = "current-fallback"',
+      ""
+    ].join("\n");
+    const currentSavedText = savedOverrideJsonWithAllFields("current-primary", "low", "default", "current-fallback", "low", "default");
+    writeFileSync(path.join(agentsDir, "explorer.toml"), currentAgentText);
+    writeFileSync(configPath, ["[source]", 'agents_dir = "${CODEX_HOME}/agents"', "", "[agents.explorer]", 'model = "current-primary"', ""].join("\n"));
+    writeFileSync(currentSavedPath, currentSavedText);
+    writeFileSync(previousPath, '{"schemaVersion":1,"overrides":{"explorer":{"model":123}}}');
+
+    assert.throws(
+      () => restoreAgentModelApplication(configPath, previousPath, { env: { ...process.env, CODEX_HOME: codexHome } }),
+      /Invalid|Expected string|received number/i
+    );
+    assert.equal(readFileSync(path.join(agentsDir, "explorer.toml"), "utf8"), currentAgentText);
+    assert.equal(readFileSync(currentSavedPath, "utf8"), currentSavedText);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("given no saved user override when configureAgentModelOverrides runs then emits no Adjust prompt", async () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-user-models-"));
   try {
@@ -221,6 +343,38 @@ function savedOverrideJson(model, reasoning, tier) {
         model,
         model_reasoning_effort: reasoning,
         service_tier: tier
+      }
+    }
+  }, null, 2)}\n`;
+}
+
+function savedOverrideJsonWithFallback() {
+  return `${JSON.stringify({
+    schemaVersion: 1,
+    overrides: {
+      plan: {
+        model: "gpt-5.5",
+        model_reasoning_effort: "xhigh",
+        service_tier: "default",
+        model_fallback: "grok-4.20-0309-reasoning",
+        model_fallback_reasoning_effort: "high",
+        model_fallback_service_tier: "default"
+      }
+    }
+  }, null, 2)}\n`;
+}
+
+function savedOverrideJsonWithAllFields(model, reasoning, tier, fallback, fallbackReasoning, fallbackTier) {
+  return `${JSON.stringify({
+    schemaVersion: 1,
+    overrides: {
+      explorer: {
+        model,
+        model_reasoning_effort: reasoning,
+        service_tier: tier,
+        model_fallback: fallback,
+        model_fallback_reasoning_effort: fallbackReasoning,
+        model_fallback_service_tier: fallbackTier
       }
     }
   }, null, 2)}\n`;

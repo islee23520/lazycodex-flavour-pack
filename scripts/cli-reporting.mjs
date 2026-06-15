@@ -1,6 +1,12 @@
 import { getCodexAppsToolCacheState, quarantineDuplicateCodexAppsToolCaches } from "./codex-apps-cache.mjs";
 import { getInstallSmokeState, getVisualSmokeState } from "./codex-plugin-install.mjs";
 import { readCurrentConfig } from "./art-team-config.mjs";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { AGENT_MODEL_FIELDS, VIRTUAL_OVERRIDE_SECTIONS } from "./model-field-scope.mjs";
+import { getProviderModelInventoryState } from "./model-provider.mjs";
+import { classifyModelInventory } from "./model-inventory.mjs";
+import { readOverrideConfig } from "./model-override-config.mjs";
 
 export function printCodexAppsCacheQuarantine() {
   const result = quarantineDuplicateCodexAppsToolCaches();
@@ -84,6 +90,54 @@ export function printOpenAiCompatProviderState(state) {
   return provider.status === "configured";
 }
 
+export async function printProviderInventoryVisibility(options = {}) {
+  const inventory = await getProviderModelInventoryState(options);
+  const activeProviderId = inventory.provider.id ?? "missing";
+  console.log(`lfp ${options.commandName ?? "doctor"}: active provider id: ${activeProviderId}`);
+
+  if (inventory.status !== "available") {
+    console.log(
+      `lfp ${options.commandName ?? "doctor"}: provider inventory: degraded visibility (${redactSecretText(
+        inventory.error ?? "unavailable"
+      )}); keeping current saved/configured values; manual model entry remains available`
+    );
+    return { ok: true, inventory };
+  }
+
+  const families = [...new Set(classifyModelInventory(inventory.models).map((model) => model.family))].sort((left, right) =>
+    left.localeCompare(right)
+  );
+  console.log(
+    `lfp ${options.commandName ?? "doctor"}: provider inventory: ${inventory.models.length} models (families: ${families.join(", ")})`
+  );
+  return { ok: true, inventory };
+}
+
+export function printAgentModelDrift(configPath, options = {}) {
+  const drift = collectAgentModelDrift(configPath);
+  const commandName = options.commandName ?? "doctor";
+  if (drift.items.length === 0) {
+    console.log(`lfp ${commandName}: agent model drift: none`);
+    return { ok: true, drift };
+  }
+
+  console.log(`lfp ${commandName}: agent model drift: detected`);
+  for (const item of drift.items) {
+    console.log(`lfp ${commandName}: agent model drift: ${item.agentName}: ${item.kinds.join(", ")} (${item.filePath})`);
+  }
+  return { ok: false, drift };
+}
+
+export function printApplierPreservationStatus(options = {}) {
+  const commandName = options.commandName ?? "doctor";
+  if (options.syncGlobalDefaults === true) {
+    console.log(`lfp ${commandName}: global defaults: explicit sync requested`);
+  } else {
+    console.log(`lfp ${commandName}: global defaults: preserved (agent-only mode)`);
+  }
+  console.log(`lfp ${commandName}: OMO hook state: preserved`);
+}
+
 export function printInstallSmokeState() {
   const smoke = getInstallSmokeState();
   if (smoke.explorerPreserved) {
@@ -127,4 +181,49 @@ export function printArtTeamConfig() {
   for (const [name, fields] of Object.entries(config)) {
     console.log(`  ${name}: model=${fields.model}, reasoning=${fields.model_reasoning_effort}, tier=${fields.service_tier}`);
   }
+}
+
+function collectAgentModelDrift(configPath) {
+  const config = readOverrideConfig(configPath);
+  const overrides = Object.entries(config.overrides ?? {}).filter(([agentName]) => !VIRTUAL_OVERRIDE_SECTIONS.has(agentName));
+  const items = [];
+
+  for (const [agentName, fields] of overrides) {
+    const filePath = path.join(config.source.agentsDir, `${agentName}.toml`);
+    const currentText = readFileSync(filePath, "utf8");
+    const driftFields = [...AGENT_MODEL_FIELDS].filter((fieldName) => {
+      return Object.hasOwn(fields, fieldName) && readTomlString(currentText, fieldName) !== String(fields[fieldName]);
+    });
+    if (driftFields.length === 0) continue;
+    items.push({
+      agentName,
+      filePath,
+      fields: driftFields,
+      kinds: summarizeDriftKinds(driftFields)
+    });
+  }
+
+  return { items };
+}
+
+function summarizeDriftKinds(fields) {
+  const kinds = new Set();
+  for (const field of fields) kinds.add(field.startsWith("model_fallback") ? "fallback" : "model");
+  return [...kinds];
+}
+
+function readTomlString(text, key) {
+  const match = new RegExp(`^${escapeRegExp(key)}\\s*=\\s*"([^"]*)"\\s*$`, "m").exec(text);
+  return match?.[1] ?? null;
+}
+
+function redactSecretText(value) {
+  return String(value)
+    .replace(/Bearer\s+[A-Za-z0-9._~+/=-]+/gi, "Bearer [REDACTED]")
+    .replace(/sk-[A-Za-z0-9._~+/=-]+/g, "sk-[REDACTED]")
+    .replace(/([?&](?:api[_-]?key|token|auth|authorization)=)[^&\s]+/gi, "$1[REDACTED]");
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

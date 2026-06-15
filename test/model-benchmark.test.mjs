@@ -4,6 +4,7 @@ import path from "node:path";
 import test from "node:test";
 import assert from "node:assert/strict";
 
+import { applyRecommendedOverrides } from "../scripts/model-benchmark-overrides.mjs";
 import { parseBenchmarkArgs, runModelBenchmarks } from "../scripts/model-benchmark.mjs";
 
 test("given benchmark args when parsing then maps roles models samples and output", () => {
@@ -91,6 +92,40 @@ test("given recommend-only benchmark when running then uses available model list
     assert.equal(result.recommendations.explorer.model, "grok-3-mini-fast");
     assert.equal(result.recommendations.plan.model, "grok-4.20-0309-reasoning");
     assert.equal(result.recommendations.plan.model_reasoning_effort, "xhigh");
+    assert.equal("model_fallback" in result.recommendations.plan, false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("given recommend-only benchmark with diverse inventory when running then plan and momus stay primary-only", async () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-benchmark-"));
+  try {
+    const outputPath = path.join(root, "result.json");
+    const codexHome = createCodexHome(root, {
+      plan: { model: "gpt-5.5", model_reasoning_effort: "xhigh", service_tier: "default" },
+      momus: { model: "gpt-5.5", model_reasoning_effort: "xhigh", service_tier: "default" }
+    });
+
+    const result = await runModelBenchmarks(
+      {
+        roles: ["plan", "momus"],
+        samples: 1,
+        dryRun: false,
+        recommendOnly: true,
+        apply: false,
+        outputPath
+      },
+      {
+        env: { ...process.env, CODEX_HOME: codexHome },
+        models: ["glm-5.2", "grok-4.20-0309-reasoning", "grok-3-mini-fast", "gpt-5.5"]
+      }
+    );
+
+    assert.equal(result.recommendations.plan.model, "grok-4.20-0309-reasoning");
+    assert.equal("model_fallback" in result.recommendations.plan, false);
+    assert.equal(result.recommendations.momus.model, "gpt-5.5");
+    assert.equal("model_fallback" in result.recommendations.momus, false);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -156,7 +191,44 @@ test("given apply benchmark when winner changes then updates saved overrides onl
     const saved = JSON.parse(readFileSync(path.join(codexHome, "lfp", "omo-agent-model-overrides.json"), "utf8"));
 
     assert.equal(saved.overrides.explorer.model, "fast-model");
-    assert.equal(saved.overrides.explorer.model_fallback, "fallback");
+    assert.equal("model_fallback" in saved.overrides.explorer, false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("given benchmark recommendation with fallback fields when applying then writes supported agent model fields only", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-benchmark-apply-"));
+  try {
+    const codexHome = createCodexHome(root, {
+      explorer: { model: "old-model", model_reasoning_effort: "medium", service_tier: "default" }
+    });
+
+    const applied = applyRecommendedOverrides(
+      {
+        schemaVersion: 1,
+        overrides: {
+          explorer: { model: "old-model", model_reasoning_effort: "medium", service_tier: "default" }
+        }
+      },
+      {
+        explorer: {
+          changed: true,
+          model: "new-model",
+          model_reasoning_effort: "low",
+          service_tier: "fast"
+        }
+      },
+      { ...process.env, CODEX_HOME: codexHome }
+    );
+    const saved = JSON.parse(readFileSync(path.join(codexHome, "lfp", "omo-agent-model-overrides.json"), "utf8"));
+
+    assert.deepEqual(applied, ["explorer"]);
+    assert.deepEqual(saved.overrides.explorer, {
+      model: "new-model",
+      model_reasoning_effort: "low",
+      service_tier: "fast"
+    });
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

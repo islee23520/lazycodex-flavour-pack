@@ -24,7 +24,9 @@ export function runOverrideSyncHook(value = {}, options = {}) {
 
   try {
     syncAgentOverrides(effectiveConfigPath, { check: false, env: options.env });
-    syncGlobalModelDefaults(effectiveConfigPath, { check: false, env: options.env });
+    if (shouldSyncGlobalDefaults(options)) {
+      syncGlobalModelDefaults(effectiveConfigPath, { check: false, env: options.env });
+    }
   } catch {
     return "";
   } finally {
@@ -32,6 +34,10 @@ export function runOverrideSyncHook(value = {}, options = {}) {
   }
 
   return "";
+}
+
+function shouldSyncGlobalDefaults(options) {
+  return options.syncGlobalDefaults === true || options.env?.LFP_SYNC_GLOBAL_DEFAULTS === "1";
 }
 
 function getHookEventName(value) {

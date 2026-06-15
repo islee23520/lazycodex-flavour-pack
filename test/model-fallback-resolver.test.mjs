@@ -1,9 +1,11 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import os from "node:os";
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from "node:fs";
 import path from "node:path";
+import { applyRecommendedOverrides } from "../scripts/model-benchmark-overrides.mjs";
 import { resolve } from "../scripts/model-fallback-resolver.mjs";
+import { syncAgentOverrides } from "../scripts/sync-agent-overrides.mjs";
 
 const tmp = mkdtempSync(path.join(os.tmpdir(), "lfp-resolver-test-"));
 const ledgerDir = path.join(tmp, "lfp");
@@ -95,6 +97,74 @@ describe("model-fallback-resolver", () => {
       assert.equal(r.using_fallback, true);
       assert.equal(r.effective?.model, "fallback");
       assert.equal(r.source, path.join(lfpDir, "omo-agent-model-overrides.json"));
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("given benchmark applier writes saved overrides and sync mutates installed TOML when resolving then keeps primary-only saved JSON", () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), "lfp-resolver-applier-topology-"));
+    try {
+      const codexHome = path.join(root, "codex-home");
+      const agentsDir = path.join(codexHome, "agents");
+      const configPath = path.join(root, "overrides.toml");
+      mkdirSync(agentsDir, { recursive: true });
+      writeFileSync(
+        path.join(agentsDir, "explorer.toml"),
+        [
+          'name = "explorer"',
+          'model = "old-primary"',
+          'model_fallback = "old-installed-fallback"',
+          ""
+        ].join("\n")
+      );
+      writeFileSync(
+        configPath,
+        [
+          "[source]",
+          'agents_dir = "${CODEX_HOME}/agents"',
+          "",
+          "[agents.explorer]",
+          'model = "old-primary"',
+          'model_fallback = "old-saved-fallback"',
+          ""
+        ].join("\n")
+      );
+
+      const applied = applyRecommendedOverrides(
+        { overrides: { explorer: { model: "old-primary", model_fallback: "old-saved-fallback" } } },
+        {
+          explorer: {
+            changed: true,
+            model: "saved-primary",
+            model_reasoning_effort: "low",
+            service_tier: "default"
+          }
+        },
+        { CODEX_HOME: codexHome }
+      );
+      const savedPath = path.join(codexHome, "lfp", "omo-agent-model-overrides.json");
+      const syncResult = syncAgentOverrides(savedPath, {
+        env: { ...process.env, CODEX_HOME: codexHome },
+        sourceAgentsDir: agentsDir
+      });
+      writeFileSync(
+        path.join(agentsDir, "explorer.toml"),
+        readFileSync(path.join(agentsDir, "explorer.toml"), "utf8")
+          .replace('model = "saved-primary"', 'model = "conflicting-installed-primary"')
+      );
+
+      const resolved = resolve("explorer", { env: { ...process.env, CODEX_HOME: codexHome }, onError: "quota" });
+      const saved = JSON.parse(readFileSync(savedPath, "utf8"));
+      const installed = readFileSync(path.join(agentsDir, "explorer.toml"), "utf8");
+
+      assert.deepEqual(applied, ["explorer"]);
+      assert.deepEqual(syncResult.changed, [path.join(agentsDir, "explorer.toml")]);
+      assert.equal("model_fallback" in saved.overrides.explorer, false);
+      assert.doesNotMatch(installed, /^model_fallback/m);
+      assert.equal(resolved.using_fallback, false);
+      assert.equal(resolved.effective?.model, "saved-primary");
+      assert.equal(resolved.source, savedPath);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

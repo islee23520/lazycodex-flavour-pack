@@ -6,26 +6,32 @@
     "explorer": {
       "model": "gpt-5.4-mini",
       "model_reasoning_effort": "low",
-      "service_tier": "fast",
-      "model_fallback": "grok-3-mini-fast",
-      "model_fallback_reasoning_effort": "low",
-      "model_fallback_service_tier": "default"
+      "service_tier": "fast"
     },
     "librarian": {
       "model": "gpt-5.4-mini",
       "model_reasoning_effort": "low",
-      "service_tier": "fast",
-      "model_fallback": "grok-3-mini-fast",
-      "model_fallback_reasoning_effort": "low",
-      "model_fallback_service_tier": "default"
+      "service_tier": "fast"
     },
     "metis": {
       "model": "gpt-5.5",
       "model_reasoning_effort": "high",
-      "service_tier": "default",
-      "model_fallback": "gemini-pro-agent",
-      "model_fallback_reasoning_effort": "high",
-      "model_fallback_service_tier": "default"
+      "service_tier": "default"
+    },
+    "momus": {
+      "model": "gpt-5.5",
+      "model_reasoning_effort": "xhigh",
+      "service_tier": "default"
+    },
+    "plan": {
+      "model": "gpt-5.5",
+      "model_reasoning_effort": "xhigh",
+      "service_tier": "default"
+    },
+    "codex-ultrawork-reviewer": {
+      "model": "gpt-5.5",
+      "model_reasoning_effort": "high",
+      "service_tier": "default"
     }
   }
 }

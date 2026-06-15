@@ -5,6 +5,7 @@ import path from "node:path";
 
 import { SavedUserModelOverrideConfigSchema } from "./model-override-schema.mjs";
 import { readOverrideConfig } from "./model-override-config.mjs";
+import { syncAgentOverrides } from "./sync-agent-overrides.mjs";
 
 const USER_OVERRIDE_CONFIG_NAME = "omo-agent-model-overrides.json";
 const LEGACY_OVERRIDE_CONFIG_NAME = "omo-agent-model-overrides.toml";
@@ -53,6 +54,28 @@ export function restoreSavedUserOverrideConfigIfPresent(configPath, options = {}
 
   restoreUserOverrideConfig(configPath, userConfigPath);
   return userConfigPath;
+}
+
+export function restoreAgentModelApplication(configPath, previousUserConfigPath, options = {}) {
+  const previousConfig = readSavedUserOverrideConfig(previousUserConfigPath);
+  const userConfigPath = getUserOverrideConfigPath(options);
+  const currentText = readFileSync(configPath, "utf8");
+  const previousText = savedOverrideConfigToToml(previousConfig);
+  const tempDir = mkdtempSync(path.join(tmpdir(), "lfp-rollback-overrides-"));
+  const tempConfigPath = path.join(tempDir, LEGACY_OVERRIDE_CONFIG_NAME);
+
+  try {
+    writeFileSync(tempConfigPath, mergeUserOverrideText(currentText, previousText));
+    const result = syncAgentOverrides(tempConfigPath, options);
+    writeSavedUserOverrideConfig(userConfigPath, previousConfig);
+    return {
+      changed: result.changed,
+      savedConfigPath: userConfigPath,
+      restoredFrom: previousUserConfigPath
+    };
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true });
+  }
 }
 
 export function createRestoredUserOverrideConfig(configPath, options = {}) {

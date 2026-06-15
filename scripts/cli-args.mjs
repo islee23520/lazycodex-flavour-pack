@@ -8,7 +8,9 @@ const SYNC_OPTIONS = new Set([
   "--provider-id",
   "--provider-base-url",
   "--provider-wire-api",
-  "--provider-api-key-env"
+  "--provider-api-key-env",
+  "--agent-models-only",
+  "--sync-global-defaults"
 ]);
 const DOCTOR_OPTIONS = new Set(["--config", "--fix-cache", "--apply"]);
 const KOREAN_POSTPOSITIONS = ["으로", "부터", "까지", "에게", "에서", "처럼", "보다", "만큼", "은", "는", "이", "가", "을", "를", "와", "과", "도", "만", "로"];
@@ -62,7 +64,18 @@ export function parseSyncArgs(argv) {
       index += 1;
       continue;
     }
+    if (item === "--agent-models-only") {
+      parsed.agentModelsOnly = true;
+      continue;
+    }
+    if (item === "--sync-global-defaults") {
+      parsed.syncGlobalDefaults = true;
+      continue;
+    }
     throw new Error(`Unknown sync option: ${item}`);
+  }
+  if (parsed.agentModelsOnly && parsed.syncGlobalDefaults) {
+    throw new Error("--agent-models-only cannot be combined with --sync-global-defaults");
   }
   return parsed;
 }

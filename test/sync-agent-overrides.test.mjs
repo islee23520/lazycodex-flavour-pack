@@ -36,7 +36,7 @@ test("given vanilla agent text when applying overrides then only model fields ch
   assert.match(result, /developer_instructions = """keep me"""/);
 });
 
-test("given fallback model overrides when applying agent overrides then writes all six public model fields", () => {
+test("given fallback model overrides when applying agent overrides then strips unsupported fallback fields", () => {
   const source = [
     'name = "explorer"',
     'description = "Codebase search specialist"',
@@ -61,9 +61,7 @@ test("given fallback model overrides when applying agent overrides then writes a
   assert.match(result, /model = "grok-4\.3"/);
   assert.match(result, /model_reasoning_effort = "low"/);
   assert.match(result, /service_tier = "fast"/);
-  assert.match(result, /model_fallback = "grok-3-mini-fast"/);
-  assert.match(result, /model_fallback_reasoning_effort = "low"/);
-  assert.match(result, /model_fallback_service_tier = "default"/);
+  assert.doesNotMatch(result, /^model_fallback/m);
   assert.match(result, /developer_instructions = """keep me"""/);
 });
 
@@ -92,7 +90,7 @@ test("given source dir and override config when syncing then updates source agen
   }
 });
 
-test("given TOML override config with fallback fields when syncing then updates source agent config in place", () => {
+test("given TOML override config with fallback fields when syncing then writes only supported agent fields", () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-agent-sync-"));
   try {
     const sourceDir = path.join(root, "source");
@@ -134,9 +132,7 @@ test("given TOML override config with fallback fields when syncing then updates 
     assert.match(updated, /model = "new"/);
     assert.match(updated, /model_reasoning_effort = "low"/);
     assert.match(updated, /service_tier = "fast"/);
-    assert.match(updated, /model_fallback = "fallback"/);
-    assert.match(updated, /model_fallback_reasoning_effort = "low"/);
-    assert.match(updated, /model_fallback_service_tier = "default"/);
+    assert.doesNotMatch(updated, /^model_fallback/m);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -212,10 +208,32 @@ test("given packaged override config when reading then targets Codex-loaded agen
   assert.deepEqual(config.overrides.librarian, {
     model: "gpt-5.4-mini",
     model_reasoning_effort: "low",
-    service_tier: "fast",
-    model_fallback: "grok-3-mini-fast",
-    model_fallback_reasoning_effort: "low",
-    model_fallback_service_tier: "default"
+    service_tier: "fast"
+  });
+  assert.deepEqual(Object.keys(config.overrides).sort(), [
+    "codex-ultrawork-reviewer",
+    "default",
+    "explorer",
+    "librarian",
+    "metis",
+    "momus",
+    "plan",
+    "ulw"
+  ]);
+  assert.deepEqual(config.overrides.momus, {
+    model: "gpt-5.5",
+    model_reasoning_effort: "xhigh",
+    service_tier: "default"
+  });
+  assert.deepEqual(config.overrides.plan, {
+    model: "gpt-5.5",
+    model_reasoning_effort: "xhigh",
+    service_tier: "default"
+  });
+  assert.deepEqual(config.overrides["codex-ultrawork-reviewer"], {
+    model: "gpt-5.5",
+    model_reasoning_effort: "high",
+    service_tier: "default"
   });
 });
 

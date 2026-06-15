@@ -142,6 +142,48 @@ test("given TUI setup model selector when line setup asks for model then uses Cl
   assert.deepEqual(calls.find((call) => call[0] === "selected"), ["selected", "gpt-5.5"]);
 });
 
+test("given TUI setup fallback selector when line setup asks then labels fallback prompt without readline", async () => {
+  const calls = [];
+  const prompts = {
+    intro: (message) => calls.push(["intro", message]),
+    note: (message, title) => calls.push(["note", title, message]),
+    confirm: async () => true,
+    select: async (options) => {
+      calls.push(["select", options.message, options.options, options.initialValue]);
+      return options.initialValue;
+    },
+    isCancel: () => false,
+    cancel: (message) => calls.push(["cancel", message]),
+    outro: (message) => calls.push(["outro", message])
+  };
+
+  await runSetupTui(
+    {},
+    { check: false, root: "/tmp/lfp", defaultConfig: "/tmp/lfp/config.toml" },
+    {
+      prompts,
+      colors: { inverse: (value) => value, green: (value) => value },
+      runLineSetup: async (_args, _context, options) => {
+        const selected = await options.modelSelector({
+          agentName: "plan",
+          displayName: "plan fallback",
+          current: "manual-fallback-model",
+          choices: []
+        });
+        calls.push(["selected", selected]);
+      }
+    }
+  );
+
+  assert.deepEqual(calls.find((call) => call[0] === "select"), [
+    "select",
+    "plan fallback model",
+    [{ value: "manual-fallback-model", label: "manual-fallback-model", hint: "current custom id" }],
+    "manual-fallback-model"
+  ]);
+  assert.deepEqual(calls.find((call) => call[0] === "selected"), ["selected", "manual-fallback-model"]);
+});
+
 test("given TUI setup default model selector when line setup asks then labels default and ULW choices explicitly", async () => {
   const calls = [];
   const prompts = {

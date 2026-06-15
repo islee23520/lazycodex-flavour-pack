@@ -1,8 +1,10 @@
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
-const WRITABLE_FIELDS = ["model", "model_reasoning_effort", "service_tier"];
-const LFP_AGENT_NAMES = new Set(["artistry", "artistry-gen", "artistry-qa", "visual-engineering", "visual-looker"]);
+import { AGENT_MODEL_FIELDS } from "./model-field-scope.mjs";
+
+const WRITABLE_FIELDS = [...AGENT_MODEL_FIELDS];
+const LFP_AGENT_NAMES = new Set(["artistry", "artistry-gen", "artistry-qa", "sisyphus", "visual-engineering", "visual-looker"]);
 
 export function discoverAdditionalAgents(sourceDir, overrides) {
   if (typeof sourceDir !== "string") return [];
@@ -17,9 +19,7 @@ export function discoverAdditionalAgents(sourceDir, overrides) {
     const text = readFileSync(path.join(sourceDir, fileName), "utf8");
     agents.push({
       name,
-      model: readTomlString(text, "model"),
-      model_reasoning_effort: readTomlString(text, "model_reasoning_effort"),
-      service_tier: readTomlString(text, "service_tier")
+      ...readModelFields(text)
     });
   }
 
@@ -32,24 +32,43 @@ export function writeOverrideFields(configPath, overrides) {
   const lines = readFileSync(configPath, "utf8").split(/\r?\n/);
   const output = [];
   let section = null;
+  let agentName = null;
+  let writtenFields = new Set();
   const seenAgentSections = new Set();
+
+  const flushMissingFields = () => {
+    if (agentName === null) return;
+    const fields = overrides[agentName];
+    for (const key of WRITABLE_FIELDS) {
+      if (fields?.[key] && !writtenFields.has(key)) {
+        output.push(`${key} = ${JSON.stringify(String(fields[key]))}`);
+        writtenFields.add(key);
+      }
+    }
+  };
 
   for (const line of lines) {
     const sectionMatch = line.trim().match(/^\[([A-Za-z0-9_.-]+)]$/);
     if (sectionMatch) {
+      flushMissingFields();
       section = sectionMatch[1];
-      if (section.startsWith("agents.")) seenAgentSections.add(section.slice("agents.".length));
+      agentName = section.startsWith("agents.") ? section.slice("agents.".length) : null;
+      writtenFields = new Set();
+      if (agentName !== null) seenAgentSections.add(agentName);
     }
 
-    const agentName = section?.startsWith("agents.") ? section.slice("agents.".length) : null;
     const key = line.includes("=") ? line.split("=", 1)[0].trim() : "";
-    if (agentName !== null && WRITABLE_FIELDS.includes(key) && overrides[agentName]?.[key]) {
-      output.push(`${key} = ${JSON.stringify(String(overrides[agentName][key]))}`);
-      continue;
+    if (agentName !== null && WRITABLE_FIELDS.includes(key)) {
+      writtenFields.add(key);
+      if (overrides[agentName]?.[key]) {
+        output.push(`${key} = ${JSON.stringify(String(overrides[agentName][key]))}`);
+        continue;
+      }
     }
 
     output.push(line);
   }
+  flushMissingFields();
 
   for (const [agentName, fields] of Object.entries(overrides)) {
     if (seenAgentSections.has(agentName)) continue;
@@ -73,6 +92,12 @@ function safeReadDir(sourceDir) {
 function readTomlString(text, key) {
   const match = new RegExp(`^${escapeRegExp(key)}\\s*=\\s*"([^"]*)"\\s*$`, "m").exec(text);
   return match?.[1] ?? null;
+}
+
+function readModelFields(text) {
+  const fields = {};
+  for (const key of WRITABLE_FIELDS) fields[key] = readTomlString(text, key);
+  return fields;
 }
 
 function escapeRegExp(value) {

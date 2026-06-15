@@ -15,22 +15,28 @@ service_tier = "default"
 model = "gpt-5.4-mini"
 model_reasoning_effort = "low"
 service_tier = "fast"
-model_fallback = "grok-3-mini-fast"
-model_fallback_reasoning_effort = "low"
-model_fallback_service_tier = "default"
 
 [agents.librarian]
 model = "gpt-5.4-mini"
 model_reasoning_effort = "low"
 service_tier = "fast"
-model_fallback = "grok-3-mini-fast"
-model_fallback_reasoning_effort = "low"
-model_fallback_service_tier = "default"
 
 [agents.metis]
 model = "gpt-5.5"
 model_reasoning_effort = "high"
 service_tier = "default"
-model_fallback = "gemini-pro-agent"
-model_fallback_reasoning_effort = "high"
-model_fallback_service_tier = "default"
+
+[agents.momus]
+model = "gpt-5.5"
+model_reasoning_effort = "xhigh"
+service_tier = "default"
+
+[agents.plan]
+model = "gpt-5.5"
+model_reasoning_effort = "xhigh"
+service_tier = "default"
+
+[agents.codex-ultrawork-reviewer]
+model = "gpt-5.5"
+model_reasoning_effort = "high"
+service_tier = "default"

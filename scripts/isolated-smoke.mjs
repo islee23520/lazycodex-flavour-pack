@@ -41,13 +41,22 @@ writeOmo410UltraworkAgents();
 writeOverrideConfig(overrideConfigPath, agentsDir, {
   default: { model: "gpt-5.5", model_reasoning_effort: "high", service_tier: "default" },
   ulw: { model: "gpt-5.5", model_reasoning_effort: "xhigh", service_tier: "default" },
-  explorer: { model: "gpt-5.4-mini", model_reasoning_effort: "low", service_tier: "fast" }
+  "codex-ultrawork-reviewer": { model: "gpt-5.5", model_reasoning_effort: "high", service_tier: "default" },
+  explorer: { model: "gpt-5.4-mini", model_reasoning_effort: "low", service_tier: "fast" },
+  librarian: { model: "gpt-5.4-mini", model_reasoning_effort: "low", service_tier: "fast" },
+  metis: { model: "gpt-5.5", model_reasoning_effort: "high", service_tier: "default" },
+  momus: { model: "gpt-5.5", model_reasoning_effort: "xhigh", service_tier: "default" },
+  plan: { model: "gpt-5.5", model_reasoning_effort: "xhigh", service_tier: "default" }
 });
 writeOverrideConfig(savedOverridePath, null, {
   default: { model: "gpt-5.5", model_reasoning_effort: "high", service_tier: "default" },
   ulw: { model: "gpt-5.5", model_reasoning_effort: "xhigh", service_tier: "default" },
+  "codex-ultrawork-reviewer": { model: "gpt-5.5", model_reasoning_effort: "high", service_tier: "default" },
   explorer: { model: "gpt-5.4-mini", model_reasoning_effort: "low", service_tier: "fast" },
-  metis: { model: "gpt-5.5", model_reasoning_effort: "high", service_tier: "fast" }
+  librarian: { model: "gpt-5.4-mini", model_reasoning_effort: "low", service_tier: "fast" },
+  metis: { model: "gpt-5.5", model_reasoning_effort: "high", service_tier: "fast" },
+  momus: { model: "gpt-5.5", model_reasoning_effort: "xhigh", service_tier: "default" },
+  plan: { model: "gpt-5.5", model_reasoning_effort: "xhigh", service_tier: "default" }
 });
 writeFileSync(
   path.join(codexHome, "cache", "codex_apps_tools", "duplicate-tools.json"),
@@ -77,15 +86,18 @@ const explorerText = readFileSync(path.join(agentsDir, "explorer.toml"), "utf8")
 const metisText = readFileSync(path.join(agentsDir, "metis.toml"), "utf8");
 const momusText = readFileSync(path.join(agentsDir, "momus.toml"), "utf8");
 const planText = readFileSync(path.join(agentsDir, "plan.toml"), "utf8");
+const reviewerText = readFileSync(path.join(agentsDir, "codex-ultrawork-reviewer.toml"), "utf8");
 
 assertIncludes(configText, '[plugins."lfp@islee23520"]', "isolated config enables lfp@islee23520");
 assertIncludes(configText, "[marketplaces.islee23520]", "isolated config uses islee23520 marketplace");
-assertIncludes(configText, '[profiles.ulw]\nmodel = "gpt-5.5"\nmodel_reasoning_effort = "xhigh"', "ULW profile defaults applied");
+if (configText.includes("[profiles.ulw]")) throw new Error("ULW profile defaults should be preserved in agent-only mode");
 assertIncludes(explorerText, 'model = "gpt-5.4-mini"', "saved explorer override applied");
 assertIncludes(metisText, 'model = "gpt-5.5"', "metis override applied after saved restore");
 assertIncludes(metisText, 'model_reasoning_effort = "high"', "metis reasoning applied");
 assertIncludes(momusText, 'model_reasoning_effort = "xhigh"', "current OMO momus xhigh reasoning preserved");
 assertIncludes(planText, 'model_reasoning_effort = "xhigh"', "current OMO plan xhigh reasoning preserved");
+assertIncludes(reviewerText, 'model_reasoning_effort = "high"', "current OMO reviewer high reasoning preserved");
+assertManagedOmoAgents(overrideConfigPath, 6);
 if (!cacheState.healthy) throw new Error(`Codex Apps cache is not clean: ${JSON.stringify(cacheState.duplicateFiles)}`);
 if (!output.questions.some((question) => /Adjust LFP model overrides now/.test(question))) {
   throw new Error("Saved override adjust prompt was not shown");
@@ -100,9 +112,10 @@ if (!sync.changed.some((filePath) => filePath.endsWith("metis.toml"))) {
 console.log("isolated smoke: PASS");
 console.log(`isolated smoke: CODEX_HOME=${codexHome}`);
 console.log(`isolated smoke: setup installed lfp@islee23520=${configText.includes('[plugins."lfp@islee23520"]')}`);
-console.log(`isolated smoke: ulw profile xhigh=${configText.includes('[profiles.ulw]\nmodel = "gpt-5.5"\nmodel_reasoning_effort = "xhigh"')}`);
+console.log(`isolated smoke: ulw profile preserved=${!configText.includes("[profiles.ulw]")}`);
 console.log(`isolated smoke: omo 4.10 momus xhigh=${momusText.includes('model_reasoning_effort = "xhigh"')}`);
 console.log(`isolated smoke: omo 4.10 plan xhigh=${planText.includes('model_reasoning_effort = "xhigh"')}`);
+console.log(`isolated smoke: omo managed agents=${countManagedOmoAgents(overrideConfigPath)}`);
 console.log(`isolated smoke: duplicate tool cache healthy=${cacheState.healthy}`);
 console.log(`isolated smoke: saved adjust prompt shown=true`);
 console.log(`isolated smoke: prompts continued after saved adjust=true`);
@@ -128,6 +141,19 @@ function assertStatus(result, expected, label) {
 
 function assertIncludes(text, pattern, message) {
   if (!text.includes(pattern)) throw new Error(message);
+}
+
+function assertManagedOmoAgents(configPath, expected) {
+  const actual = countManagedOmoAgents(configPath);
+  if (actual !== expected) throw new Error(`Expected ${expected} managed OMO agents, got ${actual}`);
+}
+
+function countManagedOmoAgents(configPath) {
+  const text = readFileSync(configPath, "utf8");
+  const configuredAgents = new Set([...text.matchAll(/^\[agents\.([^\]]+)]$/gm)].map((match) => match[1]));
+  configuredAgents.delete("default");
+  configuredAgents.delete("ulw");
+  return configuredAgents.size;
 }
 
 function writeOmo410UltraworkAgents() {

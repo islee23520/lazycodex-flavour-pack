@@ -24,9 +24,7 @@ test("given SessionStart hook when override is pending then applies model fields
     assert.match(updated, /model = "gemini-pro-agent"/);
     assert.match(updated, /model_reasoning_effort = "high"/);
     assert.match(updated, /service_tier = "default"/);
-    assert.match(updated, /model_fallback = "gemini-fallback-agent"/);
-    assert.match(updated, /model_fallback_reasoning_effort = "medium"/);
-    assert.match(updated, /model_fallback_service_tier = "fast"/);
+    assert.doesNotMatch(updated, /^model_fallback/m);
     assert.match(updated, /developer_instructions = """keep me"""/);
   } finally {
     rmSync(root, { recursive: true, force: true });
@@ -67,9 +65,131 @@ test("given UserPromptSubmit hook when saved override exists then saved model wi
     assert.match(updated, /model = "gemini-saved-agent"/);
     assert.match(updated, /model_reasoning_effort = "medium"/);
     assert.match(updated, /service_tier = "fast"/);
-    assert.match(updated, /model_fallback = "gemini-saved-fallback"/);
-    assert.match(updated, /model_fallback_reasoning_effort = "low"/);
-    assert.match(updated, /model_fallback_service_tier = "default"/);
+    assert.doesNotMatch(updated, /^model_fallback/m);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("given sync hook has virtual global defaults when it runs then preserves Codex defaults in agent-only mode", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-sync-hook-preserve-"));
+  try {
+    const codexHome = path.join(root, "codex-home");
+    const fixture = createFixture(root, "gpt-5.4-mini", {
+      default: { model: "packaged-default", model_reasoning_effort: "high", service_tier: "default" },
+      ulw: { model: "packaged-ulw", model_reasoning_effort: "xhigh", service_tier: "default" }
+    });
+    const codexConfigPath = path.join(codexHome, "config.toml");
+    mkdirSync(codexHome, { recursive: true });
+    writeFileSync(
+      codexConfigPath,
+      [
+        'model = "hephaestus-default"',
+        'model_reasoning_effort = "medium"',
+        'service_tier = "flex"',
+        "",
+        "[profiles.ulw]",
+        'model = "hephaestus-ulw"',
+        'model_reasoning_effort = "xhigh"',
+        'service_tier = "priority"',
+        "",
+        '[hooks."SessionStart"."omo@sisyphuslabs/sync-agent-overrides"]',
+        'command = "omo sync"',
+        "enabled = true",
+        ""
+      ].join("\n")
+    );
+
+    const output = runOverrideSyncHook(
+      { hook_event_name: "SessionStart" },
+      { configPath: fixture.configPath, env: { CODEX_HOME: codexHome, HOME: root } }
+    );
+    const updatedAgent = readFileSync(fixture.agentPath, "utf8");
+    const updatedConfig = readFileSync(codexConfigPath, "utf8");
+
+    assert.equal(output, "");
+    assert.match(updatedAgent, /model = "gemini-pro-agent"/);
+    assert.match(updatedConfig, /^model = "hephaestus-default"$/m);
+    assert.match(updatedConfig, /\[profiles\.ulw]\nmodel = "hephaestus-ulw"\nmodel_reasoning_effort = "xhigh"\nservice_tier = "priority"/);
+    assert.match(updatedConfig, /\[hooks\."SessionStart"\."omo@sisyphuslabs\/sync-agent-overrides"]/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("given sync hook is explicitly allowed to sync globals then virtual default sections update Codex defaults", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-sync-hook-global-"));
+  try {
+    const codexHome = path.join(root, "codex-home");
+    const fixture = createFixture(root, "gpt-5.4-mini", {
+      default: { model: "packaged-default", model_reasoning_effort: "high", service_tier: "default" },
+      ulw: { model: "packaged-ulw", model_reasoning_effort: "xhigh", service_tier: "default" }
+    });
+    const codexConfigPath = path.join(codexHome, "config.toml");
+    mkdirSync(codexHome, { recursive: true });
+    writeFileSync(codexConfigPath, 'model = "hephaestus-default"\n\n[profiles.ulw]\nmodel = "hephaestus-ulw"\n');
+
+    const output = runOverrideSyncHook(
+      { hook_event_name: "SessionStart" },
+      { configPath: fixture.configPath, env: { CODEX_HOME: codexHome, HOME: root }, syncGlobalDefaults: true }
+    );
+    const updatedConfig = readFileSync(codexConfigPath, "utf8");
+
+    assert.equal(output, "");
+    assert.match(updatedConfig, /^model = "packaged-default"$/m);
+    assert.match(updatedConfig, /\[profiles\.ulw]\nmodel = "packaged-ulw"/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("given UserPromptSubmit sync hook has virtual global defaults when it runs then preserves Codex defaults", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-sync-hook-user-preserve-"));
+  try {
+    const codexHome = path.join(root, "codex-home");
+    const fixture = createFixture(root, "gpt-5.4-mini", {
+      default: { model: "packaged-default", model_reasoning_effort: "high", service_tier: "default" },
+      ulw: { model: "packaged-ulw", model_reasoning_effort: "xhigh", service_tier: "default" }
+    });
+    const codexConfigPath = path.join(codexHome, "config.toml");
+    mkdirSync(codexHome, { recursive: true });
+    writeFileSync(codexConfigPath, 'model = "hephaestus-default"\n\n[profiles.ulw]\nmodel = "hephaestus-ulw"\n');
+
+    const output = runOverrideSyncHook(
+      { hook_event_name: "UserPromptSubmit" },
+      { configPath: fixture.configPath, env: { CODEX_HOME: codexHome, HOME: root } }
+    );
+    const updatedConfig = readFileSync(codexConfigPath, "utf8");
+
+    assert.equal(output, "");
+    assert.match(updatedConfig, /^model = "hephaestus-default"$/m);
+    assert.match(updatedConfig, /\[profiles\.ulw]\nmodel = "hephaestus-ulw"/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("given UserPromptSubmit sync hook is explicitly allowed to sync globals then virtual defaults update Codex defaults", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-sync-hook-user-global-"));
+  try {
+    const codexHome = path.join(root, "codex-home");
+    const fixture = createFixture(root, "gpt-5.4-mini", {
+      default: { model: "packaged-default", model_reasoning_effort: "high", service_tier: "default" },
+      ulw: { model: "packaged-ulw", model_reasoning_effort: "xhigh", service_tier: "default" }
+    });
+    const codexConfigPath = path.join(codexHome, "config.toml");
+    mkdirSync(codexHome, { recursive: true });
+    writeFileSync(codexConfigPath, 'model = "hephaestus-default"\n\n[profiles.ulw]\nmodel = "hephaestus-ulw"\n');
+
+    const output = runOverrideSyncHook(
+      { hook_event_name: "UserPromptSubmit" },
+      { configPath: fixture.configPath, env: { CODEX_HOME: codexHome, HOME: root, LFP_SYNC_GLOBAL_DEFAULTS: "1" } }
+    );
+    const updatedConfig = readFileSync(codexConfigPath, "utf8");
+
+    assert.equal(output, "");
+    assert.match(updatedConfig, /^model = "packaged-default"$/m);
+    assert.match(updatedConfig, /\[profiles\.ulw]\nmodel = "packaged-ulw"/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -123,7 +243,7 @@ test("given visual art and fallback guidance hooks when they run then they do no
   }
 });
 
-function createFixture(root, currentModel) {
+function createFixture(root, currentModel, extraOverrides = {}) {
   const agentsDir = path.join(root, "agents");
   const agentPath = path.join(agentsDir, "visual-looker.toml");
   const configPath = path.join(root, "overrides.toml");
@@ -145,15 +265,29 @@ function createFixture(root, currentModel) {
       "[source]",
       `agents_dir = "${agentsDir}"`,
       "",
-      "[agents.visual-looker]",
-      'model = "gemini-pro-agent"',
-      'model_reasoning_effort = "high"',
-      'service_tier = "default"',
-      'model_fallback = "gemini-fallback-agent"',
-      'model_fallback_reasoning_effort = "medium"',
-      'model_fallback_service_tier = "fast"',
+      ...formatOverrideSections(extraOverrides),
+      ...formatOverrideSections({
+        "visual-looker": {
+          model: "gemini-pro-agent",
+          model_reasoning_effort: "high",
+          service_tier: "default",
+          model_fallback: "gemini-fallback-agent",
+          model_fallback_reasoning_effort: "medium",
+          model_fallback_service_tier: "fast"
+        }
+      }),
       ""
     ].join("\n")
   );
   return { agentPath, configPath };
+}
+
+function formatOverrideSections(overrides) {
+  const lines = [];
+  for (const [agentName, fields] of Object.entries(overrides)) {
+    lines.push(`[agents.${agentName}]`);
+    for (const [key, value] of Object.entries(fields)) lines.push(`${key} = ${JSON.stringify(value)}`);
+    lines.push("");
+  }
+  return lines;
 }

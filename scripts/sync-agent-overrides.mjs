@@ -9,6 +9,11 @@ import { readOverrideConfig } from "./model-override-config.mjs";
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const DEFAULT_CONFIG = path.join(ROOT, "agent-configs", "omo-agent-model-overrides.toml");
+const UNSUPPORTED_AGENT_MODEL_FIELDS = new Set([
+  "model_fallback",
+  "model_fallback_reasoning_effort",
+  "model_fallback_service_tier"
+]);
 
 export { readOverrideConfig } from "./model-override-config.mjs";
 export { syncGlobalModelDefaults } from "./global-model-defaults.mjs";
@@ -31,10 +36,13 @@ if (isDirectRun()) {
 
 export function syncAgentOverrides(configPath, options = {}) {
   const config = readOverrideConfig(configPath, options);
-  const sourceDir = config.source?.agentsDir;
+  const sourceDir = options.sourceAgentsDir ?? config.source?.agentsDir;
   const overrides = config.overrides ?? {};
   if (typeof sourceDir !== "string") throw new TypeError("source.agentsDir must be a string");
 
+  // Runtime topology: recommendation/config commands write saved JSON/TOML
+  // override state; this sync step copies only Codex-supported primary model
+  // fields into installed agent TOMLs.
   const agentOverrides = Object.fromEntries(
     Object.entries(overrides).filter(([agentName]) => !VIRTUAL_OVERRIDE_SECTIONS.has(agentName))
   );
@@ -63,6 +71,9 @@ export function applyModelOverrides(sourceText, values) {
 
   for (const [index, line] of lines.entries()) {
     const key = line.includes("=") ? line.split("=", 1)[0].trim() : "";
+    if (UNSUPPORTED_AGENT_MODEL_FIELDS.has(key)) {
+      continue;
+    }
     if (AGENT_MODEL_FIELDS.has(key) && Object.hasOwn(values, key)) {
       output.push(`${key} = ${JSON.stringify(String(values[key]))}`);
       seen.add(key);

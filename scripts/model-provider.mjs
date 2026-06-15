@@ -5,22 +5,67 @@ import { readFileSync } from "node:fs";
 const DEFAULT_CONFIG_NAME = "config.toml";
 
 export async function fetchAvailableModels(options = {}) {
-  const provider = readActiveModelProvider(options);
-  if (provider.baseUrl === null) return [];
+  const state = await getProviderModelInventoryState(options);
+  return state.status === "available" ? state.models : [];
+}
+
+export async function getProviderModelInventoryState(options = {}) {
+  let provider;
+  try {
+    provider = readActiveModelProvider(options);
+  } catch (error) {
+    return {
+      status: "unavailable",
+      provider: { id: null, baseUrl: null, bearerToken: null, bearerTokenEnv: null },
+      models: [],
+      error: error instanceof Error ? error.message : String(error)
+    };
+  }
+
+  if (provider.id === null) return { status: "missing", provider, models: [], error: "active provider is not configured" };
+  if (provider.baseUrl === null) return { status: "unavailable", provider, models: [], error: "active provider has no base_url" };
 
   const fetchImpl = options.fetch ?? globalThis.fetch;
-  if (typeof fetchImpl !== "function") return [];
+  if (typeof fetchImpl !== "function") return { status: "unavailable", provider, models: [], error: "fetch is unavailable" };
 
   const url = new URL("models", withTrailingSlash(provider.baseUrl));
   const headers = {};
   const token = provider.bearerToken ?? readBearerTokenFromEnv(provider, options.env ?? process.env);
   if (token !== null) headers.authorization = `Bearer ${token}`;
+  const timeoutMs = options.timeoutMs ?? 2000;
+  const controller = typeof AbortController === "function" ? new AbortController() : null;
+  const timeout =
+    controller === null
+      ? null
+      : setTimeout(() => {
+          controller.abort();
+        }, timeoutMs);
+  timeout?.unref?.();
 
-  const response = await fetchImpl(url, { headers });
-  if (!response.ok) return [];
+  let response;
+  try {
+    response = await fetchImpl(url, { headers, signal: controller?.signal });
+  } catch (error) {
+    return { status: "unavailable", provider, models: [], error: error instanceof Error ? error.message : String(error) };
+  } finally {
+    if (timeout !== null) clearTimeout(timeout);
+  }
+  if (!response.ok) return { status: "unavailable", provider, models: [], error: `HTTP ${response.status}` };
 
-  const payload = await response.json();
-  return normalizeModelsPayload(payload);
+  let payload;
+  try {
+    payload = await response.json();
+  } catch (error) {
+    return {
+      status: "unavailable",
+      provider,
+      models: [],
+      error: error instanceof Error ? error.message : String(error)
+    };
+  }
+  const models = normalizeModelsPayload(payload);
+  if (models.length === 0) return { status: "unavailable", provider, models, error: "provider returned no models" };
+  return { status: "available", provider, models, error: null };
 }
 
 export function readActiveModelProvider(options = {}) {

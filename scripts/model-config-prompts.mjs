@@ -26,7 +26,7 @@ export async function promptForModel(rl, { agentName, displayName, current, mode
   const label = displayName ?? agentName;
   const prefix = label ? `${label} model` : "Model";
 
-  if (typeof modelSelector === "function" && choices.length > 0) {
+  if (typeof modelSelector === "function") {
     return await modelSelector({
       agentName,
       displayName: label,
