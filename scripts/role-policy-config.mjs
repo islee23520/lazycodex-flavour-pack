@@ -32,6 +32,7 @@ export function getDefaultRolePolicyConfigPath() {
 
 export function getUserRolePolicyConfigPath(options = {}) {
   const codexHome = options.env?.CODEX_HOME?.trim() || path.join(os.homedir(), ".codex");
+  // Legacy sidecar path. The canonical source is ~/.codex/lfp.json `rolePolicies` when present.
   return path.join(codexHome, "lfp", ROLE_POLICY_CONFIG_NAME);
 }
 

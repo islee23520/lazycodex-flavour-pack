@@ -47,23 +47,23 @@ npx:
   npx @islee23520/lfp@latest art-config
 
 Commands:
-  setup            Install LFP plugin, agents, and overrides into Codex.
-                   Interactive: asks whether to edit agent model overrides, including art team agents.
+  setup            Install LFP plugin, LFP-owned agents, and saved model config into Codex.
+                   Interactive: asks whether to edit ~/.codex/lfp.json model settings, including art team agents.
                    Press Enter to keep and apply the configured values without per-agent prompts.
-                   If provider models are discoverable, setup shows recommendations while
-                   Enter keeps and re-applies each configured agent value.
+                   If provider models are discoverable, setup auto-generates recommendations while
+                   Enter keeps each configured agent value.
   dry-setup        Preview what setup would do without writing.
-  doctor           Check LFP install status, agent models, and overrides.
-  agent-config     Reconfigure LazyCodex/OMO agent model overrides and apply them.
+  doctor           Check LFP install status, saved config, agent models, and overrides.
+  agent-config     Reconfigure ~/.codex/lfp.json model settings and apply supported LFP-owned agent values.
   benchmark-models Recommend or benchmark role-based model routing against the active OpenAI-compatible provider.
   art-config       Reconfigure art team models (interactive prompt).
   help             Show this help.
 
 Flags:
-  --config <path>  Use a specific override config file.
+  --config <path>  Use a specific override config file instead of the packaged defaults or ~/.codex/lfp.json.
   --fix-cache  Check duplicate Codex Apps tool cache files.
   --apply  With doctor --fix-cache, quarantine duplicate cache files.
-  --skip-model-prompt  Skip the interactive OMO override model prompt during setup.
+  --skip-model-prompt  Skip the interactive LFP model prompt during setup.
   --skip-lazycodex-install  Local development only: install this checkout without running LazyCodex install first.
   --no-tui  Force legacy line-output setup even when running in an interactive terminal.
   --agent-models-only  Apply only installed agent TOMLs; do NOT sync default and ULW models into Codex config.toml.
@@ -74,9 +74,9 @@ Flags:
   --output  With benchmark-models, JSON result path under .omo/benchmark-results by default.
   --recommend-only  With benchmark-models, use prebenchmarked family routing over active /v1/models without completion calls.
   --dry-run  With benchmark-models, score scenarios without provider calls.
-  --apply  With benchmark-models, write winning model fields to saved LFP overrides.
+  --apply  With benchmark-models, write winning model fields to ~/.codex/lfp.json.
 
-  This package extends LazyCodex with OMO agent, model, and visual capabilities for Codex. setup runs npx lazycodex-ai install before applying LFP, then installs/enables this pack in Codex and applies configured three primary model fields to existing agents and Codex global defaults. Use --agent-models-only to preserve existing Codex global defaults.`;
+  This package extends LazyCodex with OMO model-routing, visual, art, fallback, and benchmark capabilities for Codex while keeping LazyCodex-owned agents pure. setup runs npx lazycodex-ai install before applying LFP, installs/enables this pack in Codex, writes canonical schemaVersion 2 config to ~/.codex/lfp.json, and applies configured three primary model fields only where LFP owns the target. Use --agent-models-only to preserve existing Codex global defaults.`;
 
 if (isDirectRun()) {
   runCli(process.argv.slice(2)).catch((error) => {
@@ -203,7 +203,7 @@ async function runAgentConfig(argv) {
   const rl = createInterface({ input: process.stdin, output: process.stdout });
 
   try {
-    console.log("Reconfiguring LazyCodex/OMO agent model overrides...\n");
+    console.log("Reconfiguring LFP model settings...\n");
     if (process.stdin.isTTY) {
       await configureAgentModelOverrides(configPath, { readline: rl, output: console });
     } else {

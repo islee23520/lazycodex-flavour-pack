@@ -29,7 +29,7 @@ test("given normal plan benchmark when applying winner then saves xhigh reasonin
         fetch: async (url, request) => fakePlanCompletion(url, request)
       }
     );
-    const saved = JSON.parse(readFileSync(path.join(codexHome, "lfp", "omo-agent-model-overrides.json"), "utf8"));
+    const saved = JSON.parse(readFileSync(path.join(codexHome, "lfp.json"), "utf8"));
 
     assert.equal(saved.overrides.plan.model, "fast-model");
     assert.equal(saved.overrides.plan.model_reasoning_effort, "xhigh");
@@ -54,8 +54,8 @@ function createCodexHome(root, overrides) {
     ].join("\n")
   );
   writeFileSync(
-    path.join(codexHome, "lfp", "omo-agent-model-overrides.json"),
-    `${JSON.stringify({ schemaVersion: 1, overrides }, null, 2)}\n`
+    path.join(codexHome, "lfp.json"),
+    `${JSON.stringify({ schemaVersion: 2, source: { agentsDir: "${CODEX_HOME}/agents" }, overrides, rolePolicies: {} }, null, 2)}\n`
   );
   return codexHome;
 }

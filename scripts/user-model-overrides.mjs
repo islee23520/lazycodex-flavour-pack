@@ -1,13 +1,14 @@
 import os from "node:os";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { SavedUserModelOverrideConfigSchema } from "./model-override-schema.mjs";
+import { LegacyV1SavedUserOverrideConfigSchema, SavedUserModelOverrideConfigSchema } from "./model-override-schema.mjs";
 import { readOverrideConfig } from "./model-override-config.mjs";
 import { syncAgentOverrides } from "./sync-agent-overrides.mjs";
 
-const USER_OVERRIDE_CONFIG_NAME = "omo-agent-model-overrides.json";
+const USER_OVERRIDE_CONFIG_NAME = "lfp.json";
+const LEGACY_JSON_OVERRIDE_CONFIG_NAME = "omo-agent-model-overrides.json";
 const LEGACY_OVERRIDE_CONFIG_NAME = "omo-agent-model-overrides.toml";
 const LFP_DIR = "lfp";
 const LEGACY_LEDGER_DIR = ".ledger";
@@ -16,7 +17,7 @@ const SOURCE_SECTION_PATTERN = /(^|\n)\[source]\n[\s\S]*?(?=\n\[[^\n]+]|$)/;
 export function getUserOverrideConfigPath(options = {}) {
   const env = options.env ?? process.env;
   const codexHome = env.CODEX_HOME?.trim() || path.join(os.homedir(), ".codex");
-  return options.userOverrideConfigPath ?? path.join(codexHome, LFP_DIR, USER_OVERRIDE_CONFIG_NAME);
+  return options.userOverrideConfigPath ?? path.join(codexHome, USER_OVERRIDE_CONFIG_NAME);
 }
 
 export function getLegacyUserOverrideConfigPath(options = {}) {
@@ -36,7 +37,8 @@ export function migrateLegacyUserOverrideConfig(options = {}) {
   const legacyPath = getLegacyUserOverrideConfigPaths(options).find((candidatePath) => existsSync(candidatePath));
   if (legacyPath === undefined) return targetPath;
 
-  writeSavedUserOverrideConfig(targetPath, { overrides: parseLegacyOverrideToml(legacyPath).overrides });
+  const legacyConfig = legacyPath.endsWith(".json") ? readLegacyJsonOverrideConfig(legacyPath) : parseLegacyOverrideToml(legacyPath);
+  writeSavedUserOverrideConfig(targetPath, legacyConfig);
   return targetPath;
 }
 
@@ -98,6 +100,11 @@ export function createRestoredUserOverrideConfig(configPath, options = {}) {
 }
 
 export function saveUserOverrideConfig(configPath, userConfigPath) {
+  if (typeof userConfigPath === "object" && userConfigPath !== null) {
+    writeSavedUserOverrideConfig(configPath, userConfigPath);
+    return;
+  }
+
   if (!configPath.endsWith(".toml")) return;
 
   const currentConfig = readOverrideConfig(configPath);
@@ -118,9 +125,16 @@ function getLegacyUserOverrideConfigPaths(options = {}) {
   const env = options.env ?? process.env;
   const codexHome = env.CODEX_HOME?.trim() || path.join(os.homedir(), ".codex");
   return [
+    path.join(codexHome, LFP_DIR, LEGACY_JSON_OVERRIDE_CONFIG_NAME),
     path.join(codexHome, LFP_DIR, LEGACY_OVERRIDE_CONFIG_NAME),
     getLegacyUserOverrideConfigPath(options)
   ];
+}
+
+function readLegacyJsonOverrideConfig(configPath) {
+  const parsed = JSON.parse(readFileSync(configPath, "utf8"));
+  if (parsed.schemaVersion === 2) return SavedUserModelOverrideConfigSchema.parse(parsed);
+  return LegacyV1SavedUserOverrideConfigSchema.parse(parsed);
 }
 
 function parseLegacyOverrideToml(configPath) {
@@ -137,16 +151,26 @@ function parseLegacyOverrideToml(configPath) {
 
 function readSavedUserOverrideConfig(userConfigPath) {
   const text = readFileSync(userConfigPath, "utf8");
-  return SavedUserModelOverrideConfigSchema.parse(JSON.parse(text));
+  return SavedUserModelOverrideConfigSchema.parse(migrateToV2(JSON.parse(text)));
 }
 
 function writeSavedUserOverrideConfig(userConfigPath, value) {
-  const parsed = SavedUserModelOverrideConfigSchema.parse({
-    schemaVersion: 1,
-    overrides: value.overrides ?? {}
-  });
+  const parsed = SavedUserModelOverrideConfigSchema.parse(migrateToV2(value));
   mkdirSync(path.dirname(userConfigPath), { recursive: true });
-  writeFileSync(userConfigPath, `${JSON.stringify(parsed, null, 2)}\n`);
+  const tmpPath = `${userConfigPath}.tmp`;
+  writeFileSync(tmpPath, `${JSON.stringify(parsed, null, 2)}\n`);
+  renameSync(tmpPath, userConfigPath);
+}
+
+function migrateToV2(config) {
+  if (config.schemaVersion === 2) return config;
+
+  return {
+    schemaVersion: 2,
+    source: { agentsDir: "${CODEX_HOME}/agents" },
+    overrides: config.overrides ?? {},
+    rolePolicies: {}
+  };
 }
 
 function savedOverrideConfigToToml(config) {

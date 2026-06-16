@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
@@ -112,6 +112,45 @@ test("given upstream LazyCodex install fails when setup runs then LFP leaves Cod
     assert.match(result.stderr, /lazycodex-ai install failed with exit code 42/);
     assert.equal(existsSync(path.join(codexHome, "local-marketplaces", "islee23520", "plugins", "lfp")), false);
     assert.equal(existsSync(path.join(codexHome, "config.toml")), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("given provider fetch fails in non-interactive setup then writes lfp json from packaged seed", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-preflight-fallback-"));
+  try {
+    const codexHome = path.join(root, "codex-home");
+    const agentsDir = path.join(codexHome, "agents");
+    mkdirSync(agentsDir, { recursive: true });
+    writeFileSync(path.join(agentsDir, "explorer.toml"), 'name = "explorer"\nmodel = "upstream-original"\n');
+    writeFileSync(
+      path.join(codexHome, "config.toml"),
+      [
+        'model_provider = "cliproxyapi"',
+        "",
+        "[model_providers.cliproxyapi]",
+        'base_url = "http://127.0.0.1:9/v1"',
+        'experimental_bearer_token = "sk-test-secret-DO-NOT-PRINT"',
+        ""
+      ].join("\n")
+    );
+
+    const result = spawnSync(process.execPath, [CLI, "setup", "--skip-lazycodex-install", "--skip-model-prompt"], {
+      env: { ...process.env, CODEX_HOME: codexHome, HOME: root },
+      encoding: "utf8"
+    });
+    const saved = JSON.parse(readFileSync(path.join(codexHome, "lfp.json"), "utf8"));
+    const explorerText = readFileSync(path.join(agentsDir, "explorer.toml"), "utf8");
+    const sisyphusText = readFileSync(path.join(agentsDir, "sisyphus.toml"), "utf8");
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /wrote recommended models to .*lfp\.json/);
+    assert.equal(saved.schemaVersion, 2);
+    assert.equal(saved.overrides.explorer.model, "gpt-5.4-mini");
+    assert.equal(saved.overrides.sisyphus.model, "glm-5.2");
+    assert.match(explorerText, /model = "upstream-original"/);
+    assert.match(sisyphusText, /model = "glm-5\.2"/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

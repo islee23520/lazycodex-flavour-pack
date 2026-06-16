@@ -7,6 +7,7 @@ import { AGENT_MODEL_FIELDS, VIRTUAL_OVERRIDE_SECTIONS } from "./model-field-sco
 import { getProviderModelInventoryState } from "./model-provider.mjs";
 import { classifyModelInventory } from "./model-inventory.mjs";
 import { readOverrideConfig } from "./model-override-config.mjs";
+import { isLfpOwnedAgent } from "./agent-model-metadata.mjs";
 import { readRolePolicyConfig, ROLE_POLICY_REPORT_ORDER } from "./role-policy-config.mjs";
 import { readTomlString } from "./toml-string-utils.mjs";
 
@@ -202,7 +203,9 @@ export function printArtTeamConfig() {
 
 function collectAgentModelDrift(configPath) {
   const config = readOverrideConfig(configPath);
-  const overrides = Object.entries(config.overrides ?? {}).filter(([agentName]) => !VIRTUAL_OVERRIDE_SECTIONS.has(agentName));
+  const overrides = Object.entries(config.overrides ?? {}).filter(
+    ([agentName]) => !VIRTUAL_OVERRIDE_SECTIONS.has(agentName) && isLfpOwnedAgent(agentName)
+  );
   const items = [];
 
   for (const [agentName, fields] of overrides) {

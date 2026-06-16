@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * LFP Model + Fallback Resolver
- * Source of truth: the user's ~/.codex/lfp/omo-agent-model-overrides.json
+ * Source of truth: the user's ~/.codex/lfp.json
  *
  * Call with { agent: "...", onError: "quota" | "rate-limit" | "429" | "error" }
  * Returns consistent shape with primary / effective always present (or null).
@@ -11,20 +11,23 @@ import os from "node:os";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 
-import { SavedUserModelOverrideConfigSchema } from "./model-override-schema.mjs";
+import { LegacyV1SavedUserOverrideConfigSchema, SavedUserModelOverrideConfigSchema } from "./model-override-schema.mjs";
+import { getUserOverrideConfigPath } from "./user-model-overrides.mjs";
 
-const CONFIG_NAME = "omo-agent-model-overrides.json";
+const LEGACY_JSON_CONFIG_NAME = "omo-agent-model-overrides.json";
 const LEGACY_CONFIG_NAME = "omo-agent-model-overrides.toml";
 
 function getLedgerPath(options = {}) {
   const env = options.env ?? process.env;
   const codexHome = env.CODEX_HOME?.trim() || path.join(os.homedir(), ".codex");
-  const c1 = path.join(codexHome, "lfp", CONFIG_NAME);
-  const c2 = path.join(codexHome, "lfp", LEGACY_CONFIG_NAME);
-  const c3 = path.join(codexHome, ".ledger", "lfp", LEGACY_CONFIG_NAME);
+  const c1 = getUserOverrideConfigPath(options);
+  const c2 = path.join(codexHome, "lfp", LEGACY_JSON_CONFIG_NAME);
+  const c3 = path.join(codexHome, "lfp", LEGACY_CONFIG_NAME);
+  const c4 = path.join(codexHome, ".ledger", "lfp", LEGACY_CONFIG_NAME);
   if (existsSync(c1)) return c1;
   if (existsSync(c2)) return c2;
   if (existsSync(c3)) return c3;
+  if (existsSync(c4)) return c4;
   return null;
 }
 
@@ -134,7 +137,15 @@ export function resolve(agentName, options = {}) {
 }
 
 function parseSavedJson(text) {
-  const parsed = SavedUserModelOverrideConfigSchema.parse(JSON.parse(text));
+  const raw = JSON.parse(text);
+  const parsed = raw.schemaVersion === 1
+    ? SavedUserModelOverrideConfigSchema.parse({
+        schemaVersion: 2,
+        source: { agentsDir: "${CODEX_HOME}/agents" },
+        overrides: LegacyV1SavedUserOverrideConfigSchema.parse(raw).overrides,
+        rolePolicies: {}
+      })
+    : SavedUserModelOverrideConfigSchema.parse(raw);
   return { source: {}, overrides: parsed.overrides };
 }
 

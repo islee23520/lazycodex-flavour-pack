@@ -5,8 +5,152 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { configureAgentModelOverrides, getUserOverrideConfigPath } from "../scripts/agent-model-config.mjs";
+import { readOverrideConfig } from "../scripts/model-override-config.mjs";
+import { SavedUserModelOverrideConfigSchema } from "../scripts/model-override-schema.mjs";
 import { escapeRegExp } from "../scripts/toml-string-utils.mjs";
-import { getLegacyUserOverrideConfigPath, restoreAgentModelApplication } from "../scripts/user-model-overrides.mjs";
+import {
+  getLegacyUserOverrideConfigPath,
+  migrateLegacyUserOverrideConfig,
+  restoreAgentModelApplication,
+  saveUserOverrideConfig
+} from "../scripts/user-model-overrides.mjs";
+
+test("given CODEX_HOME when resolving saved user override path then returns lfp json at codex root", () => {
+  const codexHome = path.join("tmp", "codex-home");
+  assert.equal(getUserOverrideConfigPath({ env: { CODEX_HOME: codexHome } }), path.join(codexHome, "lfp.json"));
+});
+
+test("given valid v2 saved override config when parsing schema then accepts source overrides and role policies", () => {
+  const parsed = SavedUserModelOverrideConfigSchema.parse({
+    schemaVersion: 2,
+    source: { agentsDir: "${CODEX_HOME}/agents" },
+    overrides: {
+      explorer: { model: "gpt-5.5", model_reasoning_effort: "xhigh", service_tier: "fast" }
+    },
+    rolePolicies: {
+      explorer: { reasoning: "high", tier: "default" }
+    }
+  });
+
+  assert.equal(parsed.schemaVersion, 2);
+  assert.equal(parsed.source.agentsDir, "${CODEX_HOME}/agents");
+  assert.equal(parsed.rolePolicies.explorer.reasoning, "high");
+});
+
+test("given v2 saved override config has unknown top-level field when parsing then rejects strict schema", () => {
+  assert.throws(
+    () =>
+      SavedUserModelOverrideConfigSchema.parse({
+        schemaVersion: 2,
+        overrides: {},
+        rolePolicies: {},
+        unknown: true
+      }),
+    /Unrecognized key|unrecognized_keys|Unknown/i
+  );
+});
+
+test("given v1 saved override config when read as override config then migrates to v2 shape with defaults", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-v1-migration-"));
+  try {
+    const configPath = path.join(root, "legacy.json");
+    writeFileSync(configPath, savedOverrideJson("gpt-5.5", "high", "default"));
+
+    const config = readOverrideConfig(configPath, { env: { CODEX_HOME: path.join(root, "codex-home") } });
+
+    assert.equal(config.source.agentsDir, path.join(root, "codex-home", "agents"));
+    assert.deepEqual(config.rolePolicies, {});
+    assert.equal(config.overrides.explorer.model, "gpt-5.5");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("given legacy v1 saved config with multiple agents when migrating then preserves every override entry", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-v1-preserve-"));
+  try {
+    const codexHome = path.join(root, "codex-home");
+    const legacyPath = path.join(codexHome, "lfp", "omo-agent-model-overrides.json");
+    mkdirSync(path.dirname(legacyPath), { recursive: true });
+    writeFileSync(
+      legacyPath,
+      `${JSON.stringify({
+        schemaVersion: 1,
+        overrides: {
+          explorer: { model: "gpt-5.5" },
+          plan: { model: "grok-4", model_fallback: "gpt-5.4-mini" }
+        }
+      }, null, 2)}\n`
+    );
+
+    const savedPath = migrateLegacyUserOverrideConfig({ env: { CODEX_HOME: codexHome } });
+    const savedJson = JSON.parse(readFileSync(savedPath, "utf8"));
+
+    assert.equal(savedJson.schemaVersion, 2);
+    assert.deepEqual(Object.keys(savedJson.overrides).sort(), ["explorer", "plan"]);
+    assert.equal(savedJson.overrides.plan.model_fallback, "gpt-5.4-mini");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("given lfp json already exists when migrating then does not overwrite from legacy config", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-idempotent-"));
+  try {
+    const codexHome = path.join(root, "codex-home");
+    const savedPath = path.join(codexHome, "lfp.json");
+    const legacyPath = path.join(codexHome, "lfp", "omo-agent-model-overrides.json");
+    mkdirSync(path.dirname(savedPath), { recursive: true });
+    mkdirSync(path.dirname(legacyPath), { recursive: true });
+    writeFileSync(savedPath, savedOverrideJsonV2("canonical-model", "high", "fast"));
+    writeFileSync(legacyPath, savedOverrideJson("legacy-model", "low", "default"));
+
+    assert.equal(migrateLegacyUserOverrideConfig({ env: { CODEX_HOME: codexHome } }), savedPath);
+    const savedJson = JSON.parse(readFileSync(savedPath, "utf8"));
+
+    assert.equal(savedJson.overrides.explorer.model, "canonical-model");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("given old JSON saved override path exists when migrating then writes v2 lfp json", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-old-json-"));
+  try {
+    const codexHome = path.join(root, "codex-home");
+    const legacyPath = path.join(codexHome, "lfp", "omo-agent-model-overrides.json");
+    mkdirSync(path.dirname(legacyPath), { recursive: true });
+    writeFileSync(legacyPath, savedOverrideJson("gpt-5.5", "xhigh", "fast"));
+
+    const savedPath = migrateLegacyUserOverrideConfig({ env: { CODEX_HOME: codexHome } });
+    const savedJson = JSON.parse(readFileSync(savedPath, "utf8"));
+
+    assert.equal(savedPath, path.join(codexHome, "lfp.json"));
+    assert.equal(savedJson.schemaVersion, 2);
+    assert.equal(savedJson.overrides.explorer.model, "gpt-5.5");
+    assert.equal(readFileSync(legacyPath, "utf8"), savedOverrideJson("gpt-5.5", "xhigh", "fast"));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("given TOML override config when saving user config then writes schema version 2", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-save-v2-"));
+  try {
+    const configPath = path.join(root, "overrides.toml");
+    const savedPath = path.join(root, "codex-home", "lfp.json");
+    writeFileSync(configPath, overrideText("${CODEX_HOME}/agents", "gpt-5.5", "high", "default"));
+
+    saveUserOverrideConfig(configPath, savedPath);
+    const savedJson = JSON.parse(readFileSync(savedPath, "utf8"));
+
+    assert.equal(savedJson.schemaVersion, 2);
+    assert.equal(savedJson.source.agentsDir, "${CODEX_HOME}/agents");
+    assert.deepEqual(savedJson.rolePolicies, {});
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
 
 test("given saved user override config when setup runs again then restores model fields without stale agents dir", async () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-user-models-"));
@@ -22,12 +166,12 @@ test("given saved user override config when setup runs again then restores model
       output: silentOutput()
     });
     const savedPath = getUserOverrideConfigPath({ env: { CODEX_HOME: codexHome } });
-    assert.equal(savedPath, path.join(codexHome, "lfp", "omo-agent-model-overrides.json"));
+    assert.equal(savedPath, path.join(codexHome, "lfp.json"));
     const savedJson = JSON.parse(readFileSync(savedPath, "utf8"));
-    assert.equal(savedJson.schemaVersion, 1);
+    assert.equal(savedJson.schemaVersion, 2);
     assert.equal(savedJson.overrides.explorer.model, "gpt-5.4-mini");
     assert.equal(savedJson.overrides.explorer.model_reasoning_effort, "xhigh");
-    assert.equal(savedJson.source, undefined);
+    assert.equal(savedJson.source.agentsDir, "${CODEX_HOME}/agents");
 
     writeFileSync(savedPath, savedOverrideJson("gpt-5.4-mini", "xhigh", "fast"));
     writeFileSync(configPath, overrideText("${CODEX_HOME}/agents", "grok-4.3", "low", "default"));
@@ -59,7 +203,7 @@ test("given saved user override when user declines adjust then keeps saved setti
   try {
     const codexHome = path.join(root, "codex-home");
     const configPath = path.join(root, "overrides.toml");
-    const savedPath = path.join(codexHome, "lfp", "omo-agent-model-overrides.json");
+    const savedPath = path.join(codexHome, "lfp.json");
     writeFileSync(configPath, overrideText("${CODEX_HOME}/agents", "grok-4.3", "low", "default"));
     mkdirSync(path.dirname(savedPath), { recursive: true });
     writeFileSync(savedPath, savedOverrideJson("gpt-5.4-mini", "xhigh", "fast"));
@@ -87,7 +231,7 @@ test("given saved user override includes fallback fields when user declines adju
   try {
     const codexHome = path.join(root, "codex-home");
     const configPath = path.join(root, "overrides.toml");
-    const savedPath = path.join(codexHome, "lfp", "omo-agent-model-overrides.json");
+    const savedPath = path.join(codexHome, "lfp.json");
     writeFileSync(configPath, overrideText("${CODEX_HOME}/agents", "grok-4.3", "low", "default"));
     mkdirSync(path.dirname(savedPath), { recursive: true });
     writeFileSync(savedPath, savedOverrideJsonWithFallback());
@@ -115,7 +259,7 @@ test("given saved user override has unsupported max reasoning when configuring t
   try {
     const codexHome = path.join(root, "codex-home");
     const configPath = path.join(root, "overrides.toml");
-    const savedPath = path.join(codexHome, "lfp", "omo-agent-model-overrides.json");
+    const savedPath = path.join(codexHome, "lfp.json");
     writeFileSync(configPath, overrideText("${CODEX_HOME}/agents", "grok-4.3", "low", "default"));
     mkdirSync(path.dirname(savedPath), { recursive: true });
     writeFileSync(savedPath, savedOverrideJson("gpt-5.4-mini", "max", "default"));
@@ -155,7 +299,7 @@ test("given legacy ledger saved user override exists when configuring then migra
     const savedPath = getUserOverrideConfigPath({ env: { CODEX_HOME: codexHome } });
     const savedJson = JSON.parse(readFileSync(savedPath, "utf8"));
     assert.equal(savedJson.overrides.explorer.model, "grok-4.3");
-    assert.ok(output.questions.some((question) => question.includes(path.join(codexHome, "lfp"))));
+    assert.ok(output.questions.some((question) => question.includes(path.join(codexHome, "lfp.json"))));
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -187,14 +331,14 @@ test("given legacy LFP TOML saved user override exists when configuring then mig
   }
 });
 
-test("given previous saved override config when restoring agent model application then saved config and installed TOML return to previous fields", () => {
+test("given previous upstream saved override config when restoring agent model application then saved config returns and installed TOML is unchanged", () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-user-models-rollback-"));
   try {
     const codexHome = path.join(root, "codex-home");
     const agentsDir = path.join(codexHome, "agents");
     const configPath = path.join(root, "overrides.toml");
     const previousPath = path.join(root, "previous-overrides.json");
-    const currentSavedPath = path.join(codexHome, "lfp", "omo-agent-model-overrides.json");
+    const currentSavedPath = path.join(codexHome, "lfp.json");
     mkdirSync(agentsDir, { recursive: true });
     mkdirSync(path.dirname(currentSavedPath), { recursive: true });
     writeFileSync(
@@ -235,14 +379,14 @@ test("given previous saved override config when restoring agent model applicatio
     const agentText = readFileSync(path.join(agentsDir, "explorer.toml"), "utf8");
     const savedJson = JSON.parse(readFileSync(currentSavedPath, "utf8"));
 
-    assert.deepEqual(result.changed, [path.join(agentsDir, "explorer.toml")]);
+    assert.deepEqual(result.changed, []);
     assert.equal(result.savedConfigPath, currentSavedPath);
     assert.equal(savedJson.overrides.explorer.model, "previous-primary");
     assert.equal(savedJson.overrides.explorer.model_fallback, "previous-fallback");
-    assert.match(agentText, /model = "previous-primary"/);
-    assert.match(agentText, /model_reasoning_effort = "low"/);
-    assert.match(agentText, /service_tier = "default"/);
-    assert.doesNotMatch(agentText, /^model_fallback/m);
+    assert.match(agentText, /model = "new-primary"/);
+    assert.match(agentText, /model_reasoning_effort = "high"/);
+    assert.match(agentText, /service_tier = "fast"/);
+    assert.match(agentText, /^model_fallback = "new-fallback"$/m);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -255,7 +399,7 @@ test("given malformed previous saved override config when restoring then leaves 
     const agentsDir = path.join(codexHome, "agents");
     const configPath = path.join(root, "overrides.toml");
     const previousPath = path.join(root, "previous-overrides.json");
-    const currentSavedPath = path.join(codexHome, "lfp", "omo-agent-model-overrides.json");
+    const currentSavedPath = path.join(codexHome, "lfp.json");
     mkdirSync(agentsDir, { recursive: true });
     mkdirSync(path.dirname(currentSavedPath), { recursive: true });
     const currentAgentText = [
@@ -346,6 +490,21 @@ function savedOverrideJson(model, reasoning, tier) {
         service_tier: tier
       }
     }
+  }, null, 2)}\n`;
+}
+
+function savedOverrideJsonV2(model, reasoning, tier) {
+  return `${JSON.stringify({
+    schemaVersion: 2,
+    source: { agentsDir: "${CODEX_HOME}/agents" },
+    overrides: {
+      explorer: {
+        model,
+        model_reasoning_effort: reasoning,
+        service_tier: tier
+      }
+    },
+    rolePolicies: {}
   }, null, 2)}\n`;
 }
 

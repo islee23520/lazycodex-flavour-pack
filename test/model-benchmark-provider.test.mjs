@@ -84,8 +84,8 @@ function createCodexHome(root, overrides, providerAuthLines = ['experimental_bea
     ].join("\n")
   );
   writeFileSync(
-    path.join(codexHome, "lfp", "omo-agent-model-overrides.json"),
-    `${JSON.stringify({ schemaVersion: 1, overrides }, null, 2)}\n`
+    path.join(codexHome, "lfp.json"),
+    `${JSON.stringify({ schemaVersion: 2, source: { agentsDir: "${CODEX_HOME}/agents" }, overrides, rolePolicies: {} }, null, 2)}\n`
   );
   return codexHome;
 }

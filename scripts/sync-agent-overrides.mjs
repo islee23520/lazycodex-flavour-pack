@@ -47,21 +47,31 @@ export function syncAgentOverrides(configPath, options = {}) {
     Object.entries(overrides).filter(([agentName]) => !VIRTUAL_OVERRIDE_SECTIONS.has(agentName))
   );
 
-  assertInstalledAgentDir(sourceDir, agentOverrides, options);
+  const lfpOwnedOverrides = {};
+  const skippedReadOnly = [];
+  for (const [agentName, fields] of Object.entries(agentOverrides)) {
+    if (isLfpOwnedAgent(agentName)) {
+      lfpOwnedOverrides[agentName] = fields;
+    } else {
+      skippedReadOnly.push(agentName);
+    }
+  }
+
+  assertInstalledAgentDir(sourceDir, lfpOwnedOverrides, options);
 
   const changed = [];
 
-  for (const agentName of Object.keys(agentOverrides)) {
+  for (const agentName of Object.keys(lfpOwnedOverrides)) {
     const sourcePath = path.join(sourceDir, `${agentName}.toml`);
     if (options.allowMissingLfpOwnedAgents === true && isLfpOwnedAgent(agentName) && isMissing(sourcePath)) continue;
     const currentText = readFileSync(sourcePath, "utf8");
-    const nextText = applyModelOverrides(currentText, agentOverrides[agentName] ?? {});
+    const nextText = applyModelOverrides(currentText, lfpOwnedOverrides[agentName] ?? {});
     if (currentText === nextText) continue;
     changed.push(sourcePath);
     if (!options.check) writeFileSync(sourcePath, nextText);
   }
 
-  return { changed };
+  return { changed, skippedReadOnly };
 }
 
 export function applyModelOverrides(sourceText, values) {

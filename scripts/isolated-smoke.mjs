@@ -18,7 +18,7 @@ const root = mkdtempSync(path.join(tmpdir(), "lfp-isolated-smoke-"));
 const codexHome = path.join(root, "codex-home");
 const agentsDir = path.join(root, "upstream-agents");
 const overrideConfigPath = path.join(root, "omo-agent-model-overrides.toml");
-const savedOverridePath = path.join(codexHome, "lfp", "omo-agent-model-overrides.json");
+const savedOverridePath = path.join(codexHome, "lfp.json");
 
 mkdirSync(codexHome, { recursive: true });
 mkdirSync(agentsDir, { recursive: true });
@@ -93,9 +93,9 @@ assertIncludes(configText, '[plugins."lfp@islee23520"]', "isolated config enable
 assertIncludes(configText, "[marketplaces.islee23520]", "isolated config uses islee23520 marketplace");
 assertExcludes(configText, "[profiles.ulw]", "legacy ULW profile table removed from base config");
 assertIncludes(ulwConfigText, 'model = "grok-4.20-0309-reasoning"', "ULW profile defaults applied");
-assertIncludes(explorerText, 'model = "gpt-5.4-mini"', "saved explorer override applied");
-assertIncludes(metisText, 'model = "gpt-5.5"', "metis override applied after saved restore");
-assertIncludes(metisText, 'model_reasoning_effort = "high"', "metis reasoning applied");
+assertIncludes(explorerText, 'model = "gpt-5.4-mini"', "LazyCodex explorer original model preserved");
+assertIncludes(metisText, 'model = "gpt-5.5"', "LazyCodex metis original model preserved");
+assertIncludes(metisText, 'model_reasoning_effort = "high"', "LazyCodex metis original reasoning preserved");
 assertIncludes(momusText, 'model_reasoning_effort = "xhigh"', "current OMO momus xhigh reasoning preserved");
 assertIncludes(planText, 'model_reasoning_effort = "xhigh"', "current OMO plan xhigh reasoning preserved");
 assertIncludes(reviewerText, 'model_reasoning_effort = "high"', "current OMO reviewer high reasoning preserved");
@@ -107,8 +107,14 @@ if (!output.questions.some((question) => /Adjust LFP model overrides now/.test(q
 if (!output.questions.some((question) => /explorer model/.test(question))) {
   throw new Error("Model override prompts did not continue after saved override restore");
 }
-if (!sync.changed.some((filePath) => filePath.endsWith("metis.toml"))) {
-  throw new Error("Expected metis.toml to be updated by isolated override sync");
+if (!sync.skippedReadOnly.includes("metis")) {
+  throw new Error("Expected metis to be skipped as a read-only LazyCodex agent");
+}
+if (sync.changed.some((filePath) => filePath.endsWith("metis.toml") || filePath.endsWith("explorer.toml"))) {
+  throw new Error(`LazyCodex agents should not be updated: ${sync.changed.join(", ")}`);
+}
+if (!readFileSync(savedOverridePath, "utf8").includes('"schemaVersion": 2')) {
+  throw new Error("Expected lfp.json saved override config to be created");
 }
 
 console.log("isolated smoke: PASS");
@@ -122,6 +128,8 @@ console.log(`isolated smoke: duplicate tool cache healthy=${cacheState.healthy}`
 console.log(`isolated smoke: saved adjust prompt shown=true`);
 console.log(`isolated smoke: prompts continued after saved adjust=true`);
 console.log(`isolated smoke: updated agents=${sync.changed.map((filePath) => path.basename(filePath)).join(", ")}`);
+console.log(`isolated smoke: saved lfp.json created=true`);
+console.log(`isolated smoke: lazycodex agents unchanged=true`);
 
 function runCli(args) {
   return spawnSync(process.execPath, [CLI, ...args], {
@@ -186,7 +194,14 @@ function writeAgent(name, model, reasoning, tier) {
 
 function writeOverrideConfig(filePath, sourceDir, agents) {
   if (filePath.endsWith(".json")) {
-    writeFileSync(filePath, `${JSON.stringify({ schemaVersion: 1, overrides: agents }, null, 2)}\n`);
+    writeFileSync(
+      filePath,
+      `${JSON.stringify(
+        { schemaVersion: 2, source: { agentsDir: "${CODEX_HOME}/agents" }, overrides: agents, rolePolicies: {} },
+        null,
+        2
+      )}\n`
+    );
     return;
   }
 

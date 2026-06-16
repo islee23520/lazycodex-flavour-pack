@@ -14,7 +14,7 @@ import { escapeRegExp } from "../scripts/toml-string-utils.mjs";
 const CLI = path.resolve("scripts/cli.mjs");
 const LAZYCODEX_INSTALL_STUB = path.resolve("test/fixtures/lazycodex-install-stub.mjs");
 
-test("given npx-style CLI setup when upstream agent exists then updates configured fields", () => {
+test("given npx-style CLI setup when upstream agent exists then leaves LazyCodex fields unchanged", () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-cli-"));
   try {
     const codexHome = path.join(root, "codex-home");
@@ -42,8 +42,8 @@ test("given npx-style CLI setup when upstream agent exists then updates configur
     assert.match(result.stdout, /lazycodex-ai install stub/);
     assert.match(result.stdout, /installed lfp@islee23520/);
     assert.equal(result.stdout.indexOf("lazycodex-ai install stub") < result.stdout.indexOf("installed lfp@islee23520"), true);
-    assert.match(result.stdout, /updated .*explorer\.toml/);
-    assert.match(updated, /model = "grok-4\.3"/);
+    assert.doesNotMatch(result.stdout, /updated .*explorer\.toml/);
+    assert.match(updated, /model = "gpt-5\.4-mini"/);
     assert.match(updated, /developer_instructions = """keep me"""/);
     assert.equal(existsSync(path.join(codexHome, "local-marketplaces", "islee23520", "plugins", "lfp", ".codex-plugin", "plugin.json")), true);
     assert.equal(existsSync(path.join(codexHome, "agents", "sisyphus.toml")), true);
@@ -92,12 +92,55 @@ test("given local CLI setup skips LazyCodex install when requested then installs
   }
 });
 
-test("given saved LFP overrides when setup skips model prompt then applies all saved agents", () => {
+test("given non-interactive setup without saved overrides then writes recommendations and applies only LFP-owned agents", async () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-cli-recommend-"));
+  const server = await startModelsServer(["glm-5.2", "grok-3-mini-fast", "gemini-pro-agent", "gpt-5.5", "gpt-5.4-mini"]);
+  try {
+    const codexHome = path.join(root, "codex-home");
+    const agentsDir = path.join(codexHome, "agents");
+    mkdirSync(agentsDir, { recursive: true });
+    writeOmo410AgentFixtureSet(agentsDir, { explorer: { model: "upstream-original" } });
+    writeFileSync(
+      path.join(codexHome, "config.toml"),
+      [
+        'model_provider = "cliproxyapi"',
+        "",
+        "[model_providers.cliproxyapi]",
+        `base_url = "${server.url}"`,
+        'experimental_bearer_token = "sk-test-secret-DO-NOT-PRINT"',
+        ""
+      ].join("\n")
+    );
+
+    const result = await spawnCli(["setup", "--skip-lazycodex-install", "--skip-model-prompt"], {
+      env: { ...process.env, CODEX_HOME: codexHome, HOME: root }
+    });
+    const saved = JSON.parse(readFileSync(path.join(codexHome, "lfp.json"), "utf8"));
+    const explorerText = readFileSync(path.join(agentsDir, "explorer.toml"), "utf8");
+    const sisyphusText = readFileSync(path.join(agentsDir, "sisyphus.toml"), "utf8");
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /wrote recommended models to .*lfp\.json/);
+    assert.match(result.stdout, /applied to LFP-owned agents/);
+    assert.match(result.stdout, /left LazyCodex agents unchanged/);
+    assert.equal(saved.schemaVersion, 2);
+    assert.equal(saved.source.agentsDir, "${CODEX_HOME}/agents");
+    assert.ok(Object.hasOwn(saved.overrides, "explorer"));
+    assert.ok(Object.hasOwn(saved.overrides, "sisyphus"));
+    assert.match(explorerText, /model = "upstream-original"/);
+    assert.match(sisyphusText, new RegExp(`model = "${escapeRegExp(saved.overrides.sisyphus.model)}"`));
+  } finally {
+    await server.close();
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("given saved LFP overrides when setup skips model prompt then applies only LFP-owned agents", () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-cli-"));
   try {
     const codexHome = path.join(root, "codex-home");
     const agentsDir = path.join(codexHome, "agents");
-    const savedPath = path.join(codexHome, "lfp", "omo-agent-model-overrides.json");
+    const savedPath = path.join(codexHome, "lfp.json");
     mkdirSync(agentsDir, { recursive: true });
     mkdirSync(path.dirname(savedPath), { recursive: true });
     writeOmo410AgentFixtureSet(agentsDir, { metis: { model: "gpt-5.5" } });
@@ -113,6 +156,11 @@ test("given saved LFP overrides when setup skips model prompt then applies all s
           model: "custom-metis-model",
           model_reasoning_effort: "high",
           service_tier: "default"
+        },
+        sisyphus: {
+          model: "custom-sisyphus-model",
+          model_reasoning_effort: "high",
+          service_tier: "default"
         }
       })
     );
@@ -126,6 +174,7 @@ test("given saved LFP overrides when setup skips model prompt then applies all s
       }
     );
     const metisText = readFileSync(path.join(agentsDir, "metis.toml"), "utf8");
+    const sisyphusText = readFileSync(path.join(agentsDir, "sisyphus.toml"), "utf8");
     const installedOverrideText = readFileSync(
       path.join(codexHome, "local-marketplaces", "islee23520", "plugins", "lfp", "agent-configs", "omo-agent-model-overrides.toml"),
       "utf8"
@@ -133,8 +182,11 @@ test("given saved LFP overrides when setup skips model prompt then applies all s
 
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /applied saved LFP model override config.*\(non-interactive\)/);
-    assert.match(result.stdout, /updated .*metis\.toml/);
-    assert.match(metisText, /model = "custom-metis-model"/);
+    assert.doesNotMatch(result.stdout, /updated .*metis\.toml/);
+    assert.match(result.stdout, /updated .*sisyphus\.toml/);
+    assert.match(result.stdout, /left LazyCodex agents unchanged/);
+    assert.match(metisText, /model = "gpt-5\.5"/);
+    assert.match(sisyphusText, /model = "custom-sisyphus-model"/);
     assert.match(installedOverrideText, /agents_dir = "\$\{CODEX_HOME}\/agents"/);
     assert.match(installedOverrideText, /\[agents\.metis]/);
     assert.doesNotMatch(installedOverrideText, new RegExp(escapeRegExp(root)));
@@ -169,7 +221,7 @@ test("given no saved user override when interactive setup runs then emits no Adj
   }
 });
 
-test("given no saved user override when interactive setup runs then final sync applies the packaged agent-configs defaults", () => {
+test("given no saved user override when setup runs with explicit config then final sync applies only LFP-owned defaults", () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-cli-"));
   try {
     const codexHome = path.join(root, "codex-home");
@@ -194,16 +246,17 @@ test("given no saved user override when interactive setup runs then final sync a
     const reviewerText = readFileSync(path.join(agentsDir, "codex-ultrawork-reviewer.toml"), "utf8");
 
     assert.equal(result.status, 0, result.stderr);
-    assert.match(result.stdout, /updated .*metis\.toml/);
+    const sisyphusText = readFileSync(path.join(agentsDir, "sisyphus.toml"), "utf8");
+    assert.doesNotMatch(result.stdout, /updated .*metis\.toml/);
     assert.match(explorerText, /model = "gpt-5.4-mini"/);
     assert.match(explorerText, /model_reasoning_effort = "low"/);
     assert.match(librarianText, /model = "gpt-5\.4-mini"/);
     assert.match(librarianText, /model_reasoning_effort = "low"/);
-    assert.match(metisText, /model = "gpt-5\.5"/);
-    assert.match(metisText, /model_reasoning_effort = "high"/);
+    assert.match(metisText, /model = "custom-metis-model"/);
     assert.match(momusText, /model_reasoning_effort = "xhigh"/);
     assert.match(planText, /model_reasoning_effort = "xhigh"/);
     assert.match(reviewerText, /model_reasoning_effort = "high"/);
+    assert.match(sisyphusText, /model = "glm-5\.2"/);
     assert.doesNotMatch(`${explorerText}\n${librarianText}\n${metisText}\n${momusText}\n${planText}\n${reviewerText}`, /model_fallback/);
   } finally {
     rmSync(root, { recursive: true, force: true });
@@ -215,7 +268,7 @@ test("given saved LFP overrides when dry setup runs then reports no override dri
   try {
     const codexHome = path.join(root, "codex-home");
     const agentsDir = path.join(codexHome, "agents");
-    const savedPath = path.join(codexHome, "lfp", "omo-agent-model-overrides.json");
+    const savedPath = path.join(codexHome, "lfp.json");
     mkdirSync(agentsDir, { recursive: true });
     mkdirSync(path.dirname(savedPath), { recursive: true });
     writeFileSync(path.join(agentsDir, "explorer.toml"), 'name = "explorer"\nmodel = "grok-4.3"\n');
@@ -257,7 +310,7 @@ test("given saved LFP overrides when doctor runs then checks saved agent set", (
   try {
     const codexHome = path.join(root, "codex-home");
     const agentsDir = path.join(codexHome, "agents");
-    const savedPath = path.join(codexHome, "lfp", "omo-agent-model-overrides.json");
+    const savedPath = path.join(codexHome, "lfp.json");
     mkdirSync(agentsDir, { recursive: true });
     mkdirSync(path.dirname(savedPath), { recursive: true });
     writeFileSync(path.join(agentsDir, "explorer.toml"), 'name = "explorer"\nmodel = "grok-4.3"\n');
@@ -340,7 +393,7 @@ test("given npx-style CLI dry-setup when changes are pending then exits nonzero 
     assert.equal(result.status, 1);
     assert.match(result.stdout, /would install plugin files/);
     assert.match(result.stdout, /would install LFP agents/);
-    assert.match(result.stdout, /would update .*explorer\.toml/);
+    assert.doesNotMatch(result.stdout, /would update .*explorer\.toml/);
     assert.match(unchanged, /model = "gpt-5\.4-mini"/);
     assert.equal(existsSync(path.join(codexHome, "local-marketplaces", "islee23520", "plugins", "lfp")), false);
   } finally {
@@ -368,7 +421,7 @@ test("given setup applies agent overrides when Codex defaults and OMO hook state
     const updatedAgent = readFileSync(fixture.agentPath, "utf8");
 
     assert.equal(result.status, 0, result.stderr);
-    assert.match(updatedAgent, /model = "grok-4\.3"/);
+    assert.match(updatedAgent, /model = "gpt-5\.4-mini"/);
     assertCodexDefaultsSynced(afterConfig, afterUlwConfig);
     assert.equal(hookStateHash(afterConfig), beforeHookStateHash);
     assert.match(afterConfig, /\[hooks\."UserPromptSubmit"\."omo@sisyphuslabs\/visual-qa"]\ncommand = "omo visual qa"\nenabled = true/);
@@ -431,7 +484,7 @@ test("given agent-config applies agent overrides by default then syncs Codex def
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /updated global model defaults in .*config\.toml/);
     assertCodexDefaultsSynced(afterConfig, afterUlwConfig);
-    assert.match(updatedAgent, /model = "grok-4\.3"/);
+    assert.match(updatedAgent, /model = "gpt-5\.4-mini"/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -484,7 +537,7 @@ test("given dry setup sees Codex defaults and OMO hook state then reports pendin
     const unchangedAgent = readFileSync(fixture.agentPath, "utf8");
 
     assert.equal(result.status, 1);
-    assert.match(result.stdout, /would update .*explorer\.toml/);
+    assert.doesNotMatch(result.stdout, /would update .*explorer\.toml/);
     assert.match(result.stdout, /global defaults: synced \(default mode\)/);
     assert.match(result.stdout, /would update global model defaults in .*config\.toml/);
     assert.equal(sha256(afterConfig), beforeHash);
@@ -512,7 +565,7 @@ test("given dry setup cannot fetch provider inventory then reports degraded visi
     assert.match(result.stdout, /keeping current saved\/configured values; manual model entry remains available/);
     assert.match(result.stdout, /global defaults: synced \(default mode\)/);
     assert.match(result.stdout, /OMO hook state: preserved/);
-    assert.match(result.stdout, /agent model drift: explorer: model/);
+    assert.match(result.stdout, /agent model drift: none/);
     assert.doesNotMatch(result.stdout, /provider overwrite|configure OpenAI-compatible provider/);
     assert.doesNotMatch(result.stdout, /sk-test-secret-DO-NOT-PRINT|Bearer sk-test-secret/);
     assert.match(unchangedAgent, /model_fallback = "old-fallback"/);
@@ -620,7 +673,7 @@ test("given upstream agents dir is missing when setup runs then leaves Codex hom
   }
 });
 
-test("given required upstream agent is missing when setup runs then leaves Codex home unmodified", () => {
+test("given required upstream agent is missing when setup runs then skips upstream preflight", () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-cli-"));
   try {
     const codexHome = path.join(root, "codex-home");
@@ -640,11 +693,10 @@ test("given required upstream agent is missing when setup runs then leaves Codex
       encoding: "utf8"
     });
 
-    assert.equal(result.status, 1);
-    assert.match(result.stderr, /Missing required agent TOML files/);
-    assert.equal(existsSync(path.join(codexHome, "local-marketplaces", "islee23520", "plugins", "lfp")), false);
-    assert.equal(existsSync(path.join(codexHome, "agents", "visual-engineering.toml")), false);
-    assert.equal(existsSync(path.join(codexHome, "config.toml")), false);
+    assert.equal(result.status, 0, result.stderr);
+    assert.doesNotMatch(result.stderr, /Missing required agent TOML files/);
+    assert.equal(existsSync(path.join(codexHome, "local-marketplaces", "islee23520", "plugins", "lfp")), true);
+    assert.equal(existsSync(path.join(codexHome, "agents", "visual-engineering.toml")), true);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -677,8 +729,8 @@ test("given CLI doctor when changes are pending then reports setup work without 
     assert.match(result.stdout, /plugin files: missing/);
     assert.match(result.stdout, /LFP agents: missing/);
     assert.match(result.stdout, /plugin config: missing/);
-    assert.match(result.stdout, /agent overrides: setup would update/);
-    assert.match(result.stdout, /would update .*explorer\.toml/);
+    assert.match(result.stdout, /agent overrides: already applied/);
+    assert.doesNotMatch(result.stdout, /would update .*explorer\.toml/);
     assert.match(unchanged, /model = "gpt-5\.4-mini"/);
   } finally {
     rmSync(root, { recursive: true, force: true });
@@ -763,7 +815,7 @@ test("given doctor sees provider inventory and model drift then reports applier 
     assert.equal(result.status, 1);
     assert.match(result.stdout, /active provider id: cliproxyapi/);
     assert.match(result.stdout, /provider inventory: 3 models \(families: gemini, glm, grok\)/);
-    assert.match(result.stdout, /agent model drift: explorer: model/);
+    assert.match(result.stdout, /agent model drift: none/);
     assert.match(result.stdout, /global defaults: synced \(default mode\)/);
     assert.match(result.stdout, /OMO hook state: preserved/);
     assert.doesNotMatch(result.stdout, /sk-test-secret-DO-NOT-PRINT/);
@@ -994,7 +1046,7 @@ function spawnCli(args, options = {}) {
 }
 
 function savedOverrideJson(overrides) {
-  return `${JSON.stringify({ schemaVersion: 1, overrides }, null, 2)}\n`;
+  return `${JSON.stringify({ schemaVersion: 2, source: { agentsDir: "${CODEX_HOME}/agents" }, overrides, rolePolicies: {} }, null, 2)}\n`;
 }
 
 function writeOmo410AgentFixtureSet(agentsDir, overrides = {}) {
@@ -1099,7 +1151,7 @@ function createPreservationTomlFixture(root) {
 function createBenchmarkApplyFixture(root) {
   const codexHome = path.join(root, "codex-home");
   const codexConfigPath = path.join(codexHome, "config.toml");
-  const savedPath = path.join(codexHome, "lfp", "omo-agent-model-overrides.json");
+  const savedPath = path.join(codexHome, "lfp.json");
   const outputPath = path.join(root, "benchmark-result.json");
   mkdirSync(path.dirname(savedPath), { recursive: true });
   writeFileSync(

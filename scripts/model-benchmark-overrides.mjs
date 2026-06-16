@@ -3,14 +3,19 @@ import path from "node:path";
 
 import { AGENT_MODEL_FIELDS } from "./model-field-scope.mjs";
 import { readOverrideConfig } from "./model-override-config.mjs";
-import { getUserOverrideConfigPath } from "./user-model-overrides.mjs";
+import { getUserOverrideConfigPath, migrateLegacyUserOverrideConfig } from "./user-model-overrides.mjs";
 
 const MODEL_FIELDS = [...AGENT_MODEL_FIELDS];
 
 export function applyRecommendedOverrides(currentConfig, recommendations, env) {
   const applied = [];
   const userPath = getUserOverrideConfigPath({ env });
-  const next = { schemaVersion: 1, overrides: pickAllOverrideFields(currentConfig.overrides ?? {}) };
+  const next = {
+    schemaVersion: 2,
+    source: { agentsDir: "${CODEX_HOME}/agents" },
+    overrides: pickAllOverrideFields(currentConfig.overrides ?? {}),
+    rolePolicies: currentConfig.rolePolicies ?? {}
+  };
   for (const [role, recommendation] of Object.entries(recommendations)) {
     if (!recommendation.changed) continue;
     next.overrides[role] = { ...(next.overrides[role] ?? {}), ...pickOverrideFields(recommendation) };
@@ -24,9 +29,9 @@ export function applyRecommendedOverrides(currentConfig, recommendations, env) {
 }
 
 export function readCurrentOverrideConfig(configPath, env) {
-  const userPath = getUserOverrideConfigPath({ env });
+  const userPath = migrateLegacyUserOverrideConfig({ env });
   if (existsSync(userPath)) return readOverrideConfig(userPath, { env });
-  return readOverrideConfig(configPath ?? path.join(env.PWD ?? process.cwd(), "agent-configs", "omo-agent-model-overrides.toml"), { env });
+  return readOverrideConfig(configPath ?? getUserOverrideConfigPath({ env }), { env });
 }
 
 function pickAllOverrideFields(overrides) {

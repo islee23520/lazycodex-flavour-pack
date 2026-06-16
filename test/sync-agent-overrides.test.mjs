@@ -65,7 +65,7 @@ test("given fallback model overrides when applying agent overrides then strips u
   assert.match(result, /developer_instructions = """keep me"""/);
 });
 
-test("given source dir and override config when syncing then updates source agent config in place", () => {
+test("given upstream agent override config when syncing then skips read-only LazyCodex agent", () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-agent-sync-"));
   try {
     const sourceDir = path.join(root, "source");
@@ -83,24 +83,25 @@ test("given source dir and override config when syncing then updates source agen
     const result = syncAgentOverrides(configPath);
     const updated = readFileSync(path.join(sourceDir, "explorer.toml"), "utf8");
 
-    assert.equal(result.changed.length, 1);
-    assert.match(updated, /model = "grok-4\.3"/);
+    assert.deepEqual(result.changed, []);
+    assert.deepEqual(result.skippedReadOnly, ["explorer"]);
+    assert.match(updated, /model = "gpt-5\.4-mini"/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
 });
 
-test("given TOML override config with fallback fields when syncing then writes only supported agent fields", () => {
+test("given TOML override config with fallback fields for LFP-owned agent when syncing then writes only supported agent fields", () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-agent-sync-"));
   try {
     const sourceDir = path.join(root, "source");
     const configPath = path.join(root, "overrides.toml");
-    const agentPath = path.join(sourceDir, "explorer.toml");
+    const agentPath = path.join(sourceDir, "sisyphus.toml");
     mkdirSync(sourceDir);
     writeFileSync(
       agentPath,
       [
-        'name = "explorer"',
+        'name = "sisyphus"',
         'model = "old"',
         'model_reasoning_effort = "medium"',
         'service_tier = "default"',
@@ -114,7 +115,7 @@ test("given TOML override config with fallback fields when syncing then writes o
         "[source]",
         `agents_dir = "${sourceDir}"`,
         "",
-        "[agents.explorer]",
+        "[agents.sisyphus]",
         'model = "new"',
         'model_reasoning_effort = "low"',
         'service_tier = "fast"',
@@ -129,6 +130,7 @@ test("given TOML override config with fallback fields when syncing then writes o
     const updated = readFileSync(agentPath, "utf8");
 
     assert.deepEqual(result.changed, [agentPath]);
+    assert.deepEqual(result.skippedReadOnly, []);
     assert.match(updated, /model = "new"/);
     assert.match(updated, /model_reasoning_effort = "low"/);
     assert.match(updated, /service_tier = "fast"/);
@@ -298,12 +300,74 @@ test("given LFP-owned agents in override config when syncing then writes model f
     const updatedArtistry = readFileSync(artistryPath, "utf8");
 
     assert.deepEqual(result.changed.toSorted(), [artistryPath, sisyphusPath].toSorted());
+    assert.deepEqual(result.skippedReadOnly, []);
     assert.match(updatedSisyphus, /^model = "grok-4\.20-0309-reasoning"$/m);
     assert.match(updatedSisyphus, /^model_reasoning_effort = "xhigh"$/m);
     assert.match(updatedSisyphus, /^service_tier = "default"$/m);
     assert.match(updatedArtistry, /^model = "gemini-pro-agent"$/m);
     assert.match(updatedArtistry, /^model_reasoning_effort = "high"$/m);
     assert.match(updatedArtistry, /^service_tier = "default"$/m);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("given mixed upstream and LFP-owned overrides when syncing then writes only LFP-owned and reports upstream skipped", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-agent-sync-"));
+  try {
+    const sourceDir = path.join(root, "source");
+    const configPath = path.join(root, "config.json");
+    const explorerPath = path.join(sourceDir, "explorer.toml");
+    const sisyphusPath = path.join(sourceDir, "sisyphus.toml");
+    mkdirSync(sourceDir);
+    writeFileSync(explorerPath, 'name = "explorer"\nmodel = "upstream-original"\n');
+    writeFileSync(sisyphusPath, 'name = "sisyphus"\nmodel = "lfp-original"\n');
+    const originalExplorer = readFileSync(explorerPath, "utf8");
+    writeFileSync(
+      configPath,
+      JSON.stringify({
+        source: { agentsDir: sourceDir },
+        overrides: {
+          explorer: { model: "should-not-write" },
+          metis: { model: "should-not-check" },
+          sisyphus: { model: "lfp-updated" }
+        }
+      })
+    );
+
+    const result = syncAgentOverrides(configPath);
+
+    assert.deepEqual(result.changed, [sisyphusPath]);
+    assert.deepEqual(result.skippedReadOnly, ["explorer", "metis"]);
+    assert.equal(readFileSync(explorerPath, "utf8"), originalExplorer);
+    assert.match(readFileSync(sisyphusPath, "utf8"), /^model = "lfp-updated"$/m);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("given upstream agent TOML exists when syncing then leaves bytes unchanged", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-agent-sync-"));
+  try {
+    const sourceDir = path.join(root, "source");
+    const configPath = path.join(root, "config.json");
+    const explorerPath = path.join(sourceDir, "explorer.toml");
+    mkdirSync(sourceDir);
+    const original = 'name = "explorer"\nmodel = "original"\n# keep exact bytes\n';
+    writeFileSync(explorerPath, original);
+    writeFileSync(
+      configPath,
+      JSON.stringify({
+        source: { agentsDir: sourceDir },
+        overrides: { explorer: { model: "new-model", model_reasoning_effort: "high" } }
+      })
+    );
+
+    const result = syncAgentOverrides(configPath);
+
+    assert.deepEqual(result.changed, []);
+    assert.deepEqual(result.skippedReadOnly, ["explorer"]);
+    assert.equal(readFileSync(explorerPath, "utf8"), original);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -333,7 +397,7 @@ test("given legacy JSON override config with CODEX_HOME token when reading then 
   }
 });
 
-test("given check mode when syncing then reports pending changes without writing", () => {
+test("given check mode with upstream agent when syncing then skips without requiring pending write", () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-agent-sync-"));
   try {
     const sourceDir = path.join(root, "source");
@@ -352,7 +416,8 @@ test("given check mode when syncing then reports pending changes without writing
     const result = syncAgentOverrides(configPath, { check: true });
     const unchanged = readFileSync(agentPath, "utf8");
 
-    assert.deepEqual(result.changed, [agentPath]);
+    assert.deepEqual(result.changed, []);
+    assert.deepEqual(result.skippedReadOnly, ["explorer"]);
     assert.match(unchanged, /model = "gpt-5\.4-mini"/);
   } finally {
     rmSync(root, { recursive: true, force: true });
@@ -390,18 +455,18 @@ test("given missing override config when syncing then reports the missing config
   );
 });
 
-test("given missing required agent TOML when syncing then reports incomplete install and does not create files", () => {
+test("given missing required LFP-owned agent TOML when syncing then reports incomplete install and does not create files", () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-agent-sync-"));
   try {
     const sourceDir = path.join(root, "source");
     const configPath = path.join(root, "config.json");
-    const missingAgentPath = path.join(sourceDir, "explorer.toml");
+    const missingAgentPath = path.join(sourceDir, "sisyphus.toml");
     mkdirSync(sourceDir);
     writeFileSync(
       configPath,
       JSON.stringify({
         source: { agentsDir: sourceDir },
-        overrides: { explorer: { model: "grok-4.3" } }
+        overrides: { sisyphus: { model: "grok-4.3" } }
       })
     );
 

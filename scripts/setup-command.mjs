@@ -21,7 +21,8 @@ import {
   createRestoredUserOverrideConfig,
   hasSavedUserOverrideConfig,
   migrateLegacyUserOverrideConfig,
-  restoreSavedUserOverrideConfigIfPresent
+  restoreSavedUserOverrideConfigIfPresent,
+  saveUserOverrideConfig
 } from "./user-model-overrides.mjs";
 import { fetchAvailableModels } from "./model-provider.mjs";
 import { buildRecommendedModelOverrides } from "./model-recommendations.mjs";
@@ -126,9 +127,9 @@ async function installAndMaybePrompt(args, root, configPath, installOpenAiCompat
   const installed = installCodexPlugin(root, { installOpenAiCompatProvider, providerConfig: providerOverride ?? undefined });
   const installedConfigPath =
     args.config === undefined ? path.join(installed.pluginRoot, "agent-configs", "omo-agent-model-overrides.toml") : configPath;
+  let effectiveConfigPath = installedConfigPath;
   if (args.config === undefined && (args.skipModelPrompt || !process.stdin.isTTY)) {
-    const restoredPath = restoreSavedUserOverrideConfigIfPresent(installedConfigPath);
-    if (restoredPath !== null) console.log(`applied saved LFP model override config from ${restoredPath} (non-interactive)`);
+    effectiveConfigPath = await prepareNonInteractiveOverrideConfig(installedConfigPath, options);
   }
   console.log(`installed ${PLUGIN_REF} to ${installed.pluginRoot}`);
   console.log(`installed LFP agents to ${path.join(installed.codexHome, "agents")}`);
@@ -144,7 +145,34 @@ async function installAndMaybePrompt(args, root, configPath, installOpenAiCompat
   });
   if (process.stdin.isTTY) await maybePromptGitHubStart({ gitHubStartSelector: options.gitHubStartSelector });
 
-  return installedConfigPath;
+  return effectiveConfigPath;
+}
+
+async function prepareNonInteractiveOverrideConfig(installedConfigPath, options = {}) {
+  const userConfigPath = migrateLegacyUserOverrideConfig(options);
+  if (hasSavedUserOverrideConfig(userConfigPath)) {
+    const restoredPath = restoreSavedUserOverrideConfigIfPresent(installedConfigPath, options);
+    if (restoredPath !== null) console.log(`applied saved LFP model override config from ${restoredPath} (non-interactive)`);
+    return installedConfigPath;
+  }
+
+  const models = await safeFetchSetupModels({ ...options, output: options.output ?? console });
+  const seedConfig = readOverrideConfig(installedConfigPath, options);
+  const recommended = { ...(seedConfig.overrides ?? {}) };
+  if (models.length > 0) {
+    const recommendations = buildRecommendedModelOverrides(seedConfig.overrides ?? {}, models, { ...options, env: options.env ?? process.env });
+    for (const [agent, fields] of Object.entries(recommendations)) {
+      recommended[agent] = { ...(recommended[agent] ?? {}), ...fields };
+    }
+  }
+  saveUserOverrideConfig(userConfigPath, {
+    schemaVersion: 2,
+    source: { agentsDir: "${CODEX_HOME}/agents" },
+    overrides: recommended,
+    rolePolicies: {}
+  });
+  console.log(`wrote recommended models to ${userConfigPath}`);
+  return userConfigPath;
 }
 
 export async function maybePromptModelOverrides(args, configPath, options = {}) {
@@ -279,6 +307,10 @@ function shouldSyncGlobalDefaults(args) {
 
 function printSetupChanges(result, globalResult, check) {
   for (const item of result.changed) console.log(`${check ? "would update" : "updated"} ${item}`);
+  if (!check && Array.isArray(result.skippedReadOnly) && result.skippedReadOnly.length > 0) {
+    console.log("applied to LFP-owned agents");
+    console.log("left LazyCodex agents unchanged");
+  }
   if (globalResult?.preserved) {
     if (check) console.log("global defaults: preserved (agent-only mode)");
     return;

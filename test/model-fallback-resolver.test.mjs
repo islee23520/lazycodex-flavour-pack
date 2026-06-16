@@ -8,9 +8,9 @@ import { resolve } from "../scripts/model-fallback-resolver.mjs";
 import { syncAgentOverrides } from "../scripts/sync-agent-overrides.mjs";
 
 const tmp = mkdtempSync(path.join(os.tmpdir(), "lfp-resolver-test-"));
-const ledgerDir = path.join(tmp, "lfp");
+const ledgerDir = tmp;
 mkdirSync(ledgerDir, { recursive: true });
-const ledgerFile = path.join(ledgerDir, "omo-agent-model-overrides.json");
+const ledgerFile = path.join(ledgerDir, "lfp.json");
 writeFileSync(ledgerFile, `${JSON.stringify({
   schemaVersion: 1,
   overrides: {
@@ -73,12 +73,11 @@ describe("model-fallback-resolver", () => {
   it("given conflicting upstream agent TOML when resolving fallback then uses saved JSON", () => {
     const root = mkdtempSync(path.join(os.tmpdir(), "lfp-resolver-conflict-"));
     try {
-      const lfpDir = path.join(root, "lfp");
       const agentsDir = path.join(root, "agents");
-      mkdirSync(lfpDir, { recursive: true });
       mkdirSync(agentsDir, { recursive: true });
-      writeFileSync(path.join(lfpDir, "omo-agent-model-overrides.json"), `${JSON.stringify({
-        schemaVersion: 1,
+      writeFileSync(path.join(root, "lfp.json"), `${JSON.stringify({
+        schemaVersion: 2,
+        source: { agentsDir: "${CODEX_HOME}/agents" },
         overrides: {
           explorer: {
             model: "primary",
@@ -88,7 +87,8 @@ describe("model-fallback-resolver", () => {
             model_fallback_reasoning_effort: "low",
             model_fallback_service_tier: "default"
           }
-        }
+        },
+        rolePolicies: {}
       })}\n`);
       writeFileSync(path.join(agentsDir, "explorer.toml"), 'name = "explorer"\nmodel_fallback = "wrong-upstream"\n');
 
@@ -96,13 +96,13 @@ describe("model-fallback-resolver", () => {
 
       assert.equal(r.using_fallback, true);
       assert.equal(r.effective?.model, "fallback");
-      assert.equal(r.source, path.join(lfpDir, "omo-agent-model-overrides.json"));
+      assert.equal(r.source, path.join(root, "lfp.json"));
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
   });
 
-  it("given benchmark applier writes saved overrides and sync mutates installed TOML when resolving then keeps primary-only saved JSON", () => {
+  it("given benchmark applier writes saved upstream overrides and sync skips installed TOML when resolving then keeps primary-only saved JSON", () => {
     const root = mkdtempSync(path.join(os.tmpdir(), "lfp-resolver-applier-topology-"));
     try {
       const codexHome = path.join(root, "codex-home");
@@ -143,7 +143,7 @@ describe("model-fallback-resolver", () => {
         },
         { CODEX_HOME: codexHome }
       );
-      const savedPath = path.join(codexHome, "lfp", "omo-agent-model-overrides.json");
+      const savedPath = path.join(codexHome, "lfp.json");
       const syncResult = syncAgentOverrides(savedPath, {
         env: { ...process.env, CODEX_HOME: codexHome },
         sourceAgentsDir: agentsDir
@@ -159,9 +159,10 @@ describe("model-fallback-resolver", () => {
       const installed = readFileSync(path.join(agentsDir, "explorer.toml"), "utf8");
 
       assert.deepEqual(applied, ["explorer"]);
-      assert.deepEqual(syncResult.changed, [path.join(agentsDir, "explorer.toml")]);
+      assert.deepEqual(syncResult.changed, []);
+      assert.deepEqual(syncResult.skippedReadOnly, ["explorer"]);
       assert.equal("model_fallback" in saved.overrides.explorer, false);
-      assert.doesNotMatch(installed, /^model_fallback/m);
+      assert.match(installed, /^model_fallback = "old-installed-fallback"$/m);
       assert.equal(resolved.using_fallback, false);
       assert.equal(resolved.effective?.model, "saved-primary");
       assert.equal(resolved.source, savedPath);
@@ -219,9 +220,7 @@ describe("model-fallback-resolver", () => {
   it("given malformed saved JSON when resolving then reports parse-error", () => {
     const root = mkdtempSync(path.join(os.tmpdir(), "lfp-resolver-malformed-"));
     try {
-      const lfpDir = path.join(root, "lfp");
-      mkdirSync(lfpDir, { recursive: true });
-      const malformedLedger = path.join(lfpDir, "omo-agent-model-overrides.json");
+      const malformedLedger = path.join(root, "lfp.json");
       writeFileSync(malformedLedger, '{"schemaVersion":1,"overrides":');
 
       const r = resolve("explorer", { ledgerPath: malformedLedger, onError: "quota" });

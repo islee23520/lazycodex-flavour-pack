@@ -188,7 +188,7 @@ test("given apply benchmark when winner changes then updates saved overrides onl
         fetch: async (url, request) => fakeCompletion(url, request)
       }
     );
-    const saved = JSON.parse(readFileSync(path.join(codexHome, "lfp", "omo-agent-model-overrides.json"), "utf8"));
+    const saved = JSON.parse(readFileSync(path.join(codexHome, "lfp.json"), "utf8"));
 
     assert.equal(saved.overrides.explorer.model, "fast-model");
     assert.equal("model_fallback" in saved.overrides.explorer, false);
@@ -221,7 +221,7 @@ test("given benchmark recommendation with fallback fields when applying then wri
       },
       { ...process.env, CODEX_HOME: codexHome }
     );
-    const saved = JSON.parse(readFileSync(path.join(codexHome, "lfp", "omo-agent-model-overrides.json"), "utf8"));
+    const saved = JSON.parse(readFileSync(path.join(codexHome, "lfp.json"), "utf8"));
 
     assert.deepEqual(applied, ["explorer"]);
     assert.deepEqual(saved.overrides.explorer, {
@@ -236,7 +236,7 @@ test("given benchmark recommendation with fallback fields when applying then wri
 
 function createCodexHome(root, overrides) {
   const codexHome = path.join(root, "codex-home");
-  mkdirSync(path.join(codexHome, "lfp"), { recursive: true });
+  mkdirSync(codexHome, { recursive: true });
   writeFileSync(
     path.join(root, "config.toml"),
     '[source]\nagents_dir = "${CODEX_HOME}/agents"\n'
@@ -254,8 +254,8 @@ function createCodexHome(root, overrides) {
     { flag: "w" }
   );
   writeFileSync(
-    path.join(codexHome, "lfp", "omo-agent-model-overrides.json"),
-    `${JSON.stringify({ schemaVersion: 1, overrides }, null, 2)}\n`,
+    path.join(codexHome, "lfp.json"),
+    `${JSON.stringify({ schemaVersion: 2, source: { agentsDir: "${CODEX_HOME}/agents" }, overrides, rolePolicies: {} }, null, 2)}\n`,
     { flag: "w" }
   );
   return codexHome;

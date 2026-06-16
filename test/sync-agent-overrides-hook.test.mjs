@@ -36,12 +36,13 @@ test("given UserPromptSubmit hook when saved override exists then saved model wi
   try {
     const codexHome = path.join(root, "codex-home");
     const fixture = createFixture(root, "gpt-5.4-mini");
-    const savedPath = path.join(codexHome, "lfp", "omo-agent-model-overrides.json");
+    const savedPath = path.join(codexHome, "lfp.json");
     mkdirSync(path.dirname(savedPath), { recursive: true });
     writeFileSync(
       savedPath,
       `${JSON.stringify({
-        schemaVersion: 1,
+        schemaVersion: 2,
+        source: { agentsDir: "${CODEX_HOME}/agents" },
         overrides: {
           "visual-looker": {
             model: "gemini-saved-agent",
@@ -51,7 +52,8 @@ test("given UserPromptSubmit hook when saved override exists then saved model wi
             model_fallback_reasoning_effort: "low",
             model_fallback_service_tier: "default"
           }
-        }
+        },
+        rolePolicies: {}
       }, null, 2)}\n`
     );
 

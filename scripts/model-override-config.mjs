@@ -2,7 +2,11 @@ import os from "node:os";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
-import { parseModelOverrideConfig } from "./model-override-schema.mjs";
+import {
+  LegacyV1SavedUserOverrideConfigSchema,
+  parseModelOverrideConfig,
+  SavedUserModelOverrideConfigSchema
+} from "./model-override-schema.mjs";
 
 const MODEL_FIELDS = new Set(["model", "model_reasoning_effort", "service_tier"]);
 const FALLBACK_FIELDS = new Set(["model_fallback", "model_fallback_reasoning_effort", "model_fallback_service_tier"]);
@@ -63,7 +67,7 @@ function parseOverrideToml(text) {
 }
 
 function normalizeOverrideConfig(config, env) {
-  const parsed = parseModelOverrideConfig(config);
+  const parsed = parseModelOverrideConfig(migrateJsonOverrideConfig(config));
   return {
     ...parsed,
     source: {
@@ -71,6 +75,28 @@ function normalizeOverrideConfig(config, env) {
       agentsDir: expandConfigPath(parsed.source?.agentsDir, env)
     }
   };
+}
+
+function migrateJsonOverrideConfig(config) {
+  if (config?.schemaVersion === 2) {
+    const parsed = SavedUserModelOverrideConfigSchema.parse(config);
+    return {
+      source: parsed.source,
+      overrides: parsed.overrides,
+      rolePolicies: parsed.rolePolicies
+    };
+  }
+
+  if (config?.schemaVersion === 1) {
+    const parsed = LegacyV1SavedUserOverrideConfigSchema.parse(config);
+    return {
+      source: { agentsDir: "${CODEX_HOME}/agents" },
+      overrides: parsed.overrides,
+      rolePolicies: {}
+    };
+  }
+
+  return config;
 }
 
 function expandConfigPath(value, env) {
