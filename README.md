@@ -44,7 +44,7 @@ npm run agent-config
 npm run smoke:isolated
 ```
 
-`setup` installs/enables LFP under `CODEX_HOME/local-marketplaces/islee23520/plugins/lfp`, installs helper agents under `CODEX_HOME/agents`, and applies configured model-field overrides. Agent TOML sync is limited to the three primary model fields: `model`, `model_reasoning_effort`, and `service_tier`; global default sync remains limited to the first three fields for top-level config and `[profiles.ulw]`.
+`setup` installs/enables LFP under `CODEX_HOME/local-marketplaces/islee23520/plugins/lfp`, installs helper agents under `CODEX_HOME/agents`, and applies configured model-field overrides. Agent TOML sync is limited to the three primary model fields: `model`, `model_reasoning_effort`, and `service_tier`; global default sync remains limited to the first three fields for top-level `config.toml` and `ulw.config.toml`.
 
 Fallback model resolution is available via the MCP resolver tool for saved override configurations that include fallback fields. Installed Codex agent TOMLs receive primary model fields only.
 

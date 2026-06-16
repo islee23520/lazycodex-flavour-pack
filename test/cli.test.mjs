@@ -364,11 +364,12 @@ test("given setup applies agent overrides when Codex defaults and OMO hook state
       }
     );
     const afterConfig = readFileSync(fixture.codexConfigPath, "utf8");
+    const afterUlwConfig = readFileSync(path.join(fixture.codexHome, "ulw.config.toml"), "utf8");
     const updatedAgent = readFileSync(fixture.agentPath, "utf8");
 
     assert.equal(result.status, 0, result.stderr);
     assert.match(updatedAgent, /model = "grok-4\.3"/);
-    assertCodexDefaultsSynced(afterConfig);
+    assertCodexDefaultsSynced(afterConfig, afterUlwConfig);
     assert.equal(hookStateHash(afterConfig), beforeHookStateHash);
     assert.match(afterConfig, /\[hooks\."UserPromptSubmit"\."omo@sisyphuslabs\/visual-qa"]\ncommand = "omo visual qa"\nenabled = true/);
     assert.match(afterConfig, /\[hook_state\."omo@sisyphuslabs\/session-start"]\nlast_status = "ok"\nupdated_at = "2026-06-15T00:00:00Z"/);
@@ -399,13 +400,15 @@ test("given setup explicitly syncs global defaults then updates Codex defaults f
       }
     );
     const afterConfig = readFileSync(fixture.codexConfigPath, "utf8");
+    const afterUlwConfig = readFileSync(path.join(fixture.codexHome, "ulw.config.toml"), "utf8");
 
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /updated global model defaults in .*config\.toml/);
     assert.match(afterConfig, /^model = "packaged-default"$/m);
     assert.match(afterConfig, /^model_reasoning_effort = "high"$/m);
     assert.match(afterConfig, /^service_tier = "default"$/m);
-    assert.match(afterConfig, /\[profiles\.ulw]\nmodel = "packaged-ulw"\nmodel_reasoning_effort = "xhigh"\nservice_tier = "default"/);
+    assert.doesNotMatch(afterConfig, /^\[profiles\.ulw]$/m);
+    assert.match(afterUlwConfig, /^model = "packaged-ulw"\nmodel_reasoning_effort = "xhigh"\nservice_tier = "default"/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -422,11 +425,12 @@ test("given agent-config applies agent overrides by default then syncs Codex def
       encoding: "utf8"
     });
     const afterConfig = readFileSync(fixture.codexConfigPath, "utf8");
+    const afterUlwConfig = readFileSync(path.join(fixture.codexHome, "ulw.config.toml"), "utf8");
     const updatedAgent = readFileSync(fixture.agentPath, "utf8");
 
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /updated global model defaults in .*config\.toml/);
-    assertCodexDefaultsSynced(afterConfig);
+    assertCodexDefaultsSynced(afterConfig, afterUlwConfig);
     assert.match(updatedAgent, /model = "grok-4\.3"/);
   } finally {
     rmSync(root, { recursive: true, force: true });
@@ -444,11 +448,13 @@ test("given agent-config explicitly syncs global defaults then virtual sections 
       encoding: "utf8"
     });
     const afterConfig = readFileSync(fixture.codexConfigPath, "utf8");
+    const afterUlwConfig = readFileSync(path.join(fixture.codexHome, "ulw.config.toml"), "utf8");
 
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /updated global model defaults in .*config\.toml/);
     assert.match(afterConfig, /^model = "packaged-default"$/m);
-    assert.match(afterConfig, /\[profiles\.ulw]\nmodel = "packaged-ulw"\nmodel_reasoning_effort = "xhigh"\nservice_tier = "default"/);
+    assert.doesNotMatch(afterConfig, /^\[profiles\.ulw]$/m);
+    assert.match(afterUlwConfig, /^model = "packaged-ulw"\nmodel_reasoning_effort = "xhigh"\nservice_tier = "default"/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -1238,14 +1244,12 @@ function assertCodexDefaultsPreserved(configText) {
   assert.doesNotMatch(configText, /packaged-default|packaged-ulw/);
 }
 
-function assertCodexDefaultsSynced(configText) {
+function assertCodexDefaultsSynced(configText, ulwConfigText) {
   assert.match(configText, /^model = "packaged-default"$/m);
   assert.match(configText, /^model_reasoning_effort = "high"$/m);
   assert.match(configText, /^service_tier = "default"$/m);
-  assert.match(
-    configText,
-    /\[profiles\.ulw]\nmodel = "packaged-ulw"\nmodel_reasoning_effort = "xhigh"\nservice_tier = "default"/
-  );
+  assert.doesNotMatch(configText, /^\[profiles\.ulw]$/m);
+  assert.match(ulwConfigText, /^model = "packaged-ulw"\nmodel_reasoning_effort = "xhigh"\nservice_tier = "default"/);
 }
 
 function hookStateHash(configText) {

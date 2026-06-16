@@ -2,14 +2,14 @@ import { classifyModelInventory } from "./model-inventory.mjs";
 import { getCompatibleReasoningEffort } from "./model-reasoning-compat.mjs";
 import { readRolePolicyConfig } from "./role-policy-config.mjs";
 
-const XHIGH_REASONING_AGENT_NAMES = new Set(["momus", "plan", "sisyphus"]);
+const XHIGH_REASONING_AGENT_NAMES = new Set(["momus", "plan"]);
 const REASONING_AGENT_NAMES = new Set(["metis", "momus", "plan", "sisyphus", "ulw-plan", "review-work"]);
 
 const DEEP_REASONING_PREFERENCES = [
-  { id: "grok-4.20-0309-reasoning" },
-  { family: "grok", capability: "reasoning" },
   { family: "glm", capability: "reasoning" },
-  { family: "gpt", capability: "reasoning", pattern: /^(?!.*mini).*$/i }
+  { family: "gpt", capability: "reasoning", pattern: /^(?!.*mini).*$/i },
+  { family: "grok", capability: "reasoning" },
+  { family: "gemini", capability: "reasoning" }
 ];
 
 const ROLE_MODEL_PREFERENCES = {

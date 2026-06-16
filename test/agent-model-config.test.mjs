@@ -214,12 +214,12 @@ test("given recommended agent when user presses enter then shows current versus 
     const updated = readFileSync(configPath, "utf8");
     const outputText = output.lines.join("\n");
 
-    assert.equal(config.overrides.plan.model, "grok-4.20-0309-reasoning");
-    assert.equal(config.overrides.plan.model_reasoning_effort, "xhigh");
+    assert.equal(config.overrides.plan.model, "glm-5.2");
+    assert.equal(config.overrides.plan.model_reasoning_effort, "high");
     assert.equal(config.overrides.plan.service_tier, "default");
     assert.equal("model_fallback" in config.overrides.plan, false);
     assert.match(outputText, /Original\/current: old-plan-model \(reasoning: medium, tier: fast\)/);
-    assert.match(outputText, /LFP recommendation: grok-4\.20-0309-reasoning \(reasoning: xhigh, tier: default\)/);
+    assert.match(outputText, /LFP recommendation: glm-5\.2 \(reasoning: high, tier: default\)/);
     assert.doesNotMatch(outputText, /fallback/i);
     assert.equal(configOutput.questions.some((question) => /plan fallback model/.test(question)), false);
     assert.doesNotMatch(updated, /^model_fallback/m);

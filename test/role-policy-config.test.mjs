@@ -16,7 +16,7 @@ const EXPECTED_DEFAULT_POLICIES = {
   librarian: { reasoning: "low", tier: "fast" },
   metis: { reasoning: "high", tier: "default" },
   plan: { reasoning: "xhigh", tier: "default" },
-  sisyphus: { reasoning: "xhigh", tier: "default" },
+  sisyphus: { reasoning: "high", tier: "default" },
   momus: { reasoning: "xhigh", tier: "default" },
   "codex-ultrawork-reviewer": { reasoning: "high", tier: "default" },
   "visual-engineering": { reasoning: "high", tier: "default" },

@@ -106,11 +106,13 @@ test("given sync hook has virtual global defaults when it runs then syncs Codex 
     );
     const updatedAgent = readFileSync(fixture.agentPath, "utf8");
     const updatedConfig = readFileSync(codexConfigPath, "utf8");
+    const updatedUlwConfig = readFileSync(path.join(codexHome, "ulw.config.toml"), "utf8");
 
     assert.equal(output, "");
     assert.match(updatedAgent, /model = "gemini-pro-agent"/);
     assert.match(updatedConfig, /^model = "packaged-default"$/m);
-    assert.match(updatedConfig, /\[profiles\.ulw]\nmodel = "packaged-ulw"\nmodel_reasoning_effort = "xhigh"\nservice_tier = "default"/);
+    assert.doesNotMatch(updatedConfig, /^\[profiles\.ulw]$/m);
+    assert.match(updatedUlwConfig, /^model = "packaged-ulw"\nmodel_reasoning_effort = "xhigh"\nservice_tier = "default"/);
     assert.match(updatedConfig, /\[hooks\."SessionStart"\."omo@sisyphuslabs\/sync-agent-overrides"]/);
   } finally {
     rmSync(root, { recursive: true, force: true });
@@ -160,10 +162,12 @@ test("given UserPromptSubmit sync hook has virtual global defaults when it runs 
       { configPath: fixture.configPath, env: { CODEX_HOME: codexHome, HOME: root } }
     );
     const updatedConfig = readFileSync(codexConfigPath, "utf8");
+    const updatedUlwConfig = readFileSync(path.join(codexHome, "ulw.config.toml"), "utf8");
 
     assert.equal(output, "");
     assert.match(updatedConfig, /^model = "packaged-default"$/m);
-    assert.match(updatedConfig, /\[profiles\.ulw]\nmodel = "packaged-ulw"/);
+    assert.doesNotMatch(updatedConfig, /^\[profiles\.ulw]$/m);
+    assert.match(updatedUlwConfig, /^model = "packaged-ulw"$/m);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -186,10 +190,12 @@ test("given UserPromptSubmit sync hook runs by default then virtual defaults upd
       { configPath: fixture.configPath, env: { CODEX_HOME: codexHome, HOME: root } }
     );
     const updatedConfig = readFileSync(codexConfigPath, "utf8");
+    const updatedUlwConfig = readFileSync(path.join(codexHome, "ulw.config.toml"), "utf8");
 
     assert.equal(output, "");
     assert.match(updatedConfig, /^model = "packaged-default"$/m);
-    assert.match(updatedConfig, /\[profiles\.ulw]\nmodel = "packaged-ulw"/);
+    assert.doesNotMatch(updatedConfig, /^\[profiles\.ulw]$/m);
+    assert.match(updatedUlwConfig, /^model = "packaged-ulw"$/m);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

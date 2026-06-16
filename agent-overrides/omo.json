@@ -4,12 +4,12 @@
   },
   "overrides": {
     "default": {
-      "model": "grok-4.20-0309-reasoning",
-      "model_reasoning_effort": "xhigh",
+      "model": "glm-5.2",
+      "model_reasoning_effort": "high",
       "service_tier": "default"
     },
     "ulw": {
-      "model": "grok-4.20-0309-reasoning",
+      "model": "glm-5.2",
       "model_reasoning_effort": "xhigh",
       "service_tier": "default"
     },
@@ -44,8 +44,8 @@
       "service_tier": "default"
     },
     "sisyphus": {
-      "model": "grok-4.20-0309-reasoning",
-      "model_reasoning_effort": "xhigh",
+      "model": "glm-5.2",
+      "model_reasoning_effort": "high",
       "service_tier": "default"
     },
     "visual-engineering": {

@@ -82,6 +82,7 @@ assertStatus(doctor, 0, "doctor");
 
 const cacheState = getCodexAppsToolCacheState({ env: { CODEX_HOME: codexHome } });
 const configText = readFileSync(path.join(codexHome, "config.toml"), "utf8");
+const ulwConfigText = readFileSync(path.join(codexHome, "ulw.config.toml"), "utf8");
 const explorerText = readFileSync(path.join(agentsDir, "explorer.toml"), "utf8");
 const metisText = readFileSync(path.join(agentsDir, "metis.toml"), "utf8");
 const momusText = readFileSync(path.join(agentsDir, "momus.toml"), "utf8");
@@ -90,8 +91,8 @@ const reviewerText = readFileSync(path.join(agentsDir, "codex-ultrawork-reviewer
 
 assertIncludes(configText, '[plugins."lfp@islee23520"]', "isolated config enables lfp@islee23520");
 assertIncludes(configText, "[marketplaces.islee23520]", "isolated config uses islee23520 marketplace");
-assertIncludes(configText, "[profiles.ulw]", "ULW profile written by default setup");
-assertIncludes(configText, '[profiles.ulw]\nmodel = "grok-4.20-0309-reasoning"', "ULW profile defaults applied");
+assertExcludes(configText, "[profiles.ulw]", "legacy ULW profile table removed from base config");
+assertIncludes(ulwConfigText, 'model = "grok-4.20-0309-reasoning"', "ULW profile defaults applied");
 assertIncludes(explorerText, 'model = "gpt-5.4-mini"', "saved explorer override applied");
 assertIncludes(metisText, 'model = "gpt-5.5"', "metis override applied after saved restore");
 assertIncludes(metisText, 'model_reasoning_effort = "high"', "metis reasoning applied");
@@ -113,7 +114,7 @@ if (!sync.changed.some((filePath) => filePath.endsWith("metis.toml"))) {
 console.log("isolated smoke: PASS");
 console.log(`isolated smoke: CODEX_HOME=${codexHome}`);
 console.log(`isolated smoke: setup installed lfp@islee23520=${configText.includes('[plugins."lfp@islee23520"]')}`);
-console.log(`isolated smoke: ulw profile synced=${configText.includes("[profiles.ulw]")}`);
+console.log(`isolated smoke: ulw profile synced=${ulwConfigText.includes('model = "grok-4.20-0309-reasoning"')}`);
 console.log(`isolated smoke: omo 4.10 momus xhigh=${momusText.includes('model_reasoning_effort = "xhigh"')}`);
 console.log(`isolated smoke: omo 4.10 plan xhigh=${planText.includes('model_reasoning_effort = "xhigh"')}`);
 console.log(`isolated smoke: omo managed agents=${countManagedOmoAgents(overrideConfigPath)}`);
@@ -142,6 +143,10 @@ function assertStatus(result, expected, label) {
 
 function assertIncludes(text, pattern, message) {
   if (!text.includes(pattern)) throw new Error(message);
+}
+
+function assertExcludes(text, pattern, message) {
+  if (text.includes(pattern)) throw new Error(message);
 }
 
 function assertManagedOmoAgents(configPath, expected) {

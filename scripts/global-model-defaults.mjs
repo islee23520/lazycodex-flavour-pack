@@ -1,5 +1,5 @@
 import os from "node:os";
-import { readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import { GLOBAL_MODEL_FIELDS } from "./model-field-scope.mjs";
@@ -9,6 +9,7 @@ export function syncGlobalModelDefaults(configPath, options = {}) {
   const env = options.env ?? process.env;
   const codexHome = env.CODEX_HOME?.trim() || path.join(os.homedir(), ".codex");
   const globalConfigPath = path.join(codexHome, "config.toml");
+  const ulwConfigPath = path.join(codexHome, "ulw.config.toml");
 
   let overrideConfig;
   try {
@@ -36,17 +37,35 @@ export function syncGlobalModelDefaults(configPath, options = {}) {
     nextText = applyTopLevelModelFields(nextText, defaultFields);
   }
   if (Object.keys(ulwFields).length > 0) {
-    nextText = applySectionModelFields(nextText, "profiles.ulw", ulwFields);
+    nextText = removeSection(nextText, "profiles.ulw");
   }
-  if (currentText === nextText) {
-    return { changed: [], globalConfigPath };
+
+  let currentUlwText = "";
+  try {
+    currentUlwText = readFileSync(ulwConfigPath, "utf8");
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+  }
+
+  let nextUlwText = currentUlwText;
+  if (Object.keys(ulwFields).length > 0) {
+    nextUlwText = applyTopLevelModelFields(nextUlwText, ulwFields);
+  }
+
+  const changed = [];
+  if (currentText !== nextText) changed.push(globalConfigPath);
+  if (currentUlwText !== nextUlwText) changed.push(ulwConfigPath);
+  if (changed.length === 0) {
+    return { changed, globalConfigPath, ulwConfigPath };
   }
 
   if (!options.check) {
-    writeFileSync(globalConfigPath, nextText);
+    mkdirSync(codexHome, { recursive: true });
+    if (currentText !== nextText) writeFileSync(globalConfigPath, nextText);
+    if (currentUlwText !== nextUlwText) writeFileSync(ulwConfigPath, nextUlwText);
   }
 
-  return { changed: [globalConfigPath], globalConfigPath };
+  return { changed, globalConfigPath, ulwConfigPath };
 }
 
 function pickModelFields(fields) {
@@ -58,7 +77,7 @@ function pickModelFields(fields) {
 }
 
 function applyTopLevelModelFields(text, values) {
-  const lines = text.split(/\r?\n/);
+  const lines = text.trim().length === 0 ? [] : text.split(/\r?\n/);
   const output = [];
   const seen = new Set();
   let firstSectionIdx = -1;
@@ -95,49 +114,20 @@ function applyTopLevelModelFields(text, values) {
   return `${output.join("\n").replace(/\n*$/, "")}\n`;
 }
 
-function applySectionModelFields(text, sectionName, values) {
+function removeSection(text, sectionName) {
   const lines = text.split(/\r?\n/);
   const output = [];
-  const seen = new Set();
-  let inTargetSection = false;
-  let foundSection = false;
-  let insertAt = -1;
+  let skipping = false;
 
   for (const line of lines) {
-    const sectionMatch = line.trim().match(/^\[([A-Za-z0-9_.-]+)]$/);
+    const sectionMatch = line.trim().match(/^\[([^\]]+)]$/);
     if (sectionMatch) {
-      if (inTargetSection && insertAt === -1) insertAt = output.length;
-      inTargetSection = sectionMatch[1] === sectionName;
-      foundSection ||= inTargetSection;
-      output.push(line);
-      if (inTargetSection) insertAt = output.length;
+      skipping = sectionMatch[1] === sectionName;
+      if (!skipping) output.push(line);
       continue;
     }
 
-    const key = line.includes("=") ? line.split("=", 1)[0].trim() : "";
-    if (inTargetSection && GLOBAL_MODEL_FIELDS.has(key) && Object.prototype.hasOwnProperty.call(values, key)) {
-      output.push(`${key} = ${JSON.stringify(String(values[key]))}`);
-      seen.add(key);
-      insertAt = output.length;
-      continue;
-    }
-
-    output.push(line);
-    if (inTargetSection && line.trim().length > 0) insertAt = output.length;
-  }
-
-  const missingLines = [];
-  for (const key of GLOBAL_MODEL_FIELDS) {
-    if (Object.prototype.hasOwnProperty.call(values, key) && !seen.has(key)) {
-      missingLines.push(`${key} = ${JSON.stringify(String(values[key]))}`);
-    }
-  }
-
-  if (!foundSection) {
-    if (output.at(-1)?.trim() !== "") output.push("");
-    output.push(`[${sectionName}]`, ...missingLines);
-  } else if (missingLines.length > 0) {
-    output.splice(insertAt, 0, ...missingLines);
+    if (!skipping) output.push(line);
   }
 
   return `${output.join("\n").replace(/\n*$/, "")}\n`;

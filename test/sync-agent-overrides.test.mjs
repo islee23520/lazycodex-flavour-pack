@@ -195,12 +195,12 @@ test("given packaged override config when reading then targets Codex-loaded agen
 
   assert.equal(config.source.agentsDir, path.join(codexHome, "agents"));
   assert.deepEqual(config.overrides.default, {
-    model: "grok-4.20-0309-reasoning",
-    model_reasoning_effort: "xhigh",
+    model: "glm-5.2",
+    model_reasoning_effort: "high",
     service_tier: "default"
   });
   assert.deepEqual(config.overrides.ulw, {
-    model: "grok-4.20-0309-reasoning",
+    model: "glm-5.2",
     model_reasoning_effort: "xhigh",
     service_tier: "default"
   });
@@ -243,8 +243,8 @@ test("given packaged override config when reading then targets Codex-loaded agen
     service_tier: "default"
   });
   assert.deepEqual(config.overrides.sisyphus, {
-    model: "grok-4.20-0309-reasoning",
-    model_reasoning_effort: "xhigh",
+    model: "glm-5.2",
+    model_reasoning_effort: "high",
     service_tier: "default"
   });
   assert.deepEqual(config.overrides.artistry, {
@@ -426,6 +426,7 @@ test("given fallback fields in default and ulw overrides when syncing global def
     const agentsDir = path.join(codexHome, "agents");
     const configPath = path.join(root, "overrides.toml");
     const globalConfigPath = path.join(codexHome, "config.toml");
+    const ulwConfigPath = path.join(codexHome, "ulw.config.toml");
     mkdirSync(agentsDir, { recursive: true });
     writeFileSync(globalConfigPath, '[profiles.ulw]\nmodel = "old-ulw"\n');
     writeFileSync(
@@ -457,14 +458,18 @@ test("given fallback fields in default and ulw overrides when syncing global def
       env: { ...process.env, CODEX_HOME: codexHome }
     });
     const updated = readFileSync(globalConfigPath, "utf8");
+    const updatedUlw = readFileSync(ulwConfigPath, "utf8");
 
-    assert.deepEqual(result.changed, [globalConfigPath]);
+    assert.deepEqual(result.changed, [globalConfigPath, ulwConfigPath]);
     assert.match(updated, /^model = "default-primary"$/m);
     assert.match(updated, /^model_reasoning_effort = "high"$/m);
     assert.match(updated, /^service_tier = "default"$/m);
-    assert.match(updated, /^\[profiles\.ulw]$/m);
-    assert.match(updated, /model = "ulw-primary"/);
+    assert.doesNotMatch(updated, /^\[profiles\.ulw]$/m);
+    assert.match(updatedUlw, /^model = "ulw-primary"$/m);
+    assert.match(updatedUlw, /^model_reasoning_effort = "xhigh"$/m);
+    assert.match(updatedUlw, /^service_tier = "default"$/m);
     assert.doesNotMatch(updated, /model_fallback/);
+    assert.doesNotMatch(updatedUlw, /model_fallback/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -518,6 +523,7 @@ test("given default and ULW override sections when syncing global defaults then 
     const agentsDir = path.join(codexHome, "agents");
     const configPath = path.join(root, "overrides.toml");
     const globalConfigPath = path.join(codexHome, "config.toml");
+    const ulwConfigPath = path.join(codexHome, "ulw.config.toml");
     mkdirSync(agentsDir, { recursive: true });
     writeFileSync(
       globalConfigPath,
@@ -557,10 +563,12 @@ test("given default and ULW override sections when syncing global defaults then 
 
     const result = syncGlobalModelDefaults(configPath, { env: { ...process.env, CODEX_HOME: codexHome } });
     const updated = readFileSync(globalConfigPath, "utf8");
+    const updatedUlw = readFileSync(ulwConfigPath, "utf8");
 
-    assert.deepEqual(result.changed, [globalConfigPath]);
+    assert.deepEqual(result.changed, [globalConfigPath, ulwConfigPath]);
     assert.match(updated, /^model = "gpt-5\.5"\nmodel_reasoning_effort = "high"\nservice_tier = "default"/);
-    assert.match(updated, /\[profiles\.ulw]\nmodel = "gpt-5\.5"\nmodel_reasoning_effort = "xhigh"\nservice_tier = "default"/);
+    assert.doesNotMatch(updated, /^\[profiles\.ulw]$/m);
+    assert.match(updatedUlw, /^model = "gpt-5\.5"\nmodel_reasoning_effort = "xhigh"\nservice_tier = "default"/);
     assert.match(updated, /\[profiles\.other]\nmodel = "keep-me"/);
   } finally {
     rmSync(root, { recursive: true, force: true });

@@ -81,7 +81,7 @@ test("given recommend-only benchmark when running then uses available model list
       },
       {
         env: { ...process.env, CODEX_HOME: codexHome },
-        models: ["gpt-5.4-mini", "grok-3-mini-fast", "grok-4.20-0309-reasoning", "gpt-5.5"],
+        models: ["gpt-5.4-mini", "grok-3-mini-fast", "grok-4.20-0309-reasoning", "gpt-5.5", "glm-5.2"],
         fetch: async () => {
           throw new Error("completion calls are not allowed in recommend-only mode");
         }
@@ -90,8 +90,8 @@ test("given recommend-only benchmark when running then uses available model list
 
     assert.equal(result.runs.length, 0);
     assert.equal(result.recommendations.explorer.model, "grok-3-mini-fast");
-    assert.equal(result.recommendations.plan.model, "grok-4.20-0309-reasoning");
-    assert.equal(result.recommendations.plan.model_reasoning_effort, "xhigh");
+    assert.equal(result.recommendations.plan.model, "glm-5.2");
+    assert.equal(result.recommendations.plan.model_reasoning_effort, "high");
     assert.equal("model_fallback" in result.recommendations.plan, false);
   } finally {
     rmSync(root, { recursive: true, force: true });
@@ -122,7 +122,7 @@ test("given recommend-only benchmark with diverse inventory when running then pl
       }
     );
 
-    assert.equal(result.recommendations.plan.model, "grok-4.20-0309-reasoning");
+    assert.equal(result.recommendations.plan.model, "glm-5.2");
     assert.equal("model_fallback" in result.recommendations.plan, false);
     assert.equal(result.recommendations.momus.model, "gpt-5.5");
     assert.equal("model_fallback" in result.recommendations.momus, false);
@@ -261,7 +261,7 @@ function createCodexHome(root, overrides) {
   return codexHome;
 }
 
-async function fakeCompletion(url, request) {
+async function fakeCompletion(_url, request) {
   const body = JSON.parse(request.body);
   return {
     ok: true,

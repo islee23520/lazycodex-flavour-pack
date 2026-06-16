@@ -2,12 +2,12 @@
 agents_dir = "${CODEX_HOME}/agents"
 
 [agents.default]
-model = "grok-4.20-0309-reasoning"
-model_reasoning_effort = "xhigh"
+model = "glm-5.2"
+model_reasoning_effort = "high"
 service_tier = "default"
 
 [agents.ulw]
-model = "grok-4.20-0309-reasoning"
+model = "glm-5.2"
 model_reasoning_effort = "xhigh"
 service_tier = "default"
 
@@ -42,8 +42,8 @@ model_reasoning_effort = "high"
 service_tier = "default"
 
 [agents.sisyphus]
-model = "grok-4.20-0309-reasoning"
-model_reasoning_effort = "xhigh"
+model = "glm-5.2"
+model_reasoning_effort = "high"
 service_tier = "default"
 
 [agents.visual-engineering]
