@@ -197,7 +197,6 @@ test("given recommended agent when user presses enter then shows current versus 
         "",
         "[agents.plan]",
         'model = "old-plan-model"',
-        'model_reasoning_effort = "medium"',
         'service_tier = "fast"',
         ""
       ].join("\n")
@@ -215,11 +214,12 @@ test("given recommended agent when user presses enter then shows current versus 
     const outputText = output.lines.join("\n");
 
     assert.equal(config.overrides.plan.model, "glm-5.2");
-    assert.equal(config.overrides.plan.model_reasoning_effort, "high");
     assert.equal(config.overrides.plan.service_tier, "default");
     assert.equal("model_fallback" in config.overrides.plan, false);
-    assert.match(outputText, /Original\/current: old-plan-model \(reasoning: medium, tier: fast\)/);
-    assert.match(outputText, /LFP recommendation: glm-5\.2 \(reasoning: high, tier: default\)/);
+    assert.match(outputText, /Original\/current: old-plan-model \(reasoning: low, tier: fast\)/);
+    assert.match(outputText, /LFP recommendation: glm-5\.2 \(reasoning: undefined, tier: default\)/);
+    assert.doesNotMatch(outputText, /reasoning: high/);
+    assert.doesNotMatch(outputText, /fallback/i);
     assert.doesNotMatch(outputText, /fallback/i);
     assert.equal(configOutput.questions.some((question) => /plan fallback model/.test(question)), false);
     assert.doesNotMatch(updated, /^model_fallback/m);

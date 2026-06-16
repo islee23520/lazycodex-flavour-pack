@@ -18,7 +18,6 @@ test("given glm model with xhigh reasoning when configuring setup then writes co
         "",
         "[agents.metis]",
         'model = "glm-5.2"',
-        'model_reasoning_effort = "xhigh"',
         'service_tier = "default"',
         ""
       ].join("\n")
@@ -34,8 +33,7 @@ test("given glm model with xhigh reasoning when configuring setup then writes co
     const updated = readFileSync(configPath, "utf8");
 
     assert.equal(config.overrides.metis.model, "glm-5.2");
-    assert.equal(config.overrides.metis.model_reasoning_effort, "high");
-    assert.match(updated, /\[agents\.metis]\nmodel = "glm-5\.2"\nmodel_reasoning_effort = "high"\nservice_tier = "default"/);
+    assert.doesNotMatch(updated, /model_reasoning_effort/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

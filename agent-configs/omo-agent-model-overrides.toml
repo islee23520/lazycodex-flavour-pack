@@ -3,12 +3,10 @@ agents_dir = "${CODEX_HOME}/agents"
 
 [agents.default]
 model = "glm-5.2"
-model_reasoning_effort = "high"
 service_tier = "default"
 
 [agents.ulw]
 model = "glm-5.2"
-model_reasoning_effort = "xhigh"
 service_tier = "default"
 
 [agents.explorer]
@@ -43,7 +41,6 @@ service_tier = "default"
 
 [agents.sisyphus]
 model = "glm-5.2"
-model_reasoning_effort = "high"
 service_tier = "default"
 
 [agents.visual-engineering]

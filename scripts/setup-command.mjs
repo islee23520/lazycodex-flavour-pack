@@ -23,6 +23,9 @@ import {
   migrateLegacyUserOverrideConfig,
   restoreSavedUserOverrideConfigIfPresent
 } from "./user-model-overrides.mjs";
+import { fetchAvailableModels } from "./model-provider.mjs";
+import { buildRecommendedModelOverrides } from "./model-recommendations.mjs";
+import { readOverrideConfig } from "./sync-agent-overrides.mjs";
 
 export const GITHUB_START_TARGETS = [
   {
@@ -152,6 +155,8 @@ export async function maybePromptModelOverrides(args, configPath, options = {}) 
 
   const rl = options.readline ?? createInterface({ input: process.stdin, output: process.stdout });
   const output = options.output ?? console;
+  const models = options.models ?? (await safeFetchSetupModels(options));
+  if (models.length > 0) printSetupModelRecommendations(configPath, models, output, options);
   try {
     if (!hasSavedOverrides) {
       const shouldEdit = await promptForYesNo(
@@ -169,6 +174,7 @@ export async function maybePromptModelOverrides(args, configPath, options = {}) 
       readline: rl,
       output,
       recommendModels: true,
+      models,
       confirmConfiguredValues: true,
       modelSelector: options.modelSelector,
       tierSelector: options.tierSelector,
@@ -178,6 +184,34 @@ export async function maybePromptModelOverrides(args, configPath, options = {}) 
   } finally {
     if (!options.readline) rl.close();
   }
+}
+
+async function safeFetchSetupModels(options) {
+  try {
+    return await fetchAvailableModels(options);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    options.output?.log?.(`Could not discover available models for recommendations: ${message}`);
+    return [];
+  }
+}
+
+function printSetupModelRecommendations(configPath, models, output, options) {
+  const config = readOverrideConfig(configPath, options);
+  const recommendations = buildRecommendedModelOverrides(config.overrides ?? {}, models, options);
+  const entries = Object.entries(recommendations).filter(([, fields]) => typeof fields.model === "string");
+  if (entries.length === 0) return;
+
+  output.log("LFP model recommendations from the active provider:");
+  for (const [agentName, fields] of entries) {
+    const current = config.overrides?.[agentName] ?? {};
+    output.log(
+      `  ${agentName}: ${fields.model} (reasoning: ${fields.model_reasoning_effort ?? "N/A"}, tier: ${
+        fields.service_tier ?? "default"
+      }) from current ${current.model ?? "unset"}`
+    );
+  }
+  output.log("");
 }
 
 async function maybePromptGitHubStart(options = {}) {

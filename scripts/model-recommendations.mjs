@@ -94,11 +94,13 @@ export function recommendRoleModelFields(agentName, models, options = {}) {
   const selected = primary ?? inventory[0] ?? null;
   if (selected === null) return {};
   const model = selected.id;
-  return {
+  const compatibleReasoning = getCompatibleReasoningEffort(model, fieldPolicy.reasoning);
+  const recommendation = {
     model,
-    model_reasoning_effort: getCompatibleReasoningEffort(model, fieldPolicy.reasoning),
     service_tier: fieldPolicy.tier
   };
+  if (compatibleReasoning !== null) recommendation.model_reasoning_effort = compatibleReasoning;
+  return recommendation;
 }
 
 function getRoleFieldPolicy(agentName, policyConfig) {

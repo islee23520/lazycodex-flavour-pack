@@ -51,13 +51,13 @@ test("given CLIPROXY-like inventory when recommending role models then recommend
   assert.equal("model_fallback" in recommendations.explorer, false);
 
   assert.equal(recommendations.metis.model, "glm-5.2");
-  assert.equal(recommendations.metis.model_reasoning_effort, "high");
+  assert.equal("model_reasoning_effort" in recommendations.metis, false);
   assert.equal("model_fallback" in recommendations.metis, false);
 
   assert.equal(recommendations.plan.model, "glm-5.2");
   assert.equal("model_fallback" in recommendations.plan, false);
   assert.equal(recommendations.sisyphus.model, "glm-5.2");
-  assert.equal(recommendations.sisyphus.model_reasoning_effort, "high");
+  assert.equal("model_reasoning_effort" in recommendations.sisyphus, false);
   assert.equal("model_fallback" in recommendations.sisyphus, false);
   assert.equal("model_fallback" in recommendations.momus, false);
 
@@ -144,7 +144,7 @@ test("given user xhigh role policy for GLM when recommending role models then do
     );
 
     assert.equal(recommendations.metis.model, "glm-5.2");
-    assert.equal(recommendations.metis.model_reasoning_effort, "high");
+    assert.equal("model_reasoning_effort" in recommendations.metis, false);
     assert.equal(recommendations.metis.service_tier, "default");
   } finally {
     clearRolePolicyConfigCache();

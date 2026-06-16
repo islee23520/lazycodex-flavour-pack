@@ -91,7 +91,7 @@ test("given recommend-only benchmark when running then uses available model list
     assert.equal(result.runs.length, 0);
     assert.equal(result.recommendations.explorer.model, "grok-3-mini-fast");
     assert.equal(result.recommendations.plan.model, "glm-5.2");
-    assert.equal(result.recommendations.plan.model_reasoning_effort, "high");
+    assert.equal("model_reasoning_effort" in result.recommendations.plan, false);
     assert.equal("model_fallback" in result.recommendations.plan, false);
   } finally {
     rmSync(root, { recursive: true, force: true });

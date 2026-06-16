@@ -196,12 +196,10 @@ test("given packaged override config when reading then targets Codex-loaded agen
   assert.equal(config.source.agentsDir, path.join(codexHome, "agents"));
   assert.deepEqual(config.overrides.default, {
     model: "glm-5.2",
-    model_reasoning_effort: "high",
     service_tier: "default"
   });
   assert.deepEqual(config.overrides.ulw, {
     model: "glm-5.2",
-    model_reasoning_effort: "xhigh",
     service_tier: "default"
   });
   assert.equal(config.overrides.explorer.model, "gpt-5.4-mini");
@@ -244,7 +242,6 @@ test("given packaged override config when reading then targets Codex-loaded agen
   });
   assert.deepEqual(config.overrides.sisyphus, {
     model: "glm-5.2",
-    model_reasoning_effort: "high",
     service_tier: "default"
   });
   assert.deepEqual(config.overrides.artistry, {
