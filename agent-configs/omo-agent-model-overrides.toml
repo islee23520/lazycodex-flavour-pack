@@ -2,11 +2,13 @@
 agents_dir = "${CODEX_HOME}/agents"
 
 [agents.default]
-model = "glm-5.2"
+model = "gpt-5.5"
+model_reasoning_effort = "medium"
 service_tier = "default"
 
 [agents.ulw]
-model = "glm-5.2"
+model = "gpt-5.5"
+model_reasoning_effort = "xhigh"
 service_tier = "default"
 
 [agents.explorer]
