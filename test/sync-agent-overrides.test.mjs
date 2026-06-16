@@ -195,12 +195,12 @@ test("given packaged override config when reading then targets Codex-loaded agen
 
   assert.equal(config.source.agentsDir, path.join(codexHome, "agents"));
   assert.deepEqual(config.overrides.default, {
-    model: "gpt-5.5",
-    model_reasoning_effort: "high",
+    model: "grok-4.20-0309-reasoning",
+    model_reasoning_effort: "xhigh",
     service_tier: "default"
   });
   assert.deepEqual(config.overrides.ulw, {
-    model: "gpt-5.5",
+    model: "grok-4.20-0309-reasoning",
     model_reasoning_effort: "xhigh",
     service_tier: "default"
   });

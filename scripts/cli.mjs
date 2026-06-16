@@ -66,8 +66,8 @@ Flags:
   --skip-model-prompt  Skip the interactive OMO override model prompt during setup.
   --skip-lazycodex-install  Local development only: install this checkout without running LazyCodex install first.
   --no-tui  Force legacy line-output setup even when running in an interactive terminal.
-  --agent-models-only  Apply only installed agent TOMLs and saved overrides; preserve Codex global defaults. This is the default.
-  --sync-global-defaults  Explicit legacy mode: also sync default and ULW virtual sections into Codex config.toml.
+  --agent-models-only  Apply only installed agent TOMLs; do NOT sync default and ULW models into Codex config.toml.
+  --sync-global-defaults  Also sync default and ULW models into Codex config.toml. This is the default behavior.
   --roles  With benchmark-models, comma-separated role names to test.
   --models  With benchmark-models, comma-separated model ids to test.
   --samples  With benchmark-models, repeated samples per role/model.
@@ -76,7 +76,7 @@ Flags:
   --dry-run  With benchmark-models, score scenarios without provider calls.
   --apply  With benchmark-models, write winning model fields to saved LFP overrides.
 
-  This package extends LazyCodex with OMO agent, model, and visual capabilities for Codex. setup runs npx lazycodex-ai install before applying LFP, then installs/enables this pack in Codex and applies configured three primary model fields to existing agents. Agent model application preserves top-level Codex defaults unless --sync-global-defaults is passed.`;
+  This package extends LazyCodex with OMO agent, model, and visual capabilities for Codex. setup runs npx lazycodex-ai install before applying LFP, then installs/enables this pack in Codex and applies configured three primary model fields to existing agents and Codex global defaults. Use --agent-models-only to preserve existing Codex global defaults.`;
 
 if (isDirectRun()) {
   runCli(process.argv.slice(2)).catch((error) => {
@@ -217,7 +217,7 @@ async function runAgentConfig(argv) {
   const result = syncAgentOverrides(configPath, { check: false });
   for (const item of result.changed) console.log(`updated ${item}`);
   if (result.changed.length === 0) console.log("agent overrides already applied");
-  if (args.syncGlobalDefaults) {
+  if (args.agentModelsOnly !== true) {
     const globalResult = syncGlobalModelDefaults(configPath, { check: false });
     for (const item of globalResult.changed) console.log(`updated global model defaults in ${item}`);
   } else {

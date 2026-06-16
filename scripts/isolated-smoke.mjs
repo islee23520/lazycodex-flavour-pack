@@ -39,8 +39,8 @@ writeFileSync(
 );
 writeOmo410UltraworkAgents();
 writeOverrideConfig(overrideConfigPath, agentsDir, {
-  default: { model: "gpt-5.5", model_reasoning_effort: "high", service_tier: "default" },
-  ulw: { model: "gpt-5.5", model_reasoning_effort: "xhigh", service_tier: "default" },
+  default: { model: "grok-4.20-0309-reasoning", model_reasoning_effort: "xhigh", service_tier: "default" },
+  ulw: { model: "grok-4.20-0309-reasoning", model_reasoning_effort: "xhigh", service_tier: "default" },
   "codex-ultrawork-reviewer": { model: "gpt-5.5", model_reasoning_effort: "high", service_tier: "default" },
   explorer: { model: "gpt-5.4-mini", model_reasoning_effort: "low", service_tier: "fast" },
   librarian: { model: "gpt-5.4-mini", model_reasoning_effort: "low", service_tier: "fast" },
@@ -90,7 +90,8 @@ const reviewerText = readFileSync(path.join(agentsDir, "codex-ultrawork-reviewer
 
 assertIncludes(configText, '[plugins."lfp@islee23520"]', "isolated config enables lfp@islee23520");
 assertIncludes(configText, "[marketplaces.islee23520]", "isolated config uses islee23520 marketplace");
-if (configText.includes("[profiles.ulw]")) throw new Error("ULW profile defaults should be preserved in agent-only mode");
+assertIncludes(configText, "[profiles.ulw]", "ULW profile written by default setup");
+assertIncludes(configText, '[profiles.ulw]\nmodel = "grok-4.20-0309-reasoning"', "ULW profile defaults applied");
 assertIncludes(explorerText, 'model = "gpt-5.4-mini"', "saved explorer override applied");
 assertIncludes(metisText, 'model = "gpt-5.5"', "metis override applied after saved restore");
 assertIncludes(metisText, 'model_reasoning_effort = "high"', "metis reasoning applied");
@@ -112,7 +113,7 @@ if (!sync.changed.some((filePath) => filePath.endsWith("metis.toml"))) {
 console.log("isolated smoke: PASS");
 console.log(`isolated smoke: CODEX_HOME=${codexHome}`);
 console.log(`isolated smoke: setup installed lfp@islee23520=${configText.includes('[plugins."lfp@islee23520"]')}`);
-console.log(`isolated smoke: ulw profile preserved=${!configText.includes("[profiles.ulw]")}`);
+console.log(`isolated smoke: ulw profile synced=${configText.includes("[profiles.ulw]")}`);
 console.log(`isolated smoke: omo 4.10 momus xhigh=${momusText.includes('model_reasoning_effort = "xhigh"')}`);
 console.log(`isolated smoke: omo 4.10 plan xhigh=${planText.includes('model_reasoning_effort = "xhigh"')}`);
 console.log(`isolated smoke: omo managed agents=${countManagedOmoAgents(overrideConfigPath)}`);

@@ -348,7 +348,7 @@ test("given npx-style CLI dry-setup when changes are pending then exits nonzero 
   }
 });
 
-test("given setup applies agent overrides when Codex defaults and OMO hook state exist then preserves them exactly", () => {
+test("given setup applies agent overrides when Codex defaults and OMO hook state exist then syncs defaults and preserves hook state", () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-cli-preserve-"));
   try {
     const fixture = createPreservationFixture(root);
@@ -368,7 +368,7 @@ test("given setup applies agent overrides when Codex defaults and OMO hook state
 
     assert.equal(result.status, 0, result.stderr);
     assert.match(updatedAgent, /model = "grok-4\.3"/);
-    assertCodexDefaultsPreserved(afterConfig);
+    assertCodexDefaultsSynced(afterConfig);
     assert.equal(hookStateHash(afterConfig), beforeHookStateHash);
     assert.match(afterConfig, /\[hooks\."UserPromptSubmit"\."omo@sisyphuslabs\/visual-qa"]\ncommand = "omo visual qa"\nenabled = true/);
     assert.match(afterConfig, /\[hook_state\."omo@sisyphuslabs\/session-start"]\nlast_status = "ok"\nupdated_at = "2026-06-15T00:00:00Z"/);
@@ -411,7 +411,7 @@ test("given setup explicitly syncs global defaults then updates Codex defaults f
   }
 });
 
-test("given agent-config applies agent overrides by default then preserves Codex defaults", () => {
+test("given agent-config applies agent overrides by default then syncs Codex defaults", () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-cli-agent-config-"));
   try {
     const fixture = createPreservationTomlFixture(root);
@@ -425,8 +425,8 @@ test("given agent-config applies agent overrides by default then preserves Codex
     const updatedAgent = readFileSync(fixture.agentPath, "utf8");
 
     assert.equal(result.status, 0, result.stderr);
-    assert.match(result.stdout, /global defaults: preserved \(agent-only mode\)/);
-    assertCodexDefaultsPreserved(afterConfig);
+    assert.match(result.stdout, /updated global model defaults in .*config\.toml/);
+    assertCodexDefaultsSynced(afterConfig);
     assert.match(updatedAgent, /model = "grok-4\.3"/);
   } finally {
     rmSync(root, { recursive: true, force: true });
@@ -479,7 +479,8 @@ test("given dry setup sees Codex defaults and OMO hook state then reports pendin
 
     assert.equal(result.status, 1);
     assert.match(result.stdout, /would update .*explorer\.toml/);
-    assert.match(result.stdout, /global defaults: preserved \(agent-only mode\)/);
+    assert.match(result.stdout, /global defaults: synced \(default mode\)/);
+    assert.match(result.stdout, /would update global model defaults in .*config\.toml/);
     assert.equal(sha256(afterConfig), beforeHash);
     assert.match(unchangedAgent, /model = "gpt-5\.4-mini"/);
     assertCodexDefaultsPreserved(afterConfig);
@@ -503,7 +504,7 @@ test("given dry setup cannot fetch provider inventory then reports degraded visi
     assert.match(result.stdout, /active provider id: cliproxyapi/);
     assert.match(result.stdout, /provider inventory: degraded visibility/);
     assert.match(result.stdout, /keeping current saved\/configured values; manual model entry remains available/);
-    assert.match(result.stdout, /global defaults: preserved/);
+    assert.match(result.stdout, /global defaults: synced \(default mode\)/);
     assert.match(result.stdout, /OMO hook state: preserved/);
     assert.match(result.stdout, /agent model drift: explorer: model/);
     assert.doesNotMatch(result.stdout, /provider overwrite|configure OpenAI-compatible provider/);
@@ -757,7 +758,7 @@ test("given doctor sees provider inventory and model drift then reports applier 
     assert.match(result.stdout, /active provider id: cliproxyapi/);
     assert.match(result.stdout, /provider inventory: 3 models \(families: gemini, glm, grok\)/);
     assert.match(result.stdout, /agent model drift: explorer: model/);
-    assert.match(result.stdout, /global defaults: preserved/);
+    assert.match(result.stdout, /global defaults: synced \(default mode\)/);
     assert.match(result.stdout, /OMO hook state: preserved/);
     assert.doesNotMatch(result.stdout, /sk-test-secret-DO-NOT-PRINT/);
     assert.doesNotMatch(result.stdout, /Bearer sk-test-secret/);
@@ -1235,6 +1236,16 @@ function assertCodexDefaultsPreserved(configText) {
     /\[profiles\.ulw]\nmodel = "hephaestus-ulw"\nmodel_reasoning_effort = "xhigh"\nservice_tier = "priority"/
   );
   assert.doesNotMatch(configText, /packaged-default|packaged-ulw/);
+}
+
+function assertCodexDefaultsSynced(configText) {
+  assert.match(configText, /^model = "packaged-default"$/m);
+  assert.match(configText, /^model_reasoning_effort = "high"$/m);
+  assert.match(configText, /^service_tier = "default"$/m);
+  assert.match(
+    configText,
+    /\[profiles\.ulw]\nmodel = "packaged-ulw"\nmodel_reasoning_effort = "xhigh"\nservice_tier = "default"/
+  );
 }
 
 function hookStateHash(configText) {

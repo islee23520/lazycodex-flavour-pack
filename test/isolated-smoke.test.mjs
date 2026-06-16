@@ -28,7 +28,7 @@ test("given isolated smoke command when run then setup and doctor pass without r
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /isolated smoke: PASS/);
     assert.match(result.stdout, /setup installed lfp@islee23520=true/);
-    assert.match(result.stdout, /ulw profile preserved=true/);
+    assert.match(result.stdout, /ulw profile synced=true/);
     assert.match(result.stdout, /omo 4\.10 momus xhigh=true/);
     assert.match(result.stdout, /omo 4\.10 plan xhigh=true/);
     assert.match(result.stdout, /omo managed agents=6/);

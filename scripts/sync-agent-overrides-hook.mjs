@@ -37,7 +37,8 @@ export function runOverrideSyncHook(value = {}, options = {}) {
 }
 
 function shouldSyncGlobalDefaults(options) {
-  return options.syncGlobalDefaults === true || options.env?.LFP_SYNC_GLOBAL_DEFAULTS === "1";
+  // Default: sync global defaults. Opt out via env LFP_AGENT_MODELS_ONLY=1.
+  return options.env?.LFP_AGENT_MODELS_ONLY !== "1";
 }
 
 function getHookEventName(value) {

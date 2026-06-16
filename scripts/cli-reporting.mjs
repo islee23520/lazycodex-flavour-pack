@@ -132,8 +132,8 @@ export function printAgentModelDrift(configPath, options = {}) {
 
 export function printApplierPreservationStatus(options = {}) {
   const commandName = options.commandName ?? "doctor";
-  if (options.syncGlobalDefaults === true) {
-    console.log(`lfp ${commandName}: global defaults: explicit sync requested`);
+  if (options.agentModelsOnly !== true) {
+    console.log(`lfp ${commandName}: global defaults: synced (default mode)`);
   } else {
     console.log(`lfp ${commandName}: global defaults: preserved (agent-only mode)`);
   }

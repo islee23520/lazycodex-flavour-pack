@@ -89,7 +89,7 @@ export async function runSetupLineMode(args, { check, root, defaultConfig }, opt
   if (check) {
     printPendingSetupActions(pending);
     await printProviderInventoryVisibility({ commandName: "dry-setup" });
-    printApplierPreservationStatus({ commandName: "dry-setup", syncGlobalDefaults: args.syncGlobalDefaults });
+    printApplierPreservationStatus({ commandName: "dry-setup", agentModelsOnly: args.agentModelsOnly });
     printAgentModelDrift(effectiveConfig?.configPath ?? configPath, { commandName: "dry-setup" });
   } else {
     const installedPath = await installAndMaybePrompt(args, root, configPath, installOpenAiCompatProvider, pending, options, providerOverride);
@@ -239,7 +239,8 @@ function syncGlobalDefaults(configPath, check, args) {
 }
 
 function shouldSyncGlobalDefaults(args) {
-  return args.syncGlobalDefaults === true;
+  // Default: sync global defaults. Opt out with --agent-models-only.
+  return args.agentModelsOnly !== true;
 }
 
 function printSetupChanges(result, globalResult, check) {

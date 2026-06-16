@@ -71,7 +71,7 @@ test("given UserPromptSubmit hook when saved override exists then saved model wi
   }
 });
 
-test("given sync hook has virtual global defaults when it runs then preserves Codex defaults in agent-only mode", () => {
+test("given sync hook has virtual global defaults when it runs then syncs Codex defaults by default", () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-sync-hook-preserve-"));
   try {
     const codexHome = path.join(root, "codex-home");
@@ -109,15 +109,15 @@ test("given sync hook has virtual global defaults when it runs then preserves Co
 
     assert.equal(output, "");
     assert.match(updatedAgent, /model = "gemini-pro-agent"/);
-    assert.match(updatedConfig, /^model = "hephaestus-default"$/m);
-    assert.match(updatedConfig, /\[profiles\.ulw]\nmodel = "hephaestus-ulw"\nmodel_reasoning_effort = "xhigh"\nservice_tier = "priority"/);
+    assert.match(updatedConfig, /^model = "packaged-default"$/m);
+    assert.match(updatedConfig, /\[profiles\.ulw]\nmodel = "packaged-ulw"\nmodel_reasoning_effort = "xhigh"\nservice_tier = "default"/);
     assert.match(updatedConfig, /\[hooks\."SessionStart"\."omo@sisyphuslabs\/sync-agent-overrides"]/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
 });
 
-test("given sync hook is explicitly allowed to sync globals then virtual default sections update Codex defaults", () => {
+test("given sync hook is explicitly opted out of global sync then preserves Codex defaults", () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-sync-hook-global-"));
   try {
     const codexHome = path.join(root, "codex-home");
@@ -131,19 +131,19 @@ test("given sync hook is explicitly allowed to sync globals then virtual default
 
     const output = runOverrideSyncHook(
       { hook_event_name: "SessionStart" },
-      { configPath: fixture.configPath, env: { CODEX_HOME: codexHome, HOME: root }, syncGlobalDefaults: true }
+      { configPath: fixture.configPath, env: { CODEX_HOME: codexHome, HOME: root, LFP_AGENT_MODELS_ONLY: "1" } }
     );
     const updatedConfig = readFileSync(codexConfigPath, "utf8");
 
     assert.equal(output, "");
-    assert.match(updatedConfig, /^model = "packaged-default"$/m);
-    assert.match(updatedConfig, /\[profiles\.ulw]\nmodel = "packaged-ulw"/);
+    assert.match(updatedConfig, /^model = "hephaestus-default"$/m);
+    assert.match(updatedConfig, /\[profiles\.ulw]\nmodel = "hephaestus-ulw"/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
 });
 
-test("given UserPromptSubmit sync hook has virtual global defaults when it runs then preserves Codex defaults", () => {
+test("given UserPromptSubmit sync hook has virtual global defaults when it runs then syncs Codex defaults by default", () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-sync-hook-user-preserve-"));
   try {
     const codexHome = path.join(root, "codex-home");
@@ -162,14 +162,14 @@ test("given UserPromptSubmit sync hook has virtual global defaults when it runs 
     const updatedConfig = readFileSync(codexConfigPath, "utf8");
 
     assert.equal(output, "");
-    assert.match(updatedConfig, /^model = "hephaestus-default"$/m);
-    assert.match(updatedConfig, /\[profiles\.ulw]\nmodel = "hephaestus-ulw"/);
+    assert.match(updatedConfig, /^model = "packaged-default"$/m);
+    assert.match(updatedConfig, /\[profiles\.ulw]\nmodel = "packaged-ulw"/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
 });
 
-test("given UserPromptSubmit sync hook is explicitly allowed to sync globals then virtual defaults update Codex defaults", () => {
+test("given UserPromptSubmit sync hook runs by default then virtual defaults update Codex defaults", () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-sync-hook-user-global-"));
   try {
     const codexHome = path.join(root, "codex-home");
@@ -183,7 +183,7 @@ test("given UserPromptSubmit sync hook is explicitly allowed to sync globals the
 
     const output = runOverrideSyncHook(
       { hook_event_name: "UserPromptSubmit" },
-      { configPath: fixture.configPath, env: { CODEX_HOME: codexHome, HOME: root, LFP_SYNC_GLOBAL_DEFAULTS: "1" } }
+      { configPath: fixture.configPath, env: { CODEX_HOME: codexHome, HOME: root } }
     );
     const updatedConfig = readFileSync(codexConfigPath, "utf8");
 

@@ -3,6 +3,16 @@
     "agentsDir": "${CODEX_HOME}/agents"
   },
   "overrides": {
+    "default": {
+      "model": "grok-4.20-0309-reasoning",
+      "model_reasoning_effort": "xhigh",
+      "service_tier": "default"
+    },
+    "ulw": {
+      "model": "grok-4.20-0309-reasoning",
+      "model_reasoning_effort": "xhigh",
+      "service_tier": "default"
+    },
     "explorer": {
       "model": "gpt-5.4-mini",
       "model_reasoning_effort": "low",
