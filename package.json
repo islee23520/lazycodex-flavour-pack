@@ -90,6 +90,7 @@
     "node": ">=20.12.0"
   },
   "dependencies": {
+    "@islee23520/codex-cliproxy-provider": "file:../codex-cliproxy-provider",
     "@clack/prompts": "^1.5.1",
     "picocolors": "^1.1.1",
     "zod": "^4.4.3"

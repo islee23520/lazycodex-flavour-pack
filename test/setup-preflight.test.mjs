@@ -37,6 +37,48 @@ test("given default setup model prompt when user declines editing then keeps con
   }
 });
 
+test("given setup can see provider models when user declines editing then it still prints recommendations", async () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-preflight-recommend-"));
+  try {
+    const configPath = path.join(root, "overrides.toml");
+    writeFileSync(
+      configPath,
+      [
+        "[source]",
+        `agents_dir = "${root}"`,
+        "",
+        "[agents.explorer]",
+        'model = "old-explorer"',
+        'model_reasoning_effort = "medium"',
+        'service_tier = "default"',
+        "",
+        "[agents.metis]",
+        'model = "old-metis"',
+        'model_reasoning_effort = "low"',
+        'service_tier = "fast"',
+        ""
+      ].join("\n")
+    );
+    const output = captureOutput();
+
+    await maybePromptModelOverrides({}, configPath, {
+      env: { ...process.env, CODEX_HOME: root },
+      readline: fakeReadline([""]),
+      output,
+      models: ["gpt-5.4-mini", "gpt-5.5", "grok-4.20-0309-reasoning"]
+    });
+
+    const text = output.lines.join("\n");
+    assert.match(text, /LFP model recommendations from the active provider:/);
+    assert.match(text, /explorer: gpt-5\.4-mini .* from current old-explorer/);
+    assert.match(text, /metis: grok-4\.20-0309-reasoning .* from current old-metis/);
+    assert.match(text, /Keeping configured OMO model override values/);
+    assert.ok(!output.questions.some((question) => /explorer model/.test(question)));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("given upstream LazyCodex install fails when setup runs then LFP leaves Codex home untouched", () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-preflight-"));
   try {
