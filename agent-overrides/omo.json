@@ -32,6 +32,36 @@
       "model": "gpt-5.5",
       "model_reasoning_effort": "high",
       "service_tier": "default"
+    },
+    "sisyphus": {
+      "model": "grok-4.20-0309-reasoning",
+      "model_reasoning_effort": "xhigh",
+      "service_tier": "default"
+    },
+    "visual-engineering": {
+      "model": "gemini-pro-agent",
+      "model_reasoning_effort": "high",
+      "service_tier": "default"
+    },
+    "visual-looker": {
+      "model": "gemini-pro-agent",
+      "model_reasoning_effort": "high",
+      "service_tier": "default"
+    },
+    "artistry": {
+      "model": "gemini-pro-agent",
+      "model_reasoning_effort": "high",
+      "service_tier": "default"
+    },
+    "artistry-gen": {
+      "model": "gemini-pro-agent",
+      "model_reasoning_effort": "low",
+      "service_tier": "default"
+    },
+    "artistry-qa": {
+      "model": "gemini-pro-agent",
+      "model_reasoning_effort": "high",
+      "service_tier": "default"
     }
   }
 }

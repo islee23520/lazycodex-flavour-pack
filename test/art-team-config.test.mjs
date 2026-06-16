@@ -4,7 +4,7 @@ import path from "node:path";
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { configureArtTeam, configureArtTeamIfWanted } from "../scripts/art-team-config.mjs";
+import { configureArtTeam } from "../scripts/art-team-config.mjs";
 
 test("given art team setup when user selects listed models tiers and reasoning then writes selections", async () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-art-config-"));
@@ -36,26 +36,6 @@ test("given art team setup when user selects listed models tiers and reasoning t
     assert.match(qa, /model_reasoning_effort = "high"/);
     assert.match(qa, /service_tier = "fast"/);
     assert.ok(configOutput.questions.some((question) => /artistry \(Art Director \(supervisor\)\) model/.test(question)));
-  } finally {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
-test("given setup asks about art team when user declines then keeps configured art values without editing", async () => {
-  const root = mkdtempSync(path.join(tmpdir(), "lfp-art-config-"));
-  try {
-    writeArtAgentConfigs(root);
-    const before = readFileSync(path.join(root, "artistry.toml"), "utf8");
-
-    const result = await configureArtTeamIfWanted({
-      configDir: root,
-      models: ["gpt-5.5", "gpt-5.4-mini"],
-      readline: fakeReadline(["n"]),
-      output: silentOutput()
-    });
-
-    assert.equal(result, null);
-    assert.equal(readFileSync(path.join(root, "artistry.toml"), "utf8"), before);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

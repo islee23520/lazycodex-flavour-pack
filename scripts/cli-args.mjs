@@ -1,7 +1,6 @@
 const SYNC_OPTIONS = new Set([
   "--check",
   "--config",
-  "--skip-art-prompt",
   "--skip-model-prompt",
   "--skip-lazycodex-install",
   "--no-tui",
@@ -26,10 +25,6 @@ export function parseSyncArgs(argv) {
     if (item === "--config") {
       parsed.config = readOptionValue(argv, index, "--config");
       index += 1;
-      continue;
-    }
-    if (item === "--skip-art-prompt") {
-      parsed.skipArtPrompt = true;
       continue;
     }
     if (item === "--skip-model-prompt") {

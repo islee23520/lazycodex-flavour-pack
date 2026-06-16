@@ -20,7 +20,7 @@ test("given TTY setup reaches provider consent when user declines then Clack fra
         `CODEX_HOME=${shellQuote(fixture.codexHome)}`,
         `LFP_LAZYCODEX_INSTALL_BIN=${shellQuote(process.execPath)}`,
         `LFP_LAZYCODEX_INSTALL_ARGS=${shellQuote(JSON.stringify([LAZYCODEX_INSTALL_STUB]))}`,
-        `node ${shellQuote(CLI)} setup --config ${shellQuote(fixture.configPath)} --skip-art-prompt --skip-model-prompt`
+        `node ${shellQuote(CLI)} setup --config ${shellQuote(fixture.configPath)} --skip-model-prompt`
       ].join(" "),
       "printf '\\n__LFP_STATUS__:%s\\n' \"$?\"",
       "sleep 5"

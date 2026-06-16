@@ -30,7 +30,7 @@ const DEFAULT_CONFIG = path.join(ROOT, "agent-configs", "omo-agent-model-overrid
 const HELP = `lfp
 
 Usage:
-  lfp setup [--config <path>] [--agent-models-only|--sync-global-defaults] [--skip-art-prompt] [--skip-model-prompt] [--no-tui]
+  lfp setup [--config <path>] [--agent-models-only|--sync-global-defaults] [--skip-model-prompt] [--no-tui]
   lfp dry-setup [--config <path>] [--agent-models-only|--sync-global-defaults]
   lfp doctor [--config <path>] [--fix-cache [--apply]]
   lfp agent-config [--config <path>] [--agent-models-only|--sync-global-defaults]
@@ -48,7 +48,7 @@ npx:
 
 Commands:
   setup            Install LFP plugin, agents, and overrides into Codex.
-                   Interactive: asks whether to edit art team, default, ULW, and OMO model settings.
+                   Interactive: asks whether to edit agent model overrides, including art team agents.
                    Press Enter to keep and apply the configured values without per-agent prompts.
                    If provider models are discoverable, setup shows recommendations while
                    Enter keeps and re-applies each configured agent value.
@@ -63,7 +63,6 @@ Flags:
   --config <path>  Use a specific override config file.
   --fix-cache  Check duplicate Codex Apps tool cache files.
   --apply  With doctor --fix-cache, quarantine duplicate cache files.
-  --skip-art-prompt  Skip the interactive art team model prompt during setup.
   --skip-model-prompt  Skip the interactive OMO override model prompt during setup.
   --skip-lazycodex-install  Local development only: install this checkout without running LazyCodex install first.
   --no-tui  Force legacy line-output setup even when running in an interactive terminal.

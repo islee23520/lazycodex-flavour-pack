@@ -31,7 +31,7 @@ test("given npx-style CLI setup when upstream agent exists then updates configur
       })
     );
 
-    const result = spawnSync(process.execPath, [CLI, "setup", "--config", configPath, "--skip-art-prompt"], {
+    const result = spawnSync(process.execPath, [CLI, "setup", "--config", configPath], {
       env: cliEnv(codexHome),
       encoding: "utf8"
     });
@@ -76,7 +76,7 @@ test("given local CLI setup skips LazyCodex install when requested then installs
 
     const result = spawnSync(
       process.execPath,
-      [CLI, "setup", "--config", configPath, "--skip-art-prompt", "--skip-model-prompt", "--skip-lazycodex-install"],
+      [CLI, "setup", "--config", configPath, "--skip-model-prompt", "--skip-lazycodex-install"],
       {
         env: cliEnv(codexHome),
         encoding: "utf8"
@@ -119,7 +119,7 @@ test("given saved LFP overrides when setup skips model prompt then applies all s
 
     const result = spawnSync(
       process.execPath,
-      [CLI, "setup", "--skip-art-prompt", "--skip-model-prompt", "--skip-lazycodex-install"],
+      [CLI, "setup", "--skip-model-prompt", "--skip-lazycodex-install"],
       {
         env: { ...process.env, CODEX_HOME: codexHome },
         encoding: "utf8"
@@ -154,7 +154,7 @@ test("given no saved user override when interactive setup runs then emits no Adj
 
     const result = spawnSync(
       process.execPath,
-      [CLI, "setup", "--skip-art-prompt", "--skip-lazycodex-install", "--config", "agent-configs/omo-agent-model-overrides.toml"],
+      [CLI, "setup", "--skip-lazycodex-install", "--config", "agent-configs/omo-agent-model-overrides.toml"],
       {
         env: { ...process.env, CODEX_HOME: codexHome },
         encoding: "utf8"
@@ -179,7 +179,7 @@ test("given no saved user override when interactive setup runs then final sync a
 
     const result = spawnSync(
       process.execPath,
-      [CLI, "setup", "--skip-art-prompt", "--skip-lazycodex-install", "--config", "agent-configs/omo-agent-model-overrides.toml"],
+      [CLI, "setup", "--skip-lazycodex-install", "--config", "agent-configs/omo-agent-model-overrides.toml"],
       {
         env: { ...process.env, CODEX_HOME: codexHome },
         encoding: "utf8"
@@ -230,7 +230,7 @@ test("given saved LFP overrides when dry setup runs then reports no override dri
 
     const result = spawnSync(
       process.execPath,
-      [CLI, "dry-setup", "--skip-art-prompt", "--skip-model-prompt", "--skip-lazycodex-install"],
+      [CLI, "dry-setup", "--skip-model-prompt", "--skip-lazycodex-install"],
       {
         env: { ...process.env, CODEX_HOME: codexHome },
         encoding: "utf8"
@@ -301,7 +301,7 @@ test("given Korean postposition is attached to setup flag when CLI runs then acc
       })
     );
 
-    const result = spawnSync(process.execPath, [CLI, "setup", "--config", configPath, "--skip-art-prompt를"], {
+    const result = spawnSync(process.execPath, [CLI, "setup", "--config", configPath, "--skip-model-prompt를"], {
       env: cliEnv(codexHome),
       encoding: "utf8"
     });
@@ -357,7 +357,7 @@ test("given setup applies agent overrides when Codex defaults and OMO hook state
 
     const result = spawnSync(
       process.execPath,
-      [CLI, "setup", "--config", fixture.configPath, "--skip-art-prompt", "--skip-model-prompt", "--skip-lazycodex-install"],
+      [CLI, "setup", "--config", fixture.configPath, "--skip-model-prompt", "--skip-lazycodex-install"],
       {
         env: { ...process.env, CODEX_HOME: fixture.codexHome, HOME: root },
         encoding: "utf8"
@@ -389,7 +389,6 @@ test("given setup explicitly syncs global defaults then updates Codex defaults f
         "setup",
         "--config",
         fixture.configPath,
-        "--skip-art-prompt",
         "--skip-model-prompt",
         "--skip-lazycodex-install",
         "--sync-global-defaults"
@@ -570,7 +569,7 @@ test("given setup config is missing when setup runs then leaves Codex home unmod
     const codexHome = path.join(root, "codex-home");
     const configPath = path.join(root, "missing.json");
 
-    const result = spawnSync(process.execPath, [CLI, "setup", "--config", configPath, "--skip-art-prompt"], {
+    const result = spawnSync(process.execPath, [CLI, "setup", "--config", configPath], {
       env: cliEnv(codexHome),
       encoding: "utf8"
     });
@@ -599,7 +598,7 @@ test("given upstream agents dir is missing when setup runs then leaves Codex hom
       })
     );
 
-    const result = spawnSync(process.execPath, [CLI, "setup", "--config", configPath, "--skip-art-prompt"], {
+    const result = spawnSync(process.execPath, [CLI, "setup", "--config", configPath], {
       env: cliEnv(codexHome),
       encoding: "utf8"
     });
@@ -629,7 +628,7 @@ test("given required upstream agent is missing when setup runs then leaves Codex
       })
     );
 
-    const result = spawnSync(process.execPath, [CLI, "setup", "--config", configPath, "--skip-art-prompt"], {
+    const result = spawnSync(process.execPath, [CLI, "setup", "--config", configPath], {
       env: cliEnv(codexHome),
       encoding: "utf8"
     });
@@ -786,7 +785,7 @@ test("given setup has run when doctor runs then reports lfp installed in Codex",
       })
     );
 
-    const setup = spawnSync(process.execPath, [CLI, "setup", "--config", configPath, "--skip-art-prompt"], {
+    const setup = spawnSync(process.execPath, [CLI, "setup", "--config", configPath], {
       env: cliEnv(codexHome),
       encoding: "utf8"
     });
@@ -860,7 +859,7 @@ test("given doctor fix-cache apply sees duplicate Codex Apps cache then quaranti
         overrides: { explorer: { model: "grok-4.3" } }
       })
     );
-    const setup = spawnSync(process.execPath, [CLI, "setup", "--config", configPath, "--skip-art-prompt"], {
+    const setup = spawnSync(process.execPath, [CLI, "setup", "--config", configPath], {
       env: cliEnv(codexHome),
       encoding: "utf8"
     });
@@ -929,7 +928,7 @@ test("given first-run no saved user override when setup then doctor runs then re
 
     const setup = spawnSync(
       process.execPath,
-      [CLI, "setup", "--skip-art-prompt", "--skip-lazycodex-install", "--config", "agent-configs/omo-agent-model-overrides.toml"],
+      [CLI, "setup", "--skip-lazycodex-install", "--config", "agent-configs/omo-agent-model-overrides.toml"],
       {
         env: { ...process.env, CODEX_HOME: codexHome },
         encoding: "utf8"

@@ -2,7 +2,6 @@ import path from "node:path";
 import { createInterface } from "node:readline";
 
 import { configureAgentModelOverrides } from "./agent-model-config.mjs";
-import { configureArtTeamIfWanted } from "./art-team-config.mjs";
 import { getCodexAppsToolCacheState } from "./codex-apps-cache.mjs";
 import { getPendingCodexPluginActions, installCodexPlugin, PLUGIN_REF } from "./codex-plugin-install.mjs";
 import { formatLazyCodexInstallCommand, runLazyCodexInstall } from "./lazycodex-install.mjs";
@@ -78,7 +77,10 @@ export async function runSetupLineMode(args, { check, root, defaultConfig }, opt
   const effectiveConfig = check ? getEffectiveReadOnlyOverrideConfig(configPath, args) : null;
   let pendingOverrides;
   try {
-    pendingOverrides = syncAgentOverrides(effectiveConfig?.configPath ?? configPath, { check: true });
+    pendingOverrides = syncAgentOverrides(effectiveConfig?.configPath ?? configPath, {
+      check: true,
+      allowMissingLfpOwnedAgents: true
+    });
   } catch (error) {
     effectiveConfig?.cleanup();
     throw error;
@@ -131,11 +133,6 @@ async function installAndMaybePrompt(args, root, configPath, installOpenAiCompat
   printOpenAiCompatProviderState(installed);
   printInstallSmokeState();
 
-  if (!args.skipArtPrompt && process.stdin.isTTY) await configureArtTeamIfWanted({
-    modelSelector: options.modelSelector,
-    tierSelector: options.tierSelector,
-    reasoningSelector: options.reasoningSelector
-  });
   if (!args.skipModelPrompt && process.stdin.isTTY) await maybePromptModelOverrides(args, installedConfigPath, {
     modelSelector: options.modelSelector,
     tierSelector: options.tierSelector,
@@ -159,7 +156,7 @@ export async function maybePromptModelOverrides(args, configPath, options = {}) 
     if (!hasSavedOverrides) {
       const shouldEdit = await promptForYesNo(
         rl,
-        "Edit OMO agent model overrides now? Existing configured values will be applied if you press Enter. [y/N]: ",
+        "Edit agent model overrides now? Existing configured values will be applied if you press Enter. [y/N]: ",
         { yesNoSelector: options.yesNoSelector }
       );
       if (!shouldEdit) {

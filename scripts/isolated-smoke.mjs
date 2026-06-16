@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -66,7 +66,7 @@ writeFileSync(
   })
 );
 
-const setup = runCli(["setup", "--config", overrideConfigPath, "--skip-art-prompt", "--skip-model-prompt"]);
+const setup = runCli(["setup", "--config", overrideConfigPath, "--skip-model-prompt"]);
 assertStatus(setup, 0, "setup");
 
 const output = captureOutput();

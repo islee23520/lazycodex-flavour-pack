@@ -4,7 +4,7 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { AGENT_MODEL_FIELDS, VIRTUAL_OVERRIDE_SECTIONS } from "./model-field-scope.mjs";
-import { syncGlobalModelDefaults } from "./global-model-defaults.mjs";
+import { isLfpOwnedAgent } from "./agent-model-metadata.mjs";
 import { readOverrideConfig } from "./model-override-config.mjs";
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -47,12 +47,13 @@ export function syncAgentOverrides(configPath, options = {}) {
     Object.entries(overrides).filter(([agentName]) => !VIRTUAL_OVERRIDE_SECTIONS.has(agentName))
   );
 
-  assertInstalledAgentDir(sourceDir, agentOverrides);
+  assertInstalledAgentDir(sourceDir, agentOverrides, options);
 
   const changed = [];
 
   for (const agentName of Object.keys(agentOverrides)) {
     const sourcePath = path.join(sourceDir, `${agentName}.toml`);
+    if (options.allowMissingLfpOwnedAgents === true && isLfpOwnedAgent(agentName) && isMissing(sourcePath)) continue;
     const currentText = readFileSync(sourcePath, "utf8");
     const nextText = applyModelOverrides(currentText, agentOverrides[agentName] ?? {});
     if (currentText === nextText) continue;
@@ -115,7 +116,7 @@ function parseArgs(argv) {
   return parsed;
 }
 
-function assertInstalledAgentDir(sourceDir, overrides) {
+function assertInstalledAgentDir(sourceDir, overrides, options = {}) {
   try {
     const stats = statSync(sourceDir);
     if (!stats.isDirectory()) {
@@ -143,6 +144,7 @@ function assertInstalledAgentDir(sourceDir, overrides) {
       if (!stats.isFile()) missing.push(agentPath);
     } catch (error) {
       if (error?.code === "ENOENT") {
+        if (options.allowMissingLfpOwnedAgents === true && isLfpOwnedAgent(agentName)) continue;
         missing.push(agentPath);
         continue;
       }
@@ -154,6 +156,16 @@ function assertInstalledAgentDir(sourceDir, overrides) {
     throw new Error(
       `Configured LazyCodex/OMO install appears incomplete or stale. Missing required agent TOML files: ${missing.join(", ")}. Install or update LazyCodex.ai/OMO first, then re-run sync.`
     );
+  }
+}
+
+function isMissing(filePath) {
+  try {
+    statSync(filePath);
+    return false;
+  } catch (error) {
+    if (error?.code === "ENOENT") return true;
+    throw error;
   }
 }
 

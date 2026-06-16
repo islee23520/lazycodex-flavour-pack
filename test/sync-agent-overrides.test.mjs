@@ -211,6 +211,9 @@ test("given packaged override config when reading then targets Codex-loaded agen
     service_tier: "fast"
   });
   assert.deepEqual(Object.keys(config.overrides).sort(), [
+    "artistry",
+    "artistry-gen",
+    "artistry-qa",
     "codex-ultrawork-reviewer",
     "default",
     "explorer",
@@ -218,8 +221,12 @@ test("given packaged override config when reading then targets Codex-loaded agen
     "metis",
     "momus",
     "plan",
-    "ulw"
+    "sisyphus",
+    "ulw",
+    "visual-engineering",
+    "visual-looker"
   ]);
+  assert.equal(Object.keys(config.overrides).filter((agentName) => !["default", "ulw"].includes(agentName)).length, 12);
   assert.deepEqual(config.overrides.momus, {
     model: "gpt-5.5",
     model_reasoning_effort: "xhigh",
@@ -235,6 +242,72 @@ test("given packaged override config when reading then targets Codex-loaded agen
     model_reasoning_effort: "high",
     service_tier: "default"
   });
+  assert.deepEqual(config.overrides.sisyphus, {
+    model: "grok-4.20-0309-reasoning",
+    model_reasoning_effort: "xhigh",
+    service_tier: "default"
+  });
+  assert.deepEqual(config.overrides.artistry, {
+    model: "gemini-pro-agent",
+    model_reasoning_effort: "high",
+    service_tier: "default"
+  });
+  assert.deepEqual(config.overrides["artistry-gen"], {
+    model: "gemini-pro-agent",
+    model_reasoning_effort: "low",
+    service_tier: "default"
+  });
+});
+
+test("given LFP-owned agents in override config when syncing then writes model fields to agent TOMLs", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-agent-sync-"));
+  try {
+    const sourceDir = path.join(root, "source");
+    const configPath = path.join(root, "overrides.toml");
+    const sisyphusPath = path.join(sourceDir, "sisyphus.toml");
+    const artistryPath = path.join(sourceDir, "artistry.toml");
+    mkdirSync(sourceDir);
+    writeFileSync(
+      sisyphusPath,
+      ['name = "sisyphus"', 'model = "old"', 'model_reasoning_effort = "low"', 'service_tier = "fast"', ""].join("\n")
+    );
+    writeFileSync(
+      artistryPath,
+      ['name = "artistry"', 'model = "old"', 'model_reasoning_effort = "low"', 'service_tier = "fast"', ""].join("\n")
+    );
+    writeFileSync(
+      configPath,
+      [
+        "[source]",
+        `agents_dir = "${sourceDir}"`,
+        "",
+        "[agents.sisyphus]",
+        'model = "grok-4.20-0309-reasoning"',
+        'model_reasoning_effort = "xhigh"',
+        'service_tier = "default"',
+        "",
+        "[agents.artistry]",
+        'model = "gemini-pro-agent"',
+        'model_reasoning_effort = "high"',
+        'service_tier = "default"',
+        ""
+      ].join("\n")
+    );
+
+    const result = syncAgentOverrides(configPath);
+    const updatedSisyphus = readFileSync(sisyphusPath, "utf8");
+    const updatedArtistry = readFileSync(artistryPath, "utf8");
+
+    assert.deepEqual(result.changed.toSorted(), [artistryPath, sisyphusPath].toSorted());
+    assert.match(updatedSisyphus, /^model = "grok-4\.20-0309-reasoning"$/m);
+    assert.match(updatedSisyphus, /^model_reasoning_effort = "xhigh"$/m);
+    assert.match(updatedSisyphus, /^service_tier = "default"$/m);
+    assert.match(updatedArtistry, /^model = "gemini-pro-agent"$/m);
+    assert.match(updatedArtistry, /^model_reasoning_effort = "high"$/m);
+    assert.match(updatedArtistry, /^service_tier = "default"$/m);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test("given legacy JSON override config with CODEX_HOME token when reading then resolves the active Codex agents directory", () => {

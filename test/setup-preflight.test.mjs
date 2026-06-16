@@ -29,7 +29,7 @@ test("given default setup model prompt when user declines editing then keeps con
       output
     });
 
-    assert.ok(output.questions.some((question) => /Edit OMO agent model overrides now/.test(question)));
+    assert.ok(output.questions.some((question) => /Edit agent model overrides now/.test(question)));
     assert.ok(!output.questions.some((question) => /explorer model/.test(question)));
     assert.match(output.lines.join("\n"), /Keeping configured OMO model override values/);
   } finally {

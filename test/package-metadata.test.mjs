@@ -49,6 +49,7 @@ test("given npm package metadata when validating release files then package incl
     "hooks",
     "scripts/agent-model-config-io.mjs",
     "scripts/agent-model-config.mjs",
+    "scripts/agent-model-metadata.mjs",
     "scripts/art-team-config.mjs",
     "scripts/art-team-hook.mjs",
     "scripts/cli-args.mjs",

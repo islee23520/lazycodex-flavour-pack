@@ -19,6 +19,7 @@ import { fetchAvailableModels } from "./model-provider.mjs";
 import { buildRecommendedModelOverrides } from "./model-recommendations.mjs";
 import { getCompatibleReasoningEffort } from "./model-reasoning-compat.mjs";
 import { discoverAdditionalAgents, writeOverrideFields } from "./agent-model-config-io.mjs";
+import { getAgentDescription, getAgentDisplayName } from "./agent-model-metadata.mjs";
 
 const DEFAULT_MODEL_SECTIONS = new Map([
   ["default", "Default Codex"],
@@ -177,6 +178,7 @@ async function promptForAgentFields(fields, agentName, options) {
   const currentFields = options.currentFields ?? fields;
   const current = getPrimaryFields(currentFields, options.models);
   const recommended = options.recommended ?? {};
+  const displayName = getAgentDisplayName(agentName);
   const useConfiguredDefaults = options.confirmConfiguredValues === true;
   const defaultPrimary = useConfiguredDefaults ? current : mergePrimary(current, recommended);
 
@@ -186,7 +188,7 @@ async function promptForAgentFields(fields, agentName, options) {
 
   fields.model = await promptForModel(options.readline, {
     agentName,
-    displayName: agentName,
+    displayName,
     current: defaultPrimary.model,
     models: options.models,
     output: options.output,
@@ -194,14 +196,14 @@ async function promptForAgentFields(fields, agentName, options) {
   });
   fields.service_tier = await promptForServiceTier(options.readline, {
     agentName,
-    displayName: agentName,
+    displayName,
     current: defaultPrimary.service_tier,
     output: options.output,
     tierSelector: options.tierSelector
   });
   fields.model_reasoning_effort = getCompatibleReasoningEffort(fields.model, await promptForReasoningEffort(options.readline, {
     agentName,
-    displayName: agentName,
+    displayName,
     current: defaultPrimary.model_reasoning_effort,
     output: options.output,
     reasoningSelector: options.reasoningSelector
@@ -259,7 +261,10 @@ async function maybeRestoreUserOverrideConfig(configPath, userConfigPath, option
 
 function logAgentCurrentAndRecommendation(output, agentName, currentFields, recommendation) {
   const current = getPrimaryFields(currentFields, []);
-  logAgentGuide(output, agentName, {
+  const displayName = getAgentDisplayName(agentName);
+  const description = getAgentDescription(agentName);
+  if (description) output?.log?.(`Role: ${description}`);
+  logAgentGuide(output, displayName, {
     model: current.model,
     reasoning: current.model_reasoning_effort,
     tier: current.service_tier
