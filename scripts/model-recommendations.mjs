@@ -1,6 +1,7 @@
 import { classifyModelInventory } from "./model-inventory.mjs";
 import { getCompatibleReasoningEffort } from "./model-reasoning-compat.mjs";
 import { readRolePolicyConfig } from "./role-policy-config.mjs";
+import { VIRTUAL_OVERRIDE_SECTIONS } from "./model-field-scope.mjs";
 
 const XHIGH_REASONING_AGENT_NAMES = new Set(["momus", "plan"]);
 const REASONING_AGENT_NAMES = new Set(["metis", "momus", "plan", "sisyphus", "ulw-plan", "review-work"]);
@@ -74,6 +75,7 @@ export function buildRecommendedModelOverrides(overrides, models, options = {}) 
   const policyConfig = options.policyConfig ?? readRolePolicyConfig(options);
   const recommendations = {};
   for (const agentName of Object.keys(overrides ?? {})) {
+    if (VIRTUAL_OVERRIDE_SECTIONS.has(agentName)) continue;
     recommendations[agentName] = recommendRoleModelFields(agentName, models, { ...options, policyConfig });
   }
   return recommendations;
