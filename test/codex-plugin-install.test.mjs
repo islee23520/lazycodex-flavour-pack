@@ -6,6 +6,33 @@ import assert from "node:assert/strict";
 
 import { installCodexPlugin } from "../scripts/codex-plugin-install.mjs";
 
+test("given installed LFP plugin when runtime is promoted then hook registration files are installed", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-runtime-hooks-"));
+  const originalEnv = process.env.CODEX_HOME;
+  try {
+    const codexHome = path.join(root, "codex-home");
+    process.env.CODEX_HOME = codexHome;
+
+    const state = installCodexPlugin(path.resolve("."), { env: { ...process.env, CODEX_HOME: codexHome } });
+    const hooksPath = path.join(state.pluginRoot, "hooks", "hooks.json");
+    const manifestPath = path.join(state.pluginRoot, ".codex-plugin", "plugin.json");
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+    const hooks = JSON.parse(readFileSync(hooksPath, "utf8"));
+
+    assert.equal(existsSync(hooksPath), true);
+    assert.equal(manifest.hooks, "./hooks/hooks.json");
+    assert.match(hooks.hooks.SessionStart[0].hooks[0].command, /sync-agent-overrides-hook\.mjs/);
+    assert.match(hooks.hooks.UserPromptSubmit[0].hooks[0].command, /user-prompt-submit\.mjs/);
+  } finally {
+    if (originalEnv === undefined) {
+      delete process.env.CODEX_HOME;
+    } else {
+      process.env.CODEX_HOME = originalEnv;
+    }
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("given installed LFP plugin when a later copy fails then previous plugin files are preserved", () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-atomic-install-"));
   const originalEnv = process.env.CODEX_HOME;
@@ -127,7 +154,7 @@ test("given installed LFP plugin when config update fails then helper agents and
 
 function createBrokenPackageRoot(packageRoot) {
   const sourceRoot = path.resolve(".");
-  for (const entry of [".codex-plugin", "agent-configs", "agent-overrides", "hooks", "scripts"]) {
+  for (const entry of [".codex-plugin", "agent-configs", "hooks", "scripts"]) {
     mkdirSync(path.dirname(path.join(packageRoot, entry)), { recursive: true });
     cpEntry(path.join(sourceRoot, entry), path.join(packageRoot, entry));
   }

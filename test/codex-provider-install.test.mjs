@@ -202,12 +202,10 @@ function createPackageRoot(root, provider) {
   const packageRoot = path.join(root, "package-root");
   mkdirSync(path.join(packageRoot, ".codex-plugin"), { recursive: true });
   mkdirSync(path.join(packageRoot, "agent-configs"), { recursive: true });
-  mkdirSync(path.join(packageRoot, "agent-overrides"), { recursive: true });
   mkdirSync(path.join(packageRoot, "hooks"), { recursive: true });
   mkdirSync(path.join(packageRoot, "scripts"), { recursive: true });
-  writeFileSync(path.join(packageRoot, ".codex-plugin", "plugin.json"), "{}\n");
-  writeFileSync(path.join(packageRoot, "agent-overrides", "omo.json"), "{}\n");
-  writeFileSync(path.join(packageRoot, "hooks", "hooks.json"), "{}\n");
+  writeFileSync(path.join(packageRoot, ".codex-plugin", "plugin.json"), '{"hooks":"./hooks/hooks.json"}\n');
+  writeFileSync(path.join(packageRoot, "hooks", "hooks.json"), '{"hooks":{}}\n');
   writeFileSync(path.join(packageRoot, "README.md"), "# fixture\n");
   writeFileSync(path.join(packageRoot, "package.json"), "{}\n");
   writeFileSync(path.join(packageRoot, "agent-configs", "visual-engineering.toml"), 'name = "visual-engineering"\nmodel = "gemini-pro-agent"\n');

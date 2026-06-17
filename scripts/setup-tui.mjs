@@ -2,6 +2,7 @@ import * as clack from "@clack/prompts";
 import pc from "picocolors";
 
 import { SERVICE_TIERS, REASONING_EFFORTS } from "./model-config-prompts.mjs";
+import { getModelSettingScope } from "./model-setting-scopes.mjs";
 
 import { PLUGIN_REF } from "./codex-plugin-install.mjs";
 import { createProviderConsentSelector } from "./setup-provider-tui.mjs";
@@ -22,7 +23,7 @@ export async function runSetupTui(args, context, deps = {}) {
     [
       `Install and enable ${PLUGIN_REF}.`,
       "Run LazyCodex install first unless explicitly skipped.",
-      "Apply only LFP-owned agents, hooks, provider consent, and model-field overrides."
+      "Apply only LFP-owned agents, provider consent, and model-field overrides."
     ].join("\n"),
     "LazyCodex overlay"
   );
@@ -47,8 +48,6 @@ export async function runSetupTui(args, context, deps = {}) {
       gitHubStartSelector: createGitHubStartSelector(prompts),
       providerConsentSelector: createProviderConsentSelector(prompts)
     });
-  } catch (error) {
-    throw error;
   } finally {
     restoreConsole();
   }
@@ -58,11 +57,14 @@ export async function runSetupTui(args, context, deps = {}) {
 }
 
 function createModelSelector(prompts) {
-  return async ({ agentName, displayName, current, choices }) => {
-    const options = buildModelOptions(current, choices);
+  return async ({ agentName, displayName, current, vanillaRecommendation, vanillaRecommendationFields, scope, choices }) => {
+    const options = buildModelOptions(current, vanillaRecommendation, choices);
     const label = displayName ?? agentName;
+    const settingScope = scope ?? getModelSettingScope(agentName);
+    const note = buildModelGuideNote(label, current, vanillaRecommendationFields ?? vanillaRecommendation, settingScope);
+    prompts.note(note.message, note.title);
     const selected = await prompts.select({
-      message: `${label ? `${label} model` : "Model"}`,
+      message: formatModelSelectorMessage(label, settingScope),
       options,
       initialValue: options.find((option) => option.value === current)?.value ?? options[0]?.value
     });
@@ -74,14 +76,45 @@ function createModelSelector(prompts) {
   };
 }
 
-function buildModelOptions(current, choices) {
+function buildModelOptions(current, vanillaRecommendation, choices) {
   const options = choices.map((choice) => ({
     value: choice.value,
     label: choice.label,
-    hint: choice.aliases.includes(current) || choice.key === current ? "current" : undefined
+    hint: getModelOptionHint(choice, current, vanillaRecommendation)
   }));
   if (options.some((option) => option.value === current)) return options;
-  return [{ value: current, label: current, hint: "current custom id" }, ...options];
+  const hint = current === vanillaRecommendation ? "current custom id, vanilla LazyCodex" : "current custom id";
+  return [{ value: current, label: current, hint }, ...options];
+}
+
+function getModelOptionHint(choice, current, vanillaRecommendation) {
+  const isCurrent = choice.aliases.includes(current) || choice.key === current;
+  const isVanilla = choice.aliases.includes(vanillaRecommendation) || choice.key === vanillaRecommendation;
+  if (isCurrent && isVanilla) return "current, vanilla LazyCodex";
+  if (isCurrent) return "current";
+  if (isVanilla) return "vanilla LazyCodex";
+  return undefined;
+}
+
+function buildModelGuideNote(label, current, vanillaRecommendation, scope) {
+  const lines = [];
+  if (scope?.line) lines.push(`Affects: ${scope.line}`);
+  lines.push(`Current/default: ${current ?? "unknown"}`);
+  if (vanillaRecommendation !== undefined) lines.push(`Vanilla LazyCodex recommendation: ${formatVanillaRecommendation(vanillaRecommendation)}`);
+  return { title: `${label ?? "Model"} guide`, message: lines.join("\n") };
+}
+
+function formatVanillaRecommendation(vanillaRecommendation) {
+  if (typeof vanillaRecommendation !== "object" || vanillaRecommendation === null) return vanillaRecommendation;
+  const model = vanillaRecommendation.model ?? "unknown";
+  const reasoning = vanillaRecommendation.model_reasoning_effort ?? "unset";
+  const tier = vanillaRecommendation.service_tier ?? "unset";
+  return `${model} (reasoning: ${reasoning}, tier: ${tier})`;
+}
+
+function formatModelSelectorMessage(label, scope) {
+  const prefix = label ? `${label} model` : "Model";
+  return scope?.tui ? `${prefix} (affects ${scope.tui})` : prefix;
 }
 
 function captureConsoleOutput(lines) {
@@ -95,11 +128,8 @@ function captureConsoleOutput(lines) {
   };
 }
 
-
-
 function createYesNoSelector(prompts) {
   return async ({ question }) => {
-    // Clean the typical " [y/N]: " suffix for a nice Clack confirm message
     const cleanMessage = String(question || "").replace(/\s*\[y\/N\]\s*:?\s*$/i, "").trim();
     const answer = await prompts.confirm({
       message: cleanMessage || question,
@@ -114,15 +144,15 @@ function createYesNoSelector(prompts) {
 }
 
 function createTierSelector(prompts) {
-  return async ({ agentName, displayName, current }) => {
+  return async ({ agentName, displayName, current, vanillaRecommendation }) => {
     const options = SERVICE_TIERS.map((tier) => ({
       value: tier.value,
       label: tier.label,
-      hint: tier.value === current ? "current" : undefined
+      hint: getFieldOptionHint(tier.value, current, vanillaRecommendation)
     }));
     const label = displayName ?? agentName;
     const selected = await prompts.select({
-      message: `${label ? `${label} service tier` : "Service tier"}`,
+      message: formatFieldSelectorMessage(label, "service tier", vanillaRecommendation),
       options,
       initialValue: current
     });
@@ -135,15 +165,15 @@ function createTierSelector(prompts) {
 }
 
 function createReasoningSelector(prompts) {
-  return async ({ agentName, displayName, current }) => {
+  return async ({ agentName, displayName, current, vanillaRecommendation }) => {
     const options = REASONING_EFFORTS.map((effort) => ({
       value: effort,
       label: effort,
-      hint: effort === current ? "current" : undefined
+      hint: getFieldOptionHint(effort, current, vanillaRecommendation)
     }));
     const label = displayName ?? agentName;
     const selected = await prompts.select({
-      message: `${label ? `${label} reasoning effort` : "Reasoning effort"}`,
+      message: formatFieldSelectorMessage(label, "reasoning effort", vanillaRecommendation),
       options,
       initialValue: current
     });
@@ -155,8 +185,20 @@ function createReasoningSelector(prompts) {
   };
 }
 
+function getFieldOptionHint(value, current, vanillaRecommendation) {
+  const isCurrent = value === current;
+  const isVanilla = value === vanillaRecommendation;
+  if (isCurrent && isVanilla) return "current, vanilla LazyCodex";
+  if (isCurrent) return "current";
+  if (isVanilla) return "vanilla LazyCodex";
+  return undefined;
+}
 
-
+function formatFieldSelectorMessage(label, fieldName, vanillaRecommendation) {
+  const prefix = label ? `${label} ${fieldName}` : fieldName;
+  if (vanillaRecommendation === undefined) return prefix;
+  return `${prefix} (vanilla LazyCodex: ${vanillaRecommendation})`;
+}
 
 function createGitHubStartSelector(prompts) {
   return async () => {

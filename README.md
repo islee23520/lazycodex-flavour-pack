@@ -16,7 +16,6 @@ OpenAI-compatible provider setup is consent-gated. In interactive setup, LFP ask
 
 ## Contents
 
-- `hooks/`: LFP hook registrations.
 - `scripts/sync-agent-overrides-hook.mjs`: quietly applies configured model overrides at session start and before prompt guidance.
 - `scripts/visual-engineering-hook.mjs`: adds guidance to use `visual-engineering` for UI judgment and `visual-looker` for multimodal visual evidence inspection.
 - `scripts/art-team-hook.mjs`: adds guidance for the LFP art team agents on art-related prompts.
@@ -33,12 +32,14 @@ OpenAI-compatible provider setup is consent-gated. In interactive setup, LFP ask
 npx @islee23520/lfp@latest setup
 npx @islee23520/lfp@latest setup --no-tui
 npx @islee23520/lfp@latest dry-setup
+npx @islee23520/lfp@latest delete
 npx @islee23520/lfp@latest doctor
 npx @islee23520/lfp@latest agent-config
 
 npm test
 npm run setup
 npm run dry-setup
+npm run delete
 npm run doctor
 npm run agent-config
 npm run smoke:isolated
@@ -52,7 +53,7 @@ Fallback model resolution is available via the MCP resolver tool for saved overr
 
 Interactive terminals get a Clack setup shell with confirm/cancel framing around the same setup work. Non-interactive setup, `dry-setup`, and `doctor` keep line-output behavior. Use `setup --no-tui` to force the legacy line-output setup path in a TTY.
 
-Interactive setup asks one question: "Edit agent model overrides now?". Answering yes enters a single model selection flow covering default/ULW and LFP-provided roles/agents (sisyphus, visual-*, artistry-*, fallback-capable roles). Each prompt shows the current value plus the recommendation where one exists; pressing Enter keeps and re-applies the configured value while still allowing edits. When provider models are discoverable, setup builds recommendations from the active provider inventory automatically. Saved choices are written into `${CODEX_HOME}/lfp.json` before setup applies the overrides.
+Interactive setup enters a single model selection flow by default, covering Default Codex, ULW, and LFP-provided roles/agents (sisyphus, visual-*, artistry-*, fallback-capable roles). Each prompt shows what the setting affects, the current OMO/LazyCodex value, the vanilla LazyCodex recommendation where available, and the LFP recommendation where one exists. Pressing Enter keeps and re-applies the shown value while still allowing edits. When provider models are discoverable, setup builds recommendations from the active provider inventory automatically. Saved choices are written into `${CODEX_HOME}/lfp.json` before setup applies the overrides. Use `--skip-model-prompt` for non-guided setup.
 
 When interactive model setup changes override values, LFP saves a schema-versioned JSON user copy at `${CODEX_HOME}/lfp.json`. On later interactive `setup` runs after an npx/package patch, LFP asks whether you want to adjust model overrides; answering no keeps the saved settings without rerunning the per-agent prompts. Answering yes loads the saved copy and continues into the model selection flow. Older `${CODEX_HOME}/lfp/omo-agent-model-overrides.json`, `${CODEX_HOME}/lfp/omo-agent-model-overrides.toml`, and `${CODEX_HOME}/.ledger/lfp/omo-agent-model-overrides.toml` copies are migrated automatically into the canonical JSON config path.
 
@@ -60,11 +61,11 @@ When interactive model setup changes override values, LFP saves a schema-version
 
 Role recommendation policy defaults live in `agent-configs/lfp-role-policies.toml`. The canonical override location is `${CODEX_HOME}/lfp.json` under `rolePolicies`; when present, those values take priority. The legacy sidecar `${CODEX_HOME}/lfp/lfp-role-policies.toml` with `[policies.<role>]` sections still works for now. Model preference order stays code-managed.
 
-`dry-setup` previews pending writes. `doctor` reports plugin install state, upstream LazyCodex/OMO readiness, provider status, visual-agent smoke checks, and pending override work.
+`dry-setup` previews pending writes. `delete` removes the installed LFP plugin runtime, LFP-owned helper agents, and LFP marketplace/plugin config tables; it preserves LazyCodex/OMO state, provider config, and `${CODEX_HOME}/lfp.json`. `doctor` reports plugin install state, upstream LazyCodex/OMO readiness, provider status, visual-agent smoke checks, and pending override work.
 
 `smoke:isolated` runs setup, saved user override restore, override sync, doctor, and Codex Apps cache cleanup against a temporary `CODEX_HOME`; it does not touch the real Codex install.
 
-LFP prompt hooks stay lightweight. The override sync hook is the only hook that mutates agent TOMLs, applying the configured three primary agent model fields before session start and prompt submission; the visual/art/fallback prompt hooks remain guidance-only.
+LFP prompt guidance scripts stay lightweight. The override sync path is the only path that mutates agent TOMLs, applying the configured three primary agent model fields; the visual/art/fallback prompt guidance scripts remain guidance-only.
 
 The packaged override configs resolve `${CODEX_HOME}` at runtime, so the same release works across different user home directories and custom Codex homes without editing the shipped files.
 

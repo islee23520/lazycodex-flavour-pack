@@ -6,13 +6,6 @@ import assert from "node:assert/strict";
 
 import { runUserPromptSubmitHook } from "../scripts/visual-engineering-hook.mjs";
 
-const lfpHooks = JSON.parse(readFileSync(path.resolve("hooks/hooks.json"), "utf8"));
-const lazyCodexUserPromptSubmitHooks = [
-  { hooks: [{ type: "command", command: "node \"${PLUGIN_ROOT}/components/rules/dist/cli.js\" hook user-prompt-submit" }] },
-  { hooks: [{ type: "command", command: "node \"${PLUGIN_ROOT}/components/ultrawork/dist/cli.js\" hook user-prompt-submit" }] },
-  { hooks: [{ type: "command", command: "node \"${PLUGIN_ROOT}/components/ulw-loop/dist/cli.js\" hook user-prompt-submit" }] }
-];
-
 test("given visual code work prompt when hook runs then emits visual-engineering guidance", () => {
   const output = runUserPromptSubmitHook({
     hook_event_name: "UserPromptSubmit",
@@ -103,22 +96,6 @@ test("given ULW plan prompt when hook runs then requires high accuracy review af
   assert.match(parsed.hookSpecificOutput.additionalContext, /ulw-plan/i);
   assert.match(parsed.hookSpecificOutput.additionalContext, /plan draft/i);
   assert.match(parsed.hookSpecificOutput.additionalContext, /high-accuracy review/i);
-});
-
-test("given LFP and LazyCodex hooks when manifests are inspected then they coexist as UserPromptSubmit siblings", () => {
-  const lfpUserPromptSubmit = lfpHooks.hooks.UserPromptSubmit;
-
-  assert.equal(lfpUserPromptSubmit.length, 1);
-  assert.equal(lfpUserPromptSubmit[0].hooks.length, 1);
-  assert.equal(lfpUserPromptSubmit[0].hooks[0].type, "command");
-  assert.match(lfpUserPromptSubmit[0].hooks[0].command, /\$\{PLUGIN_ROOT\}\/scripts\/user-prompt-submit\.mjs/);
-  assert.equal(lfpUserPromptSubmit[0].hooks[0].timeout, 10);
-  assert.equal(lfpUserPromptSubmit[0].matcher, undefined);
-  assert.equal(lfpHooks.hooks.SessionStart[0].hooks.length, 1);
-  assert.match(lfpHooks.hooks.SessionStart[0].hooks[0].command, /\$\{PLUGIN_ROOT\}\/scripts\/sync-agent-overrides-hook\.mjs/);
-  assert.equal(lazyCodexUserPromptSubmitHooks.length, 3);
-  assert.match(JSON.stringify(lazyCodexUserPromptSubmitHooks), /ultrawork\/dist\/cli\.js/);
-  assert.match(JSON.stringify(lazyCodexUserPromptSubmitHooks), /ulw-loop\/dist\/cli\.js/);
 });
 
 test("given non-visual prompt when hook runs then stays quiet", () => {

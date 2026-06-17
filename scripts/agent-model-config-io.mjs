@@ -27,6 +27,16 @@ export function discoverAdditionalAgents(sourceDir, overrides) {
   return agents.sort((a, b) => a.name.localeCompare(b.name));
 }
 
+export function readInstalledAgentFields(sourceDir, agentName) {
+  if (typeof sourceDir !== "string" || typeof agentName !== "string") return null;
+  try {
+    return readModelFields(readFileSync(path.join(sourceDir, `${agentName}.toml`), "utf8"));
+  } catch (error) {
+    if (error?.code === "ENOENT") return null;
+    throw error;
+  }
+}
+
 export function writeOverrideFields(configPath, overrides) {
   if (!configPath.endsWith(".toml")) return;
 

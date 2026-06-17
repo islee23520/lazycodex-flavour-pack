@@ -1,13 +1,11 @@
+import { getModelSettingScope } from "./model-setting-scopes.mjs";
+
 export const SERVICE_TIERS = [
   { value: "default", label: "default (non-fast)" },
   { value: "fast", label: "fast" }
 ];
 
 export const REASONING_EFFORTS = ["low", "medium", "high", "xhigh"];
-
-export function getAgentModelGuide(agentName) {
-  return null;
-}
 
 export function logAgentGuide(output, agentName, current, options = {}) {
   if (agentName) output?.log?.(`Agent: ${agentName}`);
@@ -19,18 +17,22 @@ export function logAgentGuide(output, agentName, current, options = {}) {
   output?.log?.("  Guide: no preset — choose a model from the available list or type a custom id.");
 }
 
-export async function promptForModel(rl, { agentName, displayName, current, models, output, modelSelector }) {
+export async function promptForModel(rl, { agentName, displayName, current, vanillaRecommendation, vanillaRecommendationFields, models, output, modelSelector }) {
   const choices = groupModelAliases(models);
   const defaultIndex = choices.findIndex((choice) => choice.aliases.includes(current) || choice.key === current) + 1;
   const suffix = defaultIndex > 0 ? `[${defaultIndex}]` : `[${current}]`;
   const label = displayName ?? agentName;
   const prefix = label ? `${label} model` : "Model";
+  const scope = getModelSettingScope(agentName);
 
   if (typeof modelSelector === "function") {
     return await modelSelector({
       agentName,
       displayName: label,
       current,
+      vanillaRecommendation,
+      vanillaRecommendationFields,
+      scope,
       choices: choices.map((choice) => ({ ...choice, label: formatModelChoice(choice) }))
     });
   }
@@ -46,12 +48,13 @@ export async function promptForModel(rl, { agentName, displayName, current, mode
   }
 }
 
-export async function promptForServiceTier(rl, { agentName, displayName, current, output, tierSelector }) {
+export async function promptForServiceTier(rl, { agentName, displayName, current, vanillaRecommendation, output, tierSelector }) {
   if (typeof tierSelector === "function") {
-    return await tierSelector({ agentName, displayName: displayName ?? agentName, current });
+    return await tierSelector({ agentName, displayName: displayName ?? agentName, current, vanillaRecommendation });
   }
 
-  printChoices(SERVICE_TIERS.map((tier) => tier.label), output);
+  if (vanillaRecommendation !== undefined) output?.log?.(`  Vanilla LazyCodex service tier: ${vanillaRecommendation}`);
+  printChoices(SERVICE_TIERS.map((tier) => formatChoiceWithVanilla(tier.label, tier.value, vanillaRecommendation)), output);
   const defaultIndex = SERVICE_TIERS.findIndex((tier) => tier.value === current) + 1;
   const suffix = defaultIndex > 0 ? `[${defaultIndex}]` : `[${current}]`;
   const label = displayName ?? agentName;
@@ -71,12 +74,13 @@ export async function promptForServiceTier(rl, { agentName, displayName, current
   }
 }
 
-export async function promptForReasoningEffort(rl, { agentName, displayName, current, output, reasoningSelector }) {
+export async function promptForReasoningEffort(rl, { agentName, displayName, current, vanillaRecommendation, output, reasoningSelector }) {
   if (typeof reasoningSelector === "function") {
-    return await reasoningSelector({ agentName, displayName: displayName ?? agentName, current });
+    return await reasoningSelector({ agentName, displayName: displayName ?? agentName, current, vanillaRecommendation });
   }
 
-  printChoices(REASONING_EFFORTS, output);
+  if (vanillaRecommendation !== undefined) output?.log?.(`  Vanilla LazyCodex reasoning effort: ${vanillaRecommendation}`);
+  printChoices(REASONING_EFFORTS.map((effort) => formatChoiceWithVanilla(effort, effort, vanillaRecommendation)), output);
   const defaultIndex = REASONING_EFFORTS.indexOf(current) + 1;
   const suffix = defaultIndex > 0 ? `[${defaultIndex}]` : `[${current}]`;
   const label = displayName ?? agentName;
@@ -155,6 +159,10 @@ function chooseRepresentative(key, aliases) {
 
 function printChoices(values, output) {
   for (const [index, value] of values.entries()) output?.log?.(`  ${index + 1}. ${value}`);
+}
+
+function formatChoiceWithVanilla(label, value, vanillaRecommendation) {
+  return value === vanillaRecommendation ? `${label} (vanilla LazyCodex)` : label;
 }
 
 function prompt(rl, question) {

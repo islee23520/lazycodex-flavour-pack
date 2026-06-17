@@ -202,7 +202,7 @@ test("given no saved user override when interactive setup runs then emits no Adj
     const agentsDir = path.join(codexHome, "agents");
     mkdirSync(agentsDir, { recursive: true });
     writeOmo410AgentFixtureSet(agentsDir, { metis: { model: "custom-metis-model" } });
-    // no saved override file present -> default interactive path must stay silent and let final sync apply packaged defaults
+    // no saved override file present -> default non-TTY path must stay silent and let final sync apply packaged defaults
 
     const result = spawnSync(
       process.execPath,

@@ -59,7 +59,7 @@ test("given TUI setup is cancelled when running then it does not call the setup 
     [
       "note",
       "LazyCodex overlay",
-      "Install and enable lfp@islee23520.\nRun LazyCodex install first unless explicitly skipped.\nApply only LFP-owned agents, hooks, provider consent, and model-field overrides."
+      "Install and enable lfp@islee23520.\nRun LazyCodex install first unless explicitly skipped.\nApply only LFP-owned agents, provider consent, and model-field overrides."
     ],
     ["cancel", "LFP setup cancelled."]
   ]);
@@ -132,7 +132,7 @@ test("given TUI setup model selector when line setup asks for model then uses Cl
 
   assert.deepEqual(calls.find((call) => call[0] === "select"), [
     "select",
-    "explorer model",
+    "explorer model (affects this agent only)",
     [
       { value: "gpt-5.4-mini", label: "gpt-5.4-mini", hint: "current" },
       { value: "gpt-5.5", label: "gpt-5.5", hint: undefined }
@@ -177,7 +177,7 @@ test("given TUI setup fallback selector when line setup asks then labels fallbac
 
   assert.deepEqual(calls.find((call) => call[0] === "select"), [
     "select",
-    "plan fallback model",
+    "plan fallback model (affects this agent only)",
     [{ value: "manual-fallback-model", label: "manual-fallback-model", hint: "current custom id" }],
     "manual-fallback-model"
   ]);
@@ -222,8 +222,75 @@ test("given TUI setup default model selector when line setup asks then labels de
     }
   );
 
-  assert.ok(calls.some((call) => call[0] === "select" && call[1] === "Default Codex model"));
-  assert.ok(calls.some((call) => call[0] === "select" && call[1] === "ULW model"));
+  assert.ok(calls.some((call) => call[0] === "select" && call[1] === "Default Codex model (affects normal Codex sessions)"));
+  assert.ok(calls.some((call) => call[0] === "select" && call[1] === "ULW model (affects ultrawork runs)"));
+});
+
+test("given TUI first-run model guide when setup prompts then shows scope and defaults before selection", async () => {
+  const calls = [];
+  const prompts = {
+    intro: (message) => calls.push(["intro", message]),
+    note: (message, title) => calls.push(["note", title, message]),
+    confirm: async () => true,
+    select: async (options) => {
+      calls.push(["select", options.message, options.initialValue]);
+      return options.initialValue;
+    },
+    isCancel: () => false,
+    cancel: (message) => calls.push(["cancel", message]),
+    outro: (message) => calls.push(["outro", message])
+  };
+
+  await runSetupTui(
+    {},
+    { check: false, root: "/tmp/lfp", defaultConfig: "/tmp/lfp/config.toml" },
+    {
+      prompts,
+      colors: { inverse: (value) => value, green: (value) => value },
+      runLineSetup: async (_args, _context, options) => {
+        await options.modelSelector({
+          agentName: "default",
+          displayName: "Default Codex",
+          current: "gpt-5.5",
+          choices: [{ value: "gpt-5.5", label: "gpt-5.5", aliases: ["gpt-5.5"], key: "gpt-5.5" }]
+        });
+        await options.modelSelector({
+          agentName: "ulw",
+          displayName: "ULW",
+          current: "gpt-5.5",
+          choices: [{ value: "gpt-5.5", label: "gpt-5.5", aliases: ["gpt-5.5"], key: "gpt-5.5" }]
+        });
+        await options.modelSelector({
+          agentName: "explorer",
+          displayName: "explorer",
+          current: "gpt-5.4-mini",
+          vanillaRecommendation: "gpt-5.4-mini",
+          vanillaRecommendationFields: {
+            model: "gpt-5.4-mini",
+            model_reasoning_effort: "low",
+            service_tier: "fast"
+          },
+          choices: [{ value: "gpt-5.4-mini", label: "gpt-5.4-mini", aliases: ["gpt-5.4-mini"], key: "gpt-5.4-mini" }]
+        });
+      }
+    }
+  );
+
+  const defaultNoteIndex = calls.findIndex((call) => call[0] === "note" && call[1] === "Default Codex guide");
+  const defaultSelectIndex = calls.findIndex((call) => call[0] === "select" && call[1].startsWith("Default Codex model"));
+  const ulwNoteIndex = calls.findIndex((call) => call[0] === "note" && call[1] === "ULW guide");
+  const ulwSelectIndex = calls.findIndex((call) => call[0] === "select" && call[1].startsWith("ULW model"));
+  const explorerNoteIndex = calls.findIndex((call) => call[0] === "note" && call[1] === "explorer guide");
+  const explorerSelectIndex = calls.findIndex((call) => call[0] === "select" && call[1].startsWith("explorer model"));
+
+  assert.ok(defaultNoteIndex >= 0 && defaultNoteIndex < defaultSelectIndex);
+  assert.ok(ulwNoteIndex >= 0 && ulwNoteIndex < ulwSelectIndex);
+  assert.ok(explorerNoteIndex >= 0 && explorerNoteIndex < explorerSelectIndex);
+  assert.match(calls[defaultNoteIndex][2], /Affects: normal Codex sessions via CODEX_HOME\/config\.toml/);
+  assert.match(calls[defaultNoteIndex][2], /Current\/default: gpt-5\.5/);
+  assert.match(calls[ulwNoteIndex][2], /Affects: ultrawork runs via CODEX_HOME\/ulw\.config\.toml/);
+  assert.match(calls[explorerNoteIndex][2], /Vanilla LazyCodex recommendation: gpt-5\.4-mini \(reasoning: low, tier: fast\)/);
+  assert.equal(calls.some((call) => String(call[2] ?? "").includes("Edit agent model overrides now")), false);
 });
 
 test("given TUI setup writer logs status when running then status is shown as framed setup results", async () => {

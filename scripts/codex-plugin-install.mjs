@@ -26,7 +26,7 @@ export const PLUGIN_ID = "lfp";
 export const PLUGIN_REF = `${PLUGIN_ID}@${MARKETPLACE_ID}`;
 
 const DEFAULT_PACKAGE_ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const ADDITIONAL_AGENT_CONFIGS = [
+export const ADDITIONAL_AGENT_CONFIGS = [
   "visual-engineering.toml",
   "visual-looker.toml",
   "artistry.toml",
@@ -41,7 +41,7 @@ const VISUAL_AGENT_CONFIGS = ["artistry.toml", "artistry-gen.toml", "artistry-qa
 const RUNTIME_ENTRIES = [
   ".codex-plugin",
   "agent-configs",
-  "agent-overrides",
+  { path: "agent-overrides", optional: true },
   "hooks",
   "scripts",
   "README.md",

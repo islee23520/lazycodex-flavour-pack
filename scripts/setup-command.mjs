@@ -5,7 +5,6 @@ import { configureAgentModelOverrides } from "./agent-model-config.mjs";
 import { getCodexAppsToolCacheState } from "./codex-apps-cache.mjs";
 import { getPendingCodexPluginActions, installCodexPlugin, PLUGIN_REF } from "./codex-plugin-install.mjs";
 import { formatLazyCodexInstallCommand, runLazyCodexInstall } from "./lazycodex-install.mjs";
-import { promptForYesNo } from "./model-config-prompts.mjs";
 import { resolveProviderOverride, shouldInstallOpenAiCompatProvider } from "./setup-provider.mjs";
 import {
   printCodexAppsCacheQuarantine,
@@ -141,7 +140,12 @@ async function installAndMaybePrompt(args, root, configPath, installOpenAiCompat
     modelSelector: options.modelSelector,
     tierSelector: options.tierSelector,
     reasoningSelector: options.reasoningSelector,
-    yesNoSelector: options.yesNoSelector
+    yesNoSelector: options.yesNoSelector,
+    output: options.output,
+    models: options.models,
+    env: options.env,
+    userOverrideConfigPath: options.userOverrideConfigPath,
+    persistUserOverrides: options.persistUserOverrides
   });
   if (process.stdin.isTTY) await maybePromptGitHubStart({ gitHubStartSelector: options.gitHubStartSelector });
 
@@ -187,15 +191,8 @@ export async function maybePromptModelOverrides(args, configPath, options = {}) 
   if (models.length > 0) printSetupModelRecommendations(configPath, models, output, options);
   try {
     if (!hasSavedOverrides) {
-      const shouldEdit = await promptForYesNo(
-        rl,
-        "Edit agent model overrides now? Existing configured values will be applied if you press Enter. [y/N]: ",
-        { yesNoSelector: options.yesNoSelector }
-      );
-      if (!shouldEdit) {
-        output.log("Keeping configured OMO model override values.");
-        return;
-      }
+      output.log("Showing default OMO/LazyCodex model guide. Press Enter to keep each shown value.");
+      output.log("");
     }
 
     await configureAgentModelOverrides(configPath, {
@@ -207,7 +204,10 @@ export async function maybePromptModelOverrides(args, configPath, options = {}) 
       modelSelector: options.modelSelector,
       tierSelector: options.tierSelector,
       reasoningSelector: options.reasoningSelector,
-      yesNoSelector: options.yesNoSelector
+      yesNoSelector: options.yesNoSelector,
+      env: options.env,
+      userOverrideConfigPath: options.userOverrideConfigPath,
+      persistUserOverrides: options.persistUserOverrides
     });
   } finally {
     if (!options.readline) rl.close();

@@ -18,8 +18,10 @@ import {
 import { fetchAvailableModels } from "./model-provider.mjs";
 import { buildRecommendedModelOverrides } from "./model-recommendations.mjs";
 import { getCompatibleReasoningEffort } from "./model-reasoning-compat.mjs";
-import { discoverAdditionalAgents, writeOverrideFields } from "./agent-model-config-io.mjs";
-import { getAgentDescription, getAgentDisplayName } from "./agent-model-metadata.mjs";
+import { discoverAdditionalAgents, readInstalledAgentFields, writeOverrideFields } from "./agent-model-config-io.mjs";
+import { getAgentDisplayName, isLfpOwnedAgent } from "./agent-model-metadata.mjs";
+import { getPrimaryFields, getVanillaPrimaryFields, logAgentCurrentAndRecommendation, mergePrimary } from "./agent-model-config-fields.mjs";
+import { logModelSettingScope } from "./model-setting-scopes.mjs";
 
 const DEFAULT_MODEL_SECTIONS = new Map([
   ["default", "Default Codex"],
@@ -45,6 +47,12 @@ export async function configureAgentModelOverrides(configPath, options = {}) {
   const defaultModelNames = Object.keys(config.overrides ?? {}).filter((name) => DEFAULT_MODEL_SECTIONS.has(name));
   const agentNames = Object.keys(config.overrides ?? {}).filter((name) => !DEFAULT_MODEL_SECTIONS.has(name));
   const additionalAgents = options.additionalAgents ?? discoverAdditionalAgents(config.source?.agentsDir, config.overrides ?? {});
+  const installedAgentFields = Object.fromEntries(
+    agentNames
+      .filter((agentName) => !isLfpOwnedAgent(agentName))
+      .map((agentName) => [agentName, readInstalledAgentFields(config.source?.agentsDir, agentName)])
+      .filter(([, fields]) => fields !== null)
+  );
   if (defaultModelNames.length === 0 && agentNames.length === 0 && additionalAgents.length === 0) return config;
 
   const models = options.models ?? (await safeFetchAvailableModels(options));
@@ -94,6 +102,7 @@ export async function configureAgentModelOverrides(configPath, options = {}) {
       models,
       output: options.output,
       recommended,
+      vanillaFields: installedAgentFields[agentName],
       confirmConfiguredValues: options.confirmConfiguredValues,
       modelSelector: options.modelSelector,
       tierSelector: options.tierSelector,
@@ -112,7 +121,7 @@ export async function configureAgentModelOverrides(configPath, options = {}) {
     if (!shouldChange) continue;
 
     const recommended = recommendations[agent.name] ?? {};
-    logAgentCurrentAndRecommendation(options.output, agent.name, agent, recommended);
+    logAgentCurrentAndRecommendation(options.output, agent.name, agent, recommended, null);
     options.output?.log?.("  Source: installed agent, not yet in LFP override config.");
     const fields = {};
     await promptForAgentFields(fields, agent.name, {
@@ -143,6 +152,7 @@ async function promptForModelSection(config, agentName, options) {
   const currentTier = typeof fields.service_tier === "string" ? fields.service_tier : "default";
   const label = options.displayName ?? agentName;
 
+  logModelSettingScope(options.output, agentName, label);
   logAgentGuide(options.output, label, {
     model: current,
     reasoning: currentReasoning,
@@ -178,18 +188,22 @@ async function promptForAgentFields(fields, agentName, options) {
   const currentFields = options.currentFields ?? fields;
   const current = getPrimaryFields(currentFields, options.models);
   const recommended = options.recommended ?? {};
+  const vanilla = getVanillaPrimaryFields(options.vanillaFields);
   const displayName = getAgentDisplayName(agentName);
   const useConfiguredDefaults = options.confirmConfiguredValues === true;
   const defaultPrimary = useConfiguredDefaults ? current : mergePrimary(current, recommended);
 
   if (options.skipGuide !== true) {
-    logAgentCurrentAndRecommendation(options.output, agentName, currentFields, recommended);
+    logModelSettingScope(options.output, agentName, displayName);
+    logAgentCurrentAndRecommendation(options.output, agentName, currentFields, recommended, vanilla);
   }
 
   fields.model = await promptForModel(options.readline, {
     agentName,
     displayName,
     current: defaultPrimary.model,
+    vanillaRecommendation: vanilla?.model,
+    vanillaRecommendationFields: vanilla,
     models: options.models,
     output: options.output,
     modelSelector: options.modelSelector
@@ -198,6 +212,7 @@ async function promptForAgentFields(fields, agentName, options) {
     agentName,
     displayName,
     current: defaultPrimary.service_tier,
+    vanillaRecommendation: vanilla?.service_tier,
     output: options.output,
     tierSelector: options.tierSelector
   });
@@ -205,25 +220,10 @@ async function promptForAgentFields(fields, agentName, options) {
     agentName,
     displayName,
     current: defaultPrimary.model_reasoning_effort,
+    vanillaRecommendation: vanilla?.model_reasoning_effort,
     output: options.output,
     reasoningSelector: options.reasoningSelector
   }));
-}
-
-function getPrimaryFields(fields, models) {
-  return {
-    model: typeof fields.model === "string" ? fields.model : models[0],
-    model_reasoning_effort: typeof fields.model_reasoning_effort === "string" ? fields.model_reasoning_effort : "low",
-    service_tier: typeof fields.service_tier === "string" ? fields.service_tier : "default"
-  };
-}
-
-function mergePrimary(current, recommended) {
-  return {
-    model: recommended.model ?? current.model,
-    model_reasoning_effort: recommended.model_reasoning_effort ?? current.model_reasoning_effort,
-    service_tier: recommended.service_tier ?? current.service_tier
-  };
 }
 
 async function safeFetchAvailableModels(options) {
@@ -257,26 +257,6 @@ async function maybeRestoreUserOverrideConfig(configPath, userConfigPath, option
   restoreUserOverrideConfig(configPath, userConfigPath);
   options.output?.log?.("Loaded saved settings for adjustment.\n");
   return "adjust";
-}
-
-function logAgentCurrentAndRecommendation(output, agentName, currentFields, recommendation) {
-  const current = getPrimaryFields(currentFields, []);
-  const displayName = getAgentDisplayName(agentName);
-  const description = getAgentDescription(agentName);
-  if (description) output?.log?.(`Role: ${description}`);
-  logAgentGuide(output, displayName, {
-    model: current.model,
-    reasoning: current.model_reasoning_effort,
-    tier: current.service_tier
-  }, { preferCurrent: true });
-  output?.log?.(
-    `  Original/current: ${current.model ?? "unknown"} (reasoning: ${current.model_reasoning_effort}, tier: ${current.service_tier})`
-  );
-  if (recommendation.model) {
-    output?.log?.(
-      `  LFP recommendation: ${recommendation.model} (reasoning: ${recommendation.model_reasoning_effort}, tier: ${recommendation.service_tier})`
-    );
-  }
 }
 
 export { discoverAdditionalAgents, writeOverrideFields };

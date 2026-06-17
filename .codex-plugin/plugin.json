@@ -1,6 +1,6 @@
 {
   "name": "@islee23520/lfp",
-  "version": "0.3.11",
+  "version": "0.3.12",
   "description": "LazyCodex extension plugin that brings the full OMO feature set into Codex: complete agent roster, category routing, MCP fallback resolver for saved override configurations, art team, and visual specialists.",
   "author": "islee23520",
   "homepage": "https://linalab.io",

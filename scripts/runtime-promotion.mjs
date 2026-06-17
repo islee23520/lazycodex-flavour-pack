@@ -11,13 +11,21 @@ export function prepareRuntimePromotion(packageRoot, pluginRoot, entries) {
 
   try {
     for (const entry of entries) {
-      cpSync(path.join(packageRoot, entry), path.join(tempRoot, entry), { recursive: true });
+      const item = normalizeRuntimeEntry(entry);
+      const source = path.join(packageRoot, item.path);
+      if (item.optional && !existsSync(source)) continue;
+      cpSync(source, path.join(tempRoot, item.path), { recursive: true });
     }
     return { tempRoot, pluginRoot, backupRoot };
   } catch (error) {
     rmSync(tempRoot, { recursive: true, force: true });
     throw error;
   }
+}
+
+function normalizeRuntimeEntry(entry) {
+  if (typeof entry === "string") return { path: entry, optional: false };
+  return { path: entry.path, optional: entry.optional === true };
 }
 
 export function commitRuntimePromotion(promotion) {

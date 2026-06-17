@@ -10,6 +10,7 @@ import { configureAgentModelOverrides } from "./agent-model-config.mjs";
 import { runBenchmarkCommand } from "./model-benchmark.mjs";
 import { createRestoredUserOverrideConfig } from "./user-model-overrides.mjs";
 import { runSetup } from "./setup-command.mjs";
+import { runDelete } from "./delete-command.mjs";
 import { parseDoctorArgs, parseSyncArgs } from "./cli-args.mjs";
 import {
   printCodexAppsCacheFixApply,
@@ -32,6 +33,7 @@ const HELP = `lfp
 Usage:
   lfp setup [--config <path>] [--agent-models-only|--sync-global-defaults] [--skip-model-prompt] [--no-tui]
   lfp dry-setup [--config <path>] [--agent-models-only|--sync-global-defaults]
+  lfp delete [--check]
   lfp doctor [--config <path>] [--fix-cache [--apply]]
   lfp agent-config [--config <path>] [--agent-models-only|--sync-global-defaults]
   lfp benchmark-models [--recommend-only] [--roles <csv>] [--models <csv>] [--samples <n>] [--output <path>] [--dry-run] [--apply]
@@ -41,6 +43,7 @@ Usage:
 npx:
   npx @islee23520/lfp@latest setup
   npx @islee23520/lfp@latest dry-setup
+  npx @islee23520/lfp@latest delete
   npx @islee23520/lfp@latest doctor
   npx @islee23520/lfp@latest agent-config
   npx @islee23520/lfp@latest benchmark-models
@@ -48,11 +51,12 @@ npx:
 
 Commands:
   setup            Install LFP plugin, LFP-owned agents, and saved model config into Codex.
-                   Interactive: asks whether to edit ~/.codex/lfp.json model settings, including art team agents.
-                   Press Enter to keep and apply the configured values without per-agent prompts.
+                   Interactive: opens the model guide by default, including Default Codex, ULW, and art team agents.
+                   Press Enter in each prompt to keep and apply the shown OMO/LazyCodex default.
                    If provider models are discoverable, setup auto-generates recommendations while
                    Enter keeps each configured agent value.
   dry-setup        Preview what setup would do without writing.
+  delete           Remove installed LFP plugin files, LFP-owned agents, and LFP config tables.
   doctor           Check LFP install status, saved config, agent models, and overrides.
   agent-config     Reconfigure ~/.codex/lfp.json model settings and apply supported LFP-owned agent values.
   benchmark-models Recommend or benchmark role-based model routing against the active OpenAI-compatible provider.
@@ -63,6 +67,7 @@ Flags:
   --config <path>  Use a specific override config file instead of the packaged defaults or ~/.codex/lfp.json.
   --fix-cache  Check duplicate Codex Apps tool cache files.
   --apply  With doctor --fix-cache, quarantine duplicate cache files.
+  --check  With delete, preview delete actions without writing.
   --skip-model-prompt  Skip the interactive LFP model prompt during setup.
   --skip-lazycodex-install  Local development only: install this checkout without running LazyCodex install first.
   --no-tui  Force legacy line-output setup even when running in an interactive terminal.
@@ -100,6 +105,11 @@ export async function runCli(argv) {
 
   if (command === "dry-setup") {
     await runSetup(parseSyncArgs(args), { check: true, root: ROOT, defaultConfig: DEFAULT_CONFIG });
+    return;
+  }
+
+  if (command === "delete") {
+    runDelete(args);
     return;
   }
 

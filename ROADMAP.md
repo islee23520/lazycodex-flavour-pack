@@ -69,7 +69,6 @@ Track roadmap work in GitHub issues: <https://github.com/islee23520/lazycodex-fl
 - `test/category-resolver.test.mjs` — tests for category resolution
 
 **Files to modify:**
-- `hooks/hooks.json` — add category guidance hook to UserPromptSubmit dispatcher
 - `scripts/user-prompt-submit.mjs` — route to category guidance hook
 - `.codex-plugin/plugin.json` — add category resolver MCP tool if needed
 

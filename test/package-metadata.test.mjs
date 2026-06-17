@@ -3,13 +3,11 @@ import path from "node:path";
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { readOverrideConfig } from "../scripts/model-override-config.mjs";
 import { escapeRegExp } from "../scripts/toml-string-utils.mjs";
 
 const packageJson = JSON.parse(readFileSync(path.resolve("package.json"), "utf8"));
 const pluginJson = JSON.parse(readFileSync(path.resolve(".codex-plugin", "plugin.json"), "utf8"));
 const hooksJson = JSON.parse(readFileSync(path.resolve("hooks", "hooks.json"), "utf8"));
-const legacyOmoOverridesJson = JSON.parse(readFileSync(path.resolve("agent-overrides", "omo.json"), "utf8"));
 const cliText = readFileSync(path.resolve("scripts/cli.mjs"), "utf8");
 const readmeText = readFileSync(path.resolve("README.md"), "utf8");
 const agentsText = readFileSync(path.resolve("AGENTS.md"), "utf8");
@@ -48,6 +46,7 @@ test("given npm package metadata when validating release files then package incl
     "agent-overrides",
     "hooks",
     "scripts/agent-model-config-io.mjs",
+    "scripts/agent-model-config-fields.mjs",
     "scripts/agent-model-config.mjs",
     "scripts/agent-model-metadata.mjs",
     "scripts/art-team-config.mjs",
@@ -57,6 +56,7 @@ test("given npm package metadata when validating release files then package incl
     "scripts/cli.mjs",
     "scripts/codex-apps-cache.mjs",
     "scripts/codex-plugin-install.mjs",
+    "scripts/codex-plugin-delete.mjs",
     "scripts/codex-provider-config.mjs",
     "scripts/global-model-defaults.mjs",
     "scripts/install-transaction.mjs",
@@ -77,6 +77,7 @@ test("given npm package metadata when validating release files then package incl
     "scripts/model-provider.mjs",
     "scripts/model-reasoning-compat.mjs",
     "scripts/model-recommendations.mjs",
+    "scripts/model-setting-scopes.mjs",
     "scripts/provider-consent.mjs",
     "scripts/role-policy-config.mjs",
     "scripts/runtime-promotion.mjs",
@@ -87,6 +88,7 @@ test("given npm package metadata when validating release files then package incl
     "scripts/sync-agent-overrides-hook.mjs",
     "scripts/sync-agent-overrides.mjs",
     "scripts/toml-string-utils.mjs",
+    "scripts/delete-command.mjs",
     "scripts/user-prompt-submit.mjs",
     "scripts/user-model-overrides.mjs",
     "scripts/visual-engineering-hook.mjs",
@@ -137,15 +139,6 @@ test("given npm package metadata when validating internal files then code maps a
   assert.equal(publishedFiles.has("test"), false);
   assert.equal(publishedFiles.has("scripts/isolated-smoke.mjs"), false);
   assert.equal(existsSync(path.resolve(".npmignore")), true);
-});
-
-test("given legacy OMO override consumers when validating release files then JSON stays aligned with durable TOML", () => {
-  const durableConfig = readOverrideConfig(path.resolve("agent-configs", "omo-agent-model-overrides.toml"));
-
-  assert.deepEqual(legacyOmoOverridesJson.source, { agentsDir: "${CODEX_HOME}/agents" });
-  for (const agentName of Object.keys(legacyOmoOverridesJson.overrides)) {
-    assert.deepEqual(legacyOmoOverridesJson.overrides[agentName], durableConfig.overrides[agentName]);
-  }
 });
 
 test("given release automation when validating repository metadata then publish workflow exists", () => {

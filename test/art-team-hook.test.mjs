@@ -6,8 +6,6 @@ import assert from "node:assert/strict";
 
 import { runArtTeamHook } from "../scripts/art-team-hook.mjs";
 
-const lfpHooks = JSON.parse(readFileSync(path.resolve("hooks/hooks.json"), "utf8"));
-
 test("given art drawing prompt when hook runs then emits art team guidance", () => {
   const output = runArtTeamHook({
     hook_event_name: "UserPromptSubmit",
@@ -118,20 +116,6 @@ test("given malformed input when hook runs then stays quiet", () => {
   assert.equal(runArtTeamHook({}), "");
   assert.equal(runArtTeamHook({ hook_event_name: "Other" }), "");
   assert.equal(runArtTeamHook({ hook_event_name: "UserPromptSubmit" }), "");
-});
-
-test("given art team hook in hooks.json when manifest is inspected then it is registered as UserPromptSubmit sibling", () => {
-  const lfpUserPromptSubmit = lfpHooks.hooks.UserPromptSubmit;
-  assert.equal(lfpUserPromptSubmit.length, 1);
-  const hooks = lfpUserPromptSubmit[0].hooks;
-  assert.equal(hooks.length, 1);
-
-  const dispatcherHook = hooks[0];
-  assert.ok(dispatcherHook.command.includes("user-prompt-submit"), "dispatcher should be registered");
-  assert.equal(dispatcherHook.type, "command");
-  assert.match(dispatcherHook.command, /\$\{PLUGIN_ROOT\}\/scripts\/user-prompt-submit\.mjs/);
-  assert.equal(dispatcherHook.timeout, 10);
-
 });
 
 test("given art team guidance when emitted then contains loop protocol", () => {
