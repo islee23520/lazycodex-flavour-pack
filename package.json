@@ -1,7 +1,7 @@
 {
   "name": "@islee23520/lfp",
-  "version": "0.3.14",
-  "description": "LazyCodex extension plugin — brings the full OMO feature set into Codex: agents, categories, fallback chains, art team, visual specialists.",
+  "version": "0.3.15",
+  "description": "LazyCodex extension plugin — model/provider setup, category routing guidance, and fallback lookup for Codex.",
   "type": "module",
   "license": "MIT",
   "author": "islee23520",
@@ -21,7 +21,6 @@
     "lazycodex",
     "codex",
     "flavour-pack",
-    "agents",
     "hooks"
   ],
   "bin": {
@@ -37,10 +36,9 @@
     "hooks",
     "scripts/agent-model-config-io.mjs",
     "scripts/agent-model-config-fields.mjs",
+    "scripts/agent-model-config-flow.mjs",
     "scripts/agent-model-config.mjs",
     "scripts/agent-model-metadata.mjs",
-    "scripts/art-team-config.mjs",
-    "scripts/art-team-hook.mjs",
     "scripts/cli-args.mjs",
     "scripts/cli-reporting.mjs",
     "scripts/cli.mjs",
@@ -72,9 +70,11 @@
     "scripts/provider-consent.mjs",
     "scripts/role-policy-config.mjs",
     "scripts/runtime-promotion.mjs",
+    "scripts/setup-command-github.mjs",
     "scripts/setup-command.mjs",
     "scripts/setup-provider-tui.mjs",
     "scripts/setup-provider.mjs",
+    "scripts/setup-tui-selectors.mjs",
     "scripts/setup-tui.mjs",
     "scripts/sync-agent-overrides-hook.mjs",
     "scripts/sync-agent-overrides.mjs",
@@ -82,7 +82,6 @@
     "scripts/delete-command.mjs",
     "scripts/user-prompt-submit.mjs",
     "scripts/user-model-overrides.mjs",
-    "scripts/visual-engineering-hook.mjs",
     "README.md"
   ],
   "scripts": {

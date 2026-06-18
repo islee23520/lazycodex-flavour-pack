@@ -5,6 +5,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { configureAgentModelOverrides } from "../scripts/agent-model-config.mjs";
+import { BACK_SELECTION } from "../scripts/model-config-prompts.mjs";
 import { runSetupTui } from "../scripts/setup-tui.mjs";
 
 test("given setup model prompt when installed LazyCodex agent exists then shows vanilla recommendation before selection", async () => {
@@ -46,18 +47,18 @@ test("given setup model prompt when installed LazyCodex agent exists then shows 
   }
 });
 
-test("given configured LFP-owned agent when installed agent exists then does not call it vanilla LazyCodex", async () => {
-  const root = mkdtempSync(path.join(tmpdir(), "lfp-owned-not-vanilla-"));
+test("given configured OMO agent when installed agent exists then shows vanilla LazyCodex fields", async () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-omo-vanilla-"));
   try {
     const configPath = path.join(root, "overrides.toml");
-    writeFileSync(path.join(root, "sisyphus.toml"), agentText("sisyphus", "glm-5.2", "xhigh", "default"));
+    writeFileSync(path.join(root, "plan.toml"), agentText("plan", "gpt-5.5", "xhigh", "default"));
     writeFileSync(
       configPath,
       [
         "[source]",
         `agents_dir = "${root}"`,
         "",
-        "[agents.sisyphus]",
+        "[agents.plan]",
         'model = "glm-5.2"',
         'model_reasoning_effort = "xhigh"',
         'service_tier = "default"',
@@ -73,9 +74,9 @@ test("given configured LFP-owned agent when installed agent exists then does not
       persistUserOverrides: false
     });
 
-    assert.doesNotMatch(output.lines.join("\n"), /Vanilla LazyCodex recommendation/);
-    assert.doesNotMatch(output.lines.join("\n"), /Vanilla LazyCodex service tier/);
-    assert.doesNotMatch(output.lines.join("\n"), /Vanilla LazyCodex reasoning effort/);
+    assert.match(output.lines.join("\n"), /Vanilla LazyCodex recommendation: gpt-5.5 \(reasoning: xhigh, tier: default\)/);
+    assert.match(output.lines.join("\n"), /Vanilla LazyCodex service tier: default/);
+    assert.match(output.lines.join("\n"), /Vanilla LazyCodex reasoning effort: xhigh/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -212,18 +213,21 @@ test("given TUI model selector when vanilla LazyCodex fields are available then 
     3
   );
   assert.deepEqual(calls.find((call) => call[0] === "select" && call[1] === "explorer model (affects this agent only)")?.[2], [
-    { value: "gpt-5.4-mini", label: "gpt-5.4-mini", hint: "current" },
-    { value: "gpt-5.5", label: "gpt-5.5", hint: "vanilla LazyCodex" }
+    { value: "gpt-5.4-mini", label: "gpt-5.4-mini (current)", hint: "current" },
+    { value: "gpt-5.5", label: "gpt-5.5 (vanilla LazyCodex default)", hint: "vanilla LazyCodex" },
+    { value: BACK_SELECTION, label: "Back to previous setting", hint: "return without saving this field" }
   ]);
   assert.deepEqual(calls.find((call) => call[0] === "select" && call[1] === "explorer service tier (vanilla LazyCodex: fast)")?.[2], [
-    { value: "default", label: "default (non-fast)", hint: "current" },
-    { value: "fast", label: "fast", hint: "vanilla LazyCodex" }
+    { value: "default", label: "default (non-fast) (current)", hint: "current" },
+    { value: "fast", label: "fast (vanilla LazyCodex default)", hint: "vanilla LazyCodex" },
+    { value: BACK_SELECTION, label: "Back to previous setting", hint: "return without saving this field" }
   ]);
   assert.deepEqual(calls.find((call) => call[0] === "select" && call[1] === "explorer reasoning effort (vanilla LazyCodex: low)")?.[2], [
-    { value: "low", label: "low", hint: "vanilla LazyCodex" },
-    { value: "medium", label: "medium", hint: "current" },
+    { value: "low", label: "low (vanilla LazyCodex default)", hint: "vanilla LazyCodex" },
+    { value: "medium", label: "medium (current)", hint: "current" },
     { value: "high", label: "high", hint: undefined },
-    { value: "xhigh", label: "xhigh", hint: undefined }
+    { value: "xhigh", label: "xhigh", hint: undefined },
+    { value: BACK_SELECTION, label: "Back to previous setting", hint: "return without saving this field" }
   ]);
 });
 

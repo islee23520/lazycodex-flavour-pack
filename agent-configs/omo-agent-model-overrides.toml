@@ -60,32 +60,3 @@ service_tier = "default"
 model = "gpt-5.5"
 model_reasoning_effort = "xhigh"
 service_tier = "default"
-
-[agents.sisyphus]
-model = "glm-5.2"
-service_tier = "default"
-
-[agents.visual-engineering]
-model = "gemini-pro-agent"
-model_reasoning_effort = "high"
-service_tier = "default"
-
-[agents.visual-looker]
-model = "gemini-pro-agent"
-model_reasoning_effort = "high"
-service_tier = "default"
-
-[agents.artistry]
-model = "gemini-pro-agent"
-model_reasoning_effort = "high"
-service_tier = "default"
-
-[agents.artistry-gen]
-model = "gemini-pro-agent"
-model_reasoning_effort = "low"
-service_tier = "default"
-
-[agents.artistry-qa]
-model = "gemini-pro-agent"
-model_reasoning_effort = "high"
-service_tier = "default"

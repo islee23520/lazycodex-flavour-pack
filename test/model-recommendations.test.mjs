@@ -39,9 +39,7 @@ test("given CLIPROXY-like inventory when recommending role models then recommend
       explorer: {},
       metis: {},
       plan: {},
-      sisyphus: {},
-      momus: {},
-      "visual-engineering": {}
+      momus: {}
     },
     ["glm-5.2", "grok-4.20-0309-reasoning", "grok-3-mini-fast", "gemini-pro-agent", "gpt-5.5"]
   );
@@ -56,13 +54,7 @@ test("given CLIPROXY-like inventory when recommending role models then recommend
 
   assert.equal(recommendations.plan.model, "glm-5.2");
   assert.equal("model_fallback" in recommendations.plan, false);
-  assert.equal(recommendations.sisyphus.model, "glm-5.2");
-  assert.equal("model_reasoning_effort" in recommendations.sisyphus, false);
-  assert.equal("model_fallback" in recommendations.sisyphus, false);
   assert.equal("model_fallback" in recommendations.momus, false);
-
-  assert.equal(recommendations["visual-engineering"].model, "gemini-pro-agent");
-  assert.equal("model_fallback" in recommendations["visual-engineering"], false);
 });
 
 test("given explorer utility inventory when recommending role models then returns primary only", () => {

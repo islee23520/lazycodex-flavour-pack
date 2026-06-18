@@ -15,22 +15,19 @@ test("given non-visual non-art prompt when dispatcher runs then returns empty st
   assert.equal(output, "");
 });
 
-test("given visual prompt when dispatcher runs then emits visual guidance", async () => {
+test("given visual prompt when dispatcher runs then returns empty string", async () => {
   const output = await runDispatcher({
     hook_event_name: "UserPromptSubmit",
     prompt: "Run visual QA on this UI layout"
   });
 
-  const parsed = JSON.parse(output);
-  assert.equal(parsed.hookSpecificOutput.hookEventName, "UserPromptSubmit");
-  assert.match(parsed.hookSpecificOutput.additionalContext, /<lfp-visual-engineering-guidance>/);
-  assert.match(parsed.hookSpecificOutput.additionalContext, /agent_type="visual-engineering"/);
+  assert.equal(output, "");
 });
 
-test("given main agent is Hephaestus when dispatcher emits guidance then it preserves main-agent ownership", async () => {
+test("given main agent is Hephaestus when fallback dispatcher emits guidance then it preserves main-agent ownership", async () => {
   const output = await runDispatcher({
     hook_event_name: "UserPromptSubmit",
-    prompt: "Run visual QA on this UI layout",
+    prompt: "Got a 429 quota error, need to switch model",
     main_agent: "hephaestus"
   });
 
@@ -38,28 +35,16 @@ test("given main agent is Hephaestus when dispatcher emits guidance then it pres
   assert.match(parsed.hookSpecificOutput.additionalContext, /<lfp-main-agent-context>/);
   assert.match(parsed.hookSpecificOutput.additionalContext, /Main agent detected: hephaestus/);
   assert.match(parsed.hookSpecificOutput.additionalContext, /keep task ownership, integration, and final verification/);
-  assert.match(parsed.hookSpecificOutput.additionalContext, /<lfp-visual-engineering-guidance>/);
+  assert.match(parsed.hookSpecificOutput.additionalContext, /<lfp-model-fallback-guidance>/);
 });
 
-test("given active agent is an LFP specialist when dispatcher runs then it does not recursively emit delegation guidance", async () => {
-  const output = await runDispatcher({
-    hook_event_name: "UserPromptSubmit",
-    prompt: "Run visual QA on this UI layout",
-    active_agent: "visual-engineering"
-  });
-
-  assert.equal(output, "");
-});
-
-test("given art prompt when dispatcher runs then emits art guidance", async () => {
+test("given art prompt when dispatcher runs then returns empty string", async () => {
   const output = await runDispatcher({
     hook_event_name: "UserPromptSubmit",
     prompt: "Draw a cyberpunk city poster"
   });
 
-  const parsed = JSON.parse(output);
-  assert.match(parsed.hookSpecificOutput.additionalContext, /<lfp-art-team-guidance>/);
-  assert.match(parsed.hookSpecificOutput.additionalContext, /agent_type="artistry"/);
+  assert.equal(output, "");
 });
 
 test("given model error prompt when dispatcher runs then emits fallback guidance", async () => {
@@ -73,7 +58,7 @@ test("given model error prompt when dispatcher runs then emits fallback guidance
   assert.match(parsed.hookSpecificOutput.additionalContext, /model_fallback_resolver/);
 });
 
-test("given prompt matching multiple hooks when dispatcher runs then concatenates all guidance", async () => {
+test("given art prompt with model error when dispatcher runs then emits only fallback guidance", async () => {
   const output = await runDispatcher({
     hook_event_name: "UserPromptSubmit",
     prompt: "Draw pixel art sprite for the UI and handle 429 quota"
@@ -81,8 +66,7 @@ test("given prompt matching multiple hooks when dispatcher runs then concatenate
 
   const parsed = JSON.parse(output);
   const ctx = parsed.hookSpecificOutput.additionalContext;
-  // Should contain both art and fallback guidance
-  assert.match(ctx, /<lfp-art-team-guidance>/);
+  assert.doesNotMatch(ctx, /<lfp-art-team-guidance>|<lfp-visual-engineering-guidance>/);
   assert.match(ctx, /<lfp-model-fallback-guidance>/);
 });
 
@@ -110,12 +94,12 @@ test("given transcript with existing guidance when dispatcher runs then does not
     const transcriptPath = path.join(root, "transcript.jsonl");
     writeFileSync(
       transcriptPath,
-      "<lfp-visual-engineering-guidance>\n<lfp-art-team-guidance>\n"
+      "<lfp-model-fallback-guidance>\n"
     );
 
     const output = await runDispatcher({
       hook_event_name: "UserPromptSubmit",
-      prompt: "Run visual QA on this UI and draw a sprite",
+      prompt: "Refactor backend service",
       transcript_path: transcriptPath
     });
 

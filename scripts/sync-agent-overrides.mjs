@@ -4,7 +4,6 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { AGENT_MODEL_FIELDS, VIRTUAL_OVERRIDE_SECTIONS } from "./model-field-scope.mjs";
-import { isLfpOwnedAgent } from "./agent-model-metadata.mjs";
 import { readOverrideConfig } from "./model-override-config.mjs";
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -13,6 +12,14 @@ const UNSUPPORTED_AGENT_MODEL_FIELDS = new Set([
   "model_fallback",
   "model_fallback_reasoning_effort",
   "model_fallback_service_tier"
+]);
+const REMOVED_LFP_AGENT_NAMES = new Set([
+  "artistry",
+  "artistry-gen",
+  "artistry-qa",
+  "sisyphus",
+  "visual-engineering",
+  "visual-looker"
 ]);
 
 export { readOverrideConfig } from "./model-override-config.mjs";
@@ -44,34 +51,25 @@ export function syncAgentOverrides(configPath, options = {}) {
   // override state; this sync step copies only Codex-supported primary model
   // fields into installed agent TOMLs.
   const agentOverrides = Object.fromEntries(
-    Object.entries(overrides).filter(([agentName]) => !VIRTUAL_OVERRIDE_SECTIONS.has(agentName))
+    Object.entries(overrides).filter(([agentName]) => (
+      !VIRTUAL_OVERRIDE_SECTIONS.has(agentName) && !REMOVED_LFP_AGENT_NAMES.has(agentName)
+    ))
   );
 
-  const lfpOwnedOverrides = {};
-  const skippedReadOnly = [];
-  for (const [agentName, fields] of Object.entries(agentOverrides)) {
-    if (isLfpOwnedAgent(agentName)) {
-      lfpOwnedOverrides[agentName] = fields;
-    } else {
-      skippedReadOnly.push(agentName);
-    }
-  }
-
-  assertInstalledAgentDir(sourceDir, lfpOwnedOverrides, options);
+  assertInstalledAgentDir(sourceDir, agentOverrides, options);
 
   const changed = [];
 
-  for (const agentName of Object.keys(lfpOwnedOverrides)) {
+  for (const agentName of Object.keys(agentOverrides)) {
     const sourcePath = path.join(sourceDir, `${agentName}.toml`);
-    if (options.allowMissingLfpOwnedAgents === true && isLfpOwnedAgent(agentName) && isMissing(sourcePath)) continue;
     const currentText = readFileSync(sourcePath, "utf8");
-    const nextText = applyModelOverrides(currentText, lfpOwnedOverrides[agentName] ?? {});
+    const nextText = applyModelOverrides(currentText, agentOverrides[agentName] ?? {});
     if (currentText === nextText) continue;
     changed.push(sourcePath);
     if (!options.check) writeFileSync(sourcePath, nextText);
   }
 
-  return { changed, skippedReadOnly };
+  return { changed, skippedReadOnly: [] };
 }
 
 export function applyModelOverrides(sourceText, values) {
@@ -82,9 +80,6 @@ export function applyModelOverrides(sourceText, values) {
 
   for (const [index, line] of lines.entries()) {
     const key = line.includes("=") ? line.split("=", 1)[0].trim() : "";
-    if (UNSUPPORTED_AGENT_MODEL_FIELDS.has(key)) {
-      continue;
-    }
     if (AGENT_MODEL_FIELDS.has(key) && Object.hasOwn(values, key)) {
       output.push(`${key} = ${JSON.stringify(String(values[key]))}`);
       seen.add(key);
@@ -154,7 +149,6 @@ function assertInstalledAgentDir(sourceDir, overrides, options = {}) {
       if (!stats.isFile()) missing.push(agentPath);
     } catch (error) {
       if (error?.code === "ENOENT") {
-        if (options.allowMissingLfpOwnedAgents === true && isLfpOwnedAgent(agentName)) continue;
         missing.push(agentPath);
         continue;
       }

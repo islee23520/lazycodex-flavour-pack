@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
+import { BACK_SELECTION } from "../scripts/model-config-prompts.mjs";
 import { runSetupTui, shouldUseSetupTui } from "../scripts/setup-tui.mjs";
 
 test("given interactive setup when TTY is available then uses the Clack TUI path", () => {
@@ -59,7 +60,7 @@ test("given TUI setup is cancelled when running then it does not call the setup 
     [
       "note",
       "LazyCodex overlay",
-      "Install and enable lfp@islee23520.\nRun LazyCodex install first unless explicitly skipped.\nApply only LFP-owned agents, provider consent, and model-field overrides."
+      "Install and enable lfp@islee23520.\nRun LazyCodex install first unless explicitly skipped.\nApply provider consent and supported model-field overrides to existing OMO/LazyCodex agents."
     ],
     ["cancel", "LFP setup cancelled."]
   ]);
@@ -134,8 +135,9 @@ test("given TUI setup model selector when line setup asks for model then uses Cl
     "select",
     "explorer model (affects this agent only)",
     [
-      { value: "gpt-5.4-mini", label: "gpt-5.4-mini", hint: "current" },
-      { value: "gpt-5.5", label: "gpt-5.5", hint: undefined }
+      { value: "gpt-5.4-mini", label: "gpt-5.4-mini (current)", hint: "current" },
+      { value: "gpt-5.5", label: "gpt-5.5", hint: undefined },
+      { value: BACK_SELECTION, label: "Back to previous setting", hint: "return without saving this field" }
     ],
     "gpt-5.4-mini"
   ]);
@@ -178,7 +180,10 @@ test("given TUI setup fallback selector when line setup asks then labels fallbac
   assert.deepEqual(calls.find((call) => call[0] === "select"), [
     "select",
     "plan fallback model (affects this agent only)",
-    [{ value: "manual-fallback-model", label: "manual-fallback-model", hint: "current custom id" }],
+    [
+      { value: "manual-fallback-model", label: "manual-fallback-model (current)", hint: "custom id" },
+      { value: BACK_SELECTION, label: "Back to previous setting", hint: "return without saving this field" }
+    ],
     "manual-fallback-model"
   ]);
   assert.deepEqual(calls.find((call) => call[0] === "selected"), ["selected", "manual-fallback-model"]);
@@ -317,11 +322,11 @@ test("given TUI setup writer logs status when running then status is shown as fr
     {
       prompts,
       colors: { inverse: (value) => value, green: (value) => value },
-      runLineSetup: async () => console.log("lfp setup: installed LFP agents")
+      runLineSetup: async () => console.log("lfp setup: installed plugin")
     }
   );
 
-  assert.deepEqual(calls.at(-2), ["note", "Setup results", "lfp setup: installed LFP agents"]);
+  assert.deepEqual(calls.at(-2), ["note", "Setup results", "lfp setup: installed plugin"]);
   assert.equal(calls.at(-1)[0], "outro");
 });
 
@@ -372,9 +377,10 @@ test("given TUI OMO overrides with additional agents then uses yesNoSelector and
   const prompts = {
     intro: (m) => calls.push(["intro", m]),
     note: (m, t) => calls.push(["note", t, m]),
-    confirm: async (opts) => { calls.push(["confirm", opts.message]); return true; }, // answer yes to change the extra agent
+    confirm: async (opts) => { calls.push(["confirm", opts.message]); return true; },
     select: async (opts) => {
       calls.push(["select", opts.message]);
+      if (/Change lazycodex-code-reviewer/.test(opts.message)) return true;
       if (/GitHub/.test(opts.message)) return "1";
       return opts.initialValue ?? opts.options?.[0]?.value;
     },
@@ -414,7 +420,7 @@ test("given TUI OMO overrides with additional agents then uses yesNoSelector and
 
   assert.ok(calls.some(c => c[0] === "hasYesNo" && c[1]), "yesNoSelector provided");
   assert.ok(calls.some(c => c[0] === "hasGitHub" && c[1]), "gitHubStartSelector provided");
-  assert.ok(calls.some(c => c[0] === "confirm" && /Change lazycodex-code-reviewer/.test(c[1])), "yes/no confirm for additional agent used");
+  assert.ok(calls.some(c => c[0] === "select" && /Change lazycodex-code-reviewer/.test(c[1])), "yes/no select for additional agent used");
   assert.ok(calls.some(c => c[0] === "additionalYes" && c[1] === true), "answered yes to additional");
   assert.ok(calls.some(c => c[0] === "select" && /lazycodex-code-reviewer model/.test(c[1])), "additional model select");
   assert.ok(calls.some(c => c[0] === "select" && /GitHub/.test(c[1])), "reached GitHub selector");

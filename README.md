@@ -2,9 +2,9 @@
 
 LazyCodex extension plugin that brings the full OMO feature set into Codex.
 
-LazyCodex is the OMO Light edition for Codex — it intentionally ships only a portable subset (rules, ultrawork, lsp, 6 core agents) because it targets GPT-only workflows. LFP bridges the rest: the complete agent roster, category-based model routing, MCP fallback resolver for saved override configurations, art team orchestration, visual specialists, provider configuration, and model benchmarking.
+LazyCodex is the OMO Light edition for Codex. LFP keeps LazyCodex/OMO as the owner of agent behavior and adds the operational layer for model/provider setup, category-based model routing guidance, MCP fallback resolver for saved override configurations, and model benchmarking.
 
-LFP runs `npx lazycodex-ai@latest install` first, then registers this plugin in Codex, installs LFP-owned agents, optionally configures a generic OpenAI-compatible provider only after operator consent, and writes saved model-routing choices to `~/.codex/lfp.json`. LazyCodex-owned agents stay pure: LFP modifies only LFP-owned agent configs plus Codex global defaults when that mode is enabled.
+LFP runs `npx lazycodex-ai@latest install` first, then registers this plugin in Codex, optionally configures a generic OpenAI-compatible provider only after operator consent, and writes saved model-routing choices to `~/.codex/lfp.json`. It applies only Codex-supported primary model fields (`model`, `model_reasoning_effort`, `service_tier`) to existing LazyCodex/OMO agent TOMLs plus Codex global defaults when that mode is enabled.
 
 Repository and LFP-owned issues live at <https://github.com/islee23520/lazycodex-flavour-pack>. If a failure is caused by upstream LazyCodex/OMO behavior rather than this flavour pack, register that issue on the upstream LazyCodex tracker instead.
 
@@ -17,11 +17,7 @@ OpenAI-compatible provider setup is consent-gated. In interactive setup, LFP ask
 ## Contents
 
 - `scripts/sync-agent-overrides-hook.mjs`: quietly applies configured model overrides at session start and before prompt guidance.
-- `scripts/visual-engineering-hook.mjs`: adds guidance to use `visual-engineering` for UI judgment and `visual-looker` for multimodal visual evidence inspection.
-- `scripts/art-team-hook.mjs`: adds guidance for the LFP art team agents on art-related prompts.
-- `scripts/sync-agent-overrides.mjs`: reapplies supported three-primary-field model settings for LFP-owned/runtime targets from the configured override source.
-- `agent-configs/visual-engineering.toml`: LFP-owned visual engineering agent config.
-- `agent-configs/visual-looker.toml`: LFP-owned Gemini multimodal looker for screenshots, rendered documents, images, diagrams, and visual evidence.
+- `scripts/sync-agent-overrides.mjs`: reapplies supported three-primary-field model settings for existing LazyCodex/OMO agent targets from the configured override source.
 - `agent-configs/omo-agent-model-overrides.toml`: packaged default model recommendation seed used before a user `~/.codex/lfp.json` exists.
 - `agent-configs/codex-openai-compat-provider.toml`: durable provider source for Codex OpenAI-compatible setup.
 - `agent-overrides/omo.json`: legacy JSON override source retained for compatibility with older script callers.
@@ -45,7 +41,7 @@ npm run agent-config
 npm run smoke:isolated
 ```
 
-`setup` installs/enables LFP under `CODEX_HOME/local-marketplaces/islee23520/plugins/lfp`, installs LFP-owned helper agents under `CODEX_HOME/agents`, and applies configured model-field overrides. LazyCodex-owned agents are not rewritten by LFP; they remain the upstream LazyCodex install output. Agent TOML sync is limited to the three primary model fields on LFP-owned/runtime targets: `model`, `model_reasoning_effort`, and `service_tier`; global default sync remains limited to the first three fields for top-level `config.toml` and `ulw.config.toml`.
+`setup` installs/enables LFP under `CODEX_HOME/local-marketplaces/islee23520/plugins/lfp` and applies configured model-field overrides to existing LazyCodex/OMO agent TOMLs. Agent TOML sync is limited to the three primary model fields: `model`, `model_reasoning_effort`, and `service_tier`; global default sync remains limited to the same three fields for top-level `config.toml` and `ulw.config.toml`.
 
 The canonical user config is `${CODEX_HOME}/lfp.json` (normally `~/.codex/lfp.json`) with `schemaVersion: 2`. It stores `source`, `overrides`, and `rolePolicies` in one JSON document. Setup and `agent-config` create or update this file; `benchmark-models --apply` writes winning model fields back to this same canonical path.
 
@@ -53,19 +49,19 @@ Fallback model resolution is available via the MCP resolver tool for saved overr
 
 Interactive terminals get a Clack setup shell with confirm/cancel framing around the same setup work. Non-interactive setup, `dry-setup`, and `doctor` keep line-output behavior. Use `setup --no-tui` to force the legacy line-output setup path in a TTY.
 
-Interactive setup enters a single model selection flow by default, covering Default Codex, ULW, and LFP-provided roles/agents (sisyphus, visual-*, artistry-*, fallback-capable roles). Each model, reasoning-effort, and service-tier prompt shows what the setting affects, the current OMO/LazyCodex value, the vanilla LazyCodex recommendation where available, the LFP recommendation where one exists, and a short English guide for the agent role, tuning goal, and minimum capability. Pressing Enter keeps and re-applies the shown value while still allowing edits. When provider models are discoverable, setup builds recommendations from the active provider inventory automatically. Saved choices are written into `${CODEX_HOME}/lfp.json` before setup applies the overrides. Use `--skip-model-prompt` for non-guided setup.
+Interactive setup enters a single model selection flow by default, covering Default Codex, ULW, and configured LazyCodex/OMO agents. Each model, reasoning-effort, and service-tier prompt shows what the setting affects, the current OMO/LazyCodex value, the vanilla LazyCodex recommendation where available, the LFP recommendation where one exists, and a short English guide for the agent role, tuning goal, and minimum capability. TUI choices mark `(current)` and `(vanilla LazyCodex default)` directly in the option label. Pressing Enter keeps and re-applies the shown value while still allowing edits; choosing `Back to previous setting` revisits the previous field or setup section. Line mode accepts `b`, `back`, `:back`, or `previous` for the same back-navigation flow. When provider models are discoverable, setup builds recommendations from the active provider inventory automatically. Saved choices are written into `${CODEX_HOME}/lfp.json` before setup applies the overrides. Use `--skip-model-prompt` for non-guided setup.
 
 When interactive model setup changes override values, LFP saves a schema-versioned JSON user copy at `${CODEX_HOME}/lfp.json`. On later interactive `setup` runs after an npx/package patch, LFP asks whether you want to adjust model overrides; answering no keeps the saved settings without rerunning the per-agent prompts. Answering yes loads the saved copy and continues into the model selection flow. Older `${CODEX_HOME}/lfp/omo-agent-model-overrides.json`, `${CODEX_HOME}/lfp/omo-agent-model-overrides.toml`, and `${CODEX_HOME}/.ledger/lfp/omo-agent-model-overrides.toml` copies are migrated automatically into the canonical JSON config path.
 
-`agent-config` runs the same LFP model selector without reinstalling the LFP-owned helper agents. It lists already-configured override targets and writes selections to `${CODEX_HOME}/lfp.json`. Agent TOML writes are restricted to the three primary model fields on supported LFP-owned/runtime targets.
+`agent-config` runs the same LFP model selector without reinstalling the plugin. It lists already-configured override targets and writes selections to `${CODEX_HOME}/lfp.json`. Agent TOML writes are restricted to the three primary model fields on existing LazyCodex/OMO targets.
 
 Role recommendation policy defaults live in `agent-configs/lfp-role-policies.toml`. The canonical override location is `${CODEX_HOME}/lfp.json` under `rolePolicies`; when present, those values take priority. The legacy sidecar `${CODEX_HOME}/lfp/lfp-role-policies.toml` with `[policies.<role>]` sections still works for now. Model preference order stays code-managed.
 
-`dry-setup` previews pending writes. `delete` removes the installed LFP plugin runtime, LFP-owned helper agents, and LFP marketplace/plugin config tables; it preserves LazyCodex/OMO state, provider config, and `${CODEX_HOME}/lfp.json`. `doctor` reports plugin install state, upstream LazyCodex/OMO readiness, provider status, visual-agent smoke checks, and pending override work.
+`dry-setup` previews pending writes. `delete` removes the installed LFP plugin runtime and LFP marketplace/plugin config tables; it preserves LazyCodex/OMO state, provider config, and `${CODEX_HOME}/lfp.json`. `doctor` reports plugin install state, upstream LazyCodex/OMO readiness, provider status, and pending override work.
 
 `smoke:isolated` runs setup, saved user override restore, override sync, doctor, and Codex Apps cache cleanup against a temporary `CODEX_HOME`; it does not touch the real Codex install.
 
-LFP prompt guidance scripts stay lightweight. The override sync path is the only path that mutates agent TOMLs, applying the configured three primary agent model fields; the visual/art/fallback prompt guidance scripts remain guidance-only.
+LFP prompt guidance scripts stay lightweight. The override sync path is the only path that mutates agent TOMLs, applying the configured three primary agent model fields; fallback prompt guidance remains read-only and points agents at the MCP resolver.
 
 The packaged override configs resolve `${CODEX_HOME}` at runtime, so the same release works across different user home directories and custom Codex homes without editing the shipped files.
 

@@ -31,7 +31,7 @@ export function getPendingCodexPluginDeleteActions(options = {}) {
   const actions = [];
   if (state.pluginFilesInstalled || existsSync(state.pluginRoot)) actions.push(`remove plugin files from ${state.pluginRoot}`);
   if (state.additionalAgentFiles.some((filePath) => existsSync(filePath))) {
-    actions.push(`remove LFP agents from ${path.join(state.codexHome, "agents")}`);
+    actions.push(`remove LFP helper agents from ${path.join(state.codexHome, "agents")}`);
   }
   if (state.pluginEnabled) actions.push(`remove plugin ${PLUGIN_REF} from ${state.configPath}`);
   if (state.marketplaceConfigured && !hasOtherMarketplacePlugins(state, currentConfig)) {
@@ -41,6 +41,7 @@ export function getPendingCodexPluginDeleteActions(options = {}) {
 }
 
 function removeAdditionalAgents(state) {
+  if (ADDITIONAL_AGENT_CONFIGS.length === 0) return;
   for (const fileName of ADDITIONAL_AGENT_CONFIGS) {
     rmSync(path.join(state.codexHome, "agents", fileName), { force: true });
   }

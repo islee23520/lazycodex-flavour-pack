@@ -4,10 +4,8 @@ import path from "node:path";
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { runArtTeamHook } from "../scripts/art-team-hook.mjs";
 import { runModelFallbackGuidance } from "../scripts/model-fallback-guidance.mjs";
 import { runOverrideSyncHook } from "../scripts/sync-agent-overrides-hook.mjs";
-import { runUserPromptSubmitHook } from "../scripts/visual-engineering-hook.mjs";
 
 test("given SessionStart hook when override is pending then applies model fields quietly", () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-sync-hook-"));
@@ -44,7 +42,7 @@ test("given UserPromptSubmit hook when saved override exists then saved model wi
         schemaVersion: 2,
         source: { agentsDir: "${CODEX_HOME}/agents" },
         overrides: {
-          "visual-looker": {
+          plan: {
             model: "gemini-saved-agent",
             model_reasoning_effort: "medium",
             service_tier: "fast",
@@ -221,28 +219,18 @@ test("given unsupported hook event when sync hook runs then it stays quiet witho
   }
 });
 
-test("given visual art and fallback guidance hooks when they run then they do not mutate agent TOMLs", () => {
+test("given fallback guidance hook when it runs then it does not mutate agent TOMLs", () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-guidance-hooks-"));
   try {
     const fixture = createFixture(root, "gpt-5.4-mini");
     const before = readFileSync(fixture.agentPath, "utf8");
 
-    const visualOutput = runUserPromptSubmitHook({
-      hook_event_name: "UserPromptSubmit",
-      prompt: "please run visual QA on this UI"
-    });
-    const artOutput = runArtTeamHook({
-      hook_event_name: "UserPromptSubmit",
-      prompt: "make a sprite and illustration asset"
-    });
     const fallbackOutput = runModelFallbackGuidance({
       hook_event_name: "UserPromptSubmit",
-      prompt: "quota 429, switch model fallback for visual-looker"
+      prompt: "quota 429, switch model fallback for plan"
     });
     const after = readFileSync(fixture.agentPath, "utf8");
 
-    assert.match(visualOutput, /hookSpecificOutput/);
-    assert.match(artOutput, /hookSpecificOutput/);
     assert.equal(fallbackOutput.emit, true);
     assert.match(fallbackOutput.guidance, /model_fallback_resolver/);
     assert.equal(after, before);
@@ -253,13 +241,13 @@ test("given visual art and fallback guidance hooks when they run then they do no
 
 function createFixture(root, currentModel, extraOverrides = {}) {
   const agentsDir = path.join(root, "agents");
-  const agentPath = path.join(agentsDir, "visual-looker.toml");
+  const agentPath = path.join(agentsDir, "plan.toml");
   const configPath = path.join(root, "overrides.toml");
   mkdirSync(agentsDir);
   writeFileSync(
     agentPath,
     [
-      'name = "visual-looker"',
+      'name = "plan"',
       `model = "${currentModel}"`,
       'model_reasoning_effort = "low"',
       'service_tier = "fast"',
@@ -275,7 +263,7 @@ function createFixture(root, currentModel, extraOverrides = {}) {
       "",
       ...formatOverrideSections(extraOverrides),
       ...formatOverrideSections({
-        "visual-looker": {
+        plan: {
           model: "gemini-pro-agent",
           model_reasoning_effort: "high",
           service_tier: "default",

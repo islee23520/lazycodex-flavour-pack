@@ -117,13 +117,8 @@ if (!output.questions.some((question) => /Adjust LFP model overrides now/.test(q
 if (!output.questions.some((question) => /explorer model/.test(question))) {
   throw new Error("Model override prompts did not continue after saved override restore");
 }
-for (const agentName of ["metis", "lazycodex-code-reviewer", "lazycodex-qa-executor"]) {
-  if (!sync.skippedReadOnly.includes(agentName)) {
-    throw new Error(`Expected ${agentName} to be skipped as a read-only LazyCodex agent`);
-  }
-}
-if (sync.changed.some((filePath) => filePath.endsWith("metis.toml") || filePath.endsWith("explorer.toml") || filePath.includes("lazycodex-"))) {
-  throw new Error(`LazyCodex agents should not be updated: ${sync.changed.join(", ")}`);
+if (sync.skippedReadOnly.length > 0) {
+  throw new Error(`Expected no read-only skipped agents: ${sync.skippedReadOnly.join(", ")}`);
 }
 if (!readFileSync(savedOverridePath, "utf8").includes('"schemaVersion": 2')) {
   throw new Error("Expected lfp.json saved override config to be created");
@@ -143,7 +138,7 @@ console.log(`isolated smoke: saved adjust prompt shown=true`);
 console.log(`isolated smoke: prompts continued after saved adjust=true`);
 console.log(`isolated smoke: updated agents=${sync.changed.map((filePath) => path.basename(filePath)).join(", ")}`);
 console.log(`isolated smoke: saved lfp.json created=true`);
-console.log(`isolated smoke: lazycodex agents unchanged=true`);
+console.log(`isolated smoke: lazycodex agents updated=true`);
 
 function runCli(args) {
   return spawnSync(process.execPath, [CLI, ...args], {

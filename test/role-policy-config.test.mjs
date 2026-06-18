@@ -16,18 +16,12 @@ const EXPECTED_DEFAULT_POLICIES = {
   librarian: { reasoning: "low", tier: "fast" },
   metis: { reasoning: "high", tier: "default" },
   plan: { reasoning: "xhigh", tier: "default" },
-  sisyphus: { reasoning: "high", tier: "default" },
   momus: { reasoning: "xhigh", tier: "default" },
   "lazycodex-executor": { reasoning: "high", tier: "default" },
   "lazycodex-code-reviewer": { reasoning: "xhigh", tier: "default" },
   "lazycodex-qa-executor": { reasoning: "medium", tier: "default" },
   "lazycodex-gate-reviewer": { reasoning: "xhigh", tier: "default" },
-  "lazycodex-clone-fidelity-reviewer": { reasoning: "xhigh", tier: "default" },
-  "visual-engineering": { reasoning: "high", tier: "default" },
-  "visual-looker": { reasoning: "high", tier: "default" },
-  artistry: { reasoning: "high", tier: "default" },
-  "artistry-gen": { reasoning: "high", tier: "default" },
-  "artistry-qa": { reasoning: "high", tier: "default" }
+  "lazycodex-clone-fidelity-reviewer": { reasoning: "xhigh", tier: "default" }
 };
 
 function withTempCodexHome(testFn) {
@@ -123,14 +117,14 @@ describe("role-policy-config", () => {
       reasoning = "maximum"
       tier = "turbo"
 
-      [policies.visual-looker]
+      [policies.plan]
       reasoning = "high"
       tier = "fast"
     `);
 
     assert.deepEqual(policies, {
       explorer: { reasoning: "medium", tier: "default" },
-      "visual-looker": { reasoning: "high", tier: "fast" }
+      plan: { reasoning: "high", tier: "fast" }
     });
   });
 

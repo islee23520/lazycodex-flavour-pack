@@ -39,7 +39,7 @@ test("given isolated smoke command when run then setup and doctor pass without r
     assert.match(result.stdout, /prompts continued after saved adjust=true/);
     assert.match(result.stdout, /updated agents=/);
     assert.match(result.stdout, /saved lfp\.json created=true/);
-    assert.match(result.stdout, /lazycodex agents unchanged=true/);
+    assert.match(result.stdout, /lazycodex agents updated=true/);
     assert.doesNotMatch(result.stdout, new RegExp(escapeRegExp(sentinelCodexHome)));
     assert.equal(existsSync(sentinelCodexHome), false);
   } finally {

@@ -108,7 +108,7 @@ test("given setup line mode gets isolated override options then default model gu
   try {
     const codexHome = path.join(root, "codex-home");
     const isolatedUserConfig = path.join(root, "isolated-lfp.json");
-    mkdirSync(path.join(codexHome, "agents"), { recursive: true });
+    writeOmoAgentFixtureSet(path.join(codexHome, "agents"));
     const output = captureOutput();
 
     Object.defineProperty(process.stdin, "isTTY", { configurable: true, value: true });
@@ -201,8 +201,7 @@ test("given provider fetch fails in non-interactive setup then writes lfp json f
   try {
     const codexHome = path.join(root, "codex-home");
     const agentsDir = path.join(codexHome, "agents");
-    mkdirSync(agentsDir, { recursive: true });
-    writeFileSync(path.join(agentsDir, "explorer.toml"), 'name = "explorer"\nmodel = "upstream-original"\n');
+    writeOmoAgentFixtureSet(agentsDir, { explorer: { model: "upstream-original" } });
     writeFileSync(
       path.join(codexHome, "config.toml"),
       [
@@ -221,15 +220,12 @@ test("given provider fetch fails in non-interactive setup then writes lfp json f
     });
     const saved = JSON.parse(readFileSync(path.join(codexHome, "lfp.json"), "utf8"));
     const explorerText = readFileSync(path.join(agentsDir, "explorer.toml"), "utf8");
-    const sisyphusText = readFileSync(path.join(agentsDir, "sisyphus.toml"), "utf8");
 
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /wrote recommended models to .*lfp\.json/);
     assert.equal(saved.schemaVersion, 2);
     assert.equal(saved.overrides.explorer.model, "gpt-5.4-mini");
-    assert.equal(saved.overrides.sisyphus.model, "glm-5.2");
-    assert.match(explorerText, /model = "upstream-original"/);
-    assert.match(sisyphusText, /model = "glm-5\.2"/);
+    assert.match(explorerText, /model = "gpt-5\.4-mini"/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -255,4 +251,33 @@ function captureOutput() {
       this.lines.push(line);
     }
   };
+}
+
+function writeOmoAgentFixtureSet(agentsDir, overrides = {}) {
+  mkdirSync(agentsDir, { recursive: true });
+  const agents = {
+    "lazycodex-executor": { model: "gpt-5.5", reasoning: "high", tier: "default" },
+    "lazycodex-code-reviewer": { model: "gpt-5.5", reasoning: "xhigh", tier: "default" },
+    "lazycodex-qa-executor": { model: "gpt-5.5", reasoning: "medium", tier: "default" },
+    "lazycodex-gate-reviewer": { model: "gpt-5.5", reasoning: "xhigh", tier: "default" },
+    "lazycodex-clone-fidelity-reviewer": { model: "gpt-5.5", reasoning: "xhigh", tier: "default" },
+    explorer: { model: "gpt-5.4-mini", reasoning: "low", tier: "fast" },
+    librarian: { model: "gpt-5.4-mini", reasoning: "low", tier: "fast" },
+    metis: { model: "gpt-5.5", reasoning: "high", tier: "default" },
+    momus: { model: "gpt-5.5", reasoning: "xhigh", tier: "default" },
+    plan: { model: "gpt-5.5", reasoning: "xhigh", tier: "default" }
+  };
+  for (const [name, defaults] of Object.entries(agents)) {
+    const fields = { ...defaults, ...overrides[name] };
+    writeFileSync(
+      path.join(agentsDir, `${name}.toml`),
+      [
+        `name = "${name}"`,
+        `model = "${fields.model}"`,
+        `model_reasoning_effort = "${fields.reasoning}"`,
+        `service_tier = "${fields.tier}"`,
+        ""
+      ].join("\n")
+    );
+  }
 }

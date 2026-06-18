@@ -80,13 +80,12 @@ test("given LFP marketplace config contains another plugin when delete runs then
   }
 });
 
-test("given delete fails during config update then previous plugin and agents are restored", () => {
+test("given delete fails during config update then previous plugin is restored", () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-delete-rollback-"));
   try {
     const fixture = createFixture(root);
     const setup = runCli(["setup", "--config", fixture.overridePath], fixture.codexHome);
     const pluginRoot = path.join(fixture.codexHome, "local-marketplaces", "islee23520", "plugins", "lfp");
-    const sisyphusPath = path.join(fixture.codexHome, "agents", "sisyphus.toml");
     const pluginManifest = path.join(pluginRoot, ".codex-plugin", "plugin.json");
 
     assert.equal(setup.status, 0, setup.stderr);
@@ -97,7 +96,6 @@ test("given delete fails during config update then previous plugin and agents ar
     assert.equal(deletion.status, 1);
     assert.match(deletion.stderr, /EACCES|permission denied/i);
     assert.equal(existsSync(pluginManifest), true);
-    assert.equal(existsSync(sisyphusPath), true);
     assert.match(readFileSync(fixture.codexConfigPath, "utf8"), /\[plugins\."lfp@islee23520"\]/);
   } finally {
     rmSync(root, { recursive: true, force: true });

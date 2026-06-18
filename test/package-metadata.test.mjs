@@ -57,10 +57,9 @@ test("given npm package metadata when validating release files then package incl
     "hooks",
     "scripts/agent-model-config-io.mjs",
     "scripts/agent-model-config-fields.mjs",
+    "scripts/agent-model-config-flow.mjs",
     "scripts/agent-model-config.mjs",
     "scripts/agent-model-metadata.mjs",
-    "scripts/art-team-config.mjs",
-    "scripts/art-team-hook.mjs",
     "scripts/cli-args.mjs",
     "scripts/cli-reporting.mjs",
     "scripts/cli.mjs",
@@ -92,9 +91,11 @@ test("given npm package metadata when validating release files then package incl
     "scripts/provider-consent.mjs",
     "scripts/role-policy-config.mjs",
     "scripts/runtime-promotion.mjs",
+    "scripts/setup-command-github.mjs",
     "scripts/setup-command.mjs",
     "scripts/setup-provider-tui.mjs",
     "scripts/setup-provider.mjs",
+    "scripts/setup-tui-selectors.mjs",
     "scripts/setup-tui.mjs",
     "scripts/sync-agent-overrides-hook.mjs",
     "scripts/sync-agent-overrides.mjs",
@@ -102,7 +103,6 @@ test("given npm package metadata when validating release files then package incl
     "scripts/delete-command.mjs",
     "scripts/user-prompt-submit.mjs",
     "scripts/user-model-overrides.mjs",
-    "scripts/visual-engineering-hook.mjs",
     "README.md"
   ]);
 });
@@ -118,7 +118,7 @@ test("given plugin manifest when validating release metadata then bundled manife
   assert.equal(pluginJson.name, packageJson.name);
   assert.equal(pluginJson.version, packageJson.version);
   assert.equal(pluginJson.hooks, "./hooks/hooks.json");
-  assert.equal(pluginJson["x-lfp"].additionalAgents.includes("./agent-configs/sisyphus.toml"), true);
+  assert.deepEqual(pluginJson["x-lfp"].additionalAgents, []);
 });
 
 test("given scoped npm package name when validating docs and CLI help then npx commands use package identity", () => {

@@ -5,7 +5,7 @@ import { AGENT_MODEL_FIELDS } from "./model-field-scope.mjs";
 import { readTomlString } from "./toml-string-utils.mjs";
 
 const WRITABLE_FIELDS = [...AGENT_MODEL_FIELDS];
-const LFP_AGENT_NAMES = new Set(["artistry", "artistry-gen", "artistry-qa", "sisyphus", "visual-engineering", "visual-looker"]);
+const LFP_AGENT_NAMES = new Set();
 
 export function discoverAdditionalAgents(sourceDir, overrides) {
   if (typeof sourceDir !== "string") return [];

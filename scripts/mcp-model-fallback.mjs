@@ -18,7 +18,7 @@ export async function model_fallback_resolver(params = {}) {
   const { agent, reason, onError } = params || {};
   if (!agent || typeof agent !== "string") {
     return {
-      error: "agent is required (string, e.g. explorer, metis, plan, visual-engineering)",
+      error: "agent is required (string, e.g. explorer, metis, plan)",
       example: { agent: "explorer", reason: "quota" }
     };
   }

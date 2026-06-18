@@ -5,7 +5,6 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { getCodexPluginState, PLUGIN_REF } from "./codex-plugin-install.mjs";
 import { syncAgentOverrides, syncGlobalModelDefaults } from "./sync-agent-overrides.mjs";
-import { configureArtTeam } from "./art-team-config.mjs";
 import { configureAgentModelOverrides } from "./agent-model-config.mjs";
 import { runBenchmarkCommand } from "./model-benchmark.mjs";
 import { createRestoredUserOverrideConfig } from "./user-model-overrides.mjs";
@@ -15,15 +14,13 @@ import { parseDoctorArgs, parseSyncArgs } from "./cli-args.mjs";
 import {
   printCodexAppsCacheFixApply,
   printCodexAppsCacheFixPreview,
-  printArtTeamConfig,
   printCodexAppsCacheState,
   printAgentModelDrift,
   printApplierPreservationStatus,
   printInstallSmokeState,
   printOpenAiCompatProviderState,
   printProviderInventoryVisibility,
-  printRolePolicyConfig,
-  printVisualSmokeState
+  printRolePolicyConfig
 } from "./cli-reporting.mjs";
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -37,7 +34,6 @@ Usage:
   lfp doctor [--config <path>] [--fix-cache [--apply]]
   lfp agent-config [--config <path>] [--agent-models-only|--sync-global-defaults]
   lfp benchmark-models [--recommend-only] [--roles <csv>] [--models <csv>] [--samples <n>] [--output <path>] [--dry-run] [--apply]
-  lfp art-config
   lfp help
 
 npx:
@@ -47,20 +43,19 @@ npx:
   npx @islee23520/lfp@latest doctor
   npx @islee23520/lfp@latest agent-config
   npx @islee23520/lfp@latest benchmark-models
-  npx @islee23520/lfp@latest art-config
 
 Commands:
-  setup            Install LFP plugin, LFP-owned agents, and saved model config into Codex.
-                   Interactive: opens the model guide by default, including Default Codex, ULW, and art team agents.
-                   Press Enter in each prompt to keep and apply the shown OMO/LazyCodex default.
+  setup            Install LFP plugin and saved model config into Codex.
+                   Interactive: opens the model guide by default, including Default Codex, ULW, and OMO/LazyCodex agents.
+                   TUI options mark current values and vanilla LazyCodex defaults.
+                   Press Enter to keep the shown value; choose Back or type back in line mode to revisit the previous setting.
                    If provider models are discoverable, setup auto-generates recommendations while
                    Enter keeps each configured agent value.
   dry-setup        Preview what setup would do without writing.
-  delete           Remove installed LFP plugin files, LFP-owned agents, and LFP config tables.
+  delete           Remove installed LFP plugin files and LFP config tables.
   doctor           Check LFP install status, saved config, agent models, and overrides.
-  agent-config     Reconfigure ~/.codex/lfp.json model settings and apply supported LFP-owned agent values.
+  agent-config     Reconfigure ~/.codex/lfp.json model settings and apply supported OMO/LazyCodex agent model fields.
   benchmark-models Recommend or benchmark role-based model routing against the active OpenAI-compatible provider.
-  art-config       Reconfigure art team models (interactive prompt).
   help             Show this help.
 
 Flags:
@@ -81,7 +76,7 @@ Flags:
   --dry-run  With benchmark-models, score scenarios without provider calls.
   --apply  With benchmark-models, write winning model fields to ~/.codex/lfp.json.
 
-  This package extends LazyCodex with OMO model-routing, visual, art, fallback, and benchmark capabilities for Codex while keeping LazyCodex-owned agents pure. setup runs npx lazycodex-ai@latest install before applying LFP, installs/enables this pack in Codex, writes canonical schemaVersion 2 config to ~/.codex/lfp.json, and applies configured three primary model fields only where LFP owns the target. Use --agent-models-only to preserve existing Codex global defaults.`;
+  This package extends LazyCodex with model/provider setup, OMO model-routing guidance, fallback lookup, and benchmark capabilities for Codex. setup runs npx lazycodex-ai@latest install before applying LFP, installs/enables this pack in Codex, writes canonical schemaVersion 2 config to ~/.codex/lfp.json, and applies configured three primary model fields to existing OMO/LazyCodex agent TOMLs. Use --agent-models-only to preserve existing Codex global defaults.`;
 
 if (isDirectRun()) {
   runCli(process.argv.slice(2)).catch((error) => {
@@ -129,11 +124,6 @@ export async function runCli(argv) {
     return;
   }
 
-  if (command === "art-config") {
-    await runArtConfig(args);
-    return;
-  }
-
   throw new Error(`Unknown command: ${command}\n\n${HELP}`);
 }
 
@@ -149,12 +139,9 @@ async function runDoctor(argv) {
 
   console.log(`lfp doctor: Codex home: ${state.codexHome}`);
   console.log(`lfp doctor: plugin files: ${state.pluginFilesInstalled ? "installed" : "missing"} (${state.pluginRoot})`);
-  console.log(
-    `lfp doctor: LFP agents: ${state.additionalAgentsInstalled ? "installed" : "missing"} (${state.additionalAgentFiles.join(", ")})`
-  );
   console.log(`lfp doctor: marketplace config: ${state.marketplaceConfigured ? "configured" : "missing"} (${state.configPath})`);
   console.log(`lfp doctor: plugin config: ${state.pluginEnabled ? "enabled" : "missing"} (${PLUGIN_REF})`);
-  hasIssue ||= !state.pluginFilesInstalled || !state.additionalAgentsInstalled || !state.marketplaceConfigured || !state.pluginEnabled;
+  hasIssue ||= !state.pluginFilesInstalled || !state.marketplaceConfigured || !state.pluginEnabled;
   printOpenAiCompatProviderState(state);
   hasIssue ||= state.openAiCompatProvider.status === "drifted";
   await printProviderInventoryVisibility({ commandName: "doctor" });
@@ -162,12 +149,8 @@ async function runDoctor(argv) {
   printRolePolicyConfig({ commandName: "doctor" });
   const installSmokeOk = printInstallSmokeState();
   hasIssue ||= !installSmokeOk;
-  const visualSmokeOk = printVisualSmokeState();
-  hasIssue ||= !visualSmokeOk;
   const appCacheOk = printDoctorCodexAppsCacheState(args);
   hasIssue ||= !appCacheOk;
-
-  printArtTeamConfig();
 
   try {
     const effectiveConfigPath = effectiveConfig?.configPath ?? configPath;
@@ -199,12 +182,6 @@ function printDoctorCodexAppsCacheState(args) {
 function getEffectiveReadOnlyOverrideConfig(configPath, args) {
   if (args.config !== undefined) return null;
   return createRestoredUserOverrideConfig(configPath);
-}
-
-async function runArtConfig() {
-  console.log("Reconfiguring art team models...\n");
-  await configureArtTeam();
-  console.log("Run 'lfp setup' to reinstall agents with updated models.");
 }
 
 async function runAgentConfig(argv) {

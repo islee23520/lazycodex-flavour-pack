@@ -26,27 +26,9 @@ import {
 import { fetchAvailableModels } from "./model-provider.mjs";
 import { buildRecommendedModelOverrides } from "./model-recommendations.mjs";
 import { readOverrideConfig } from "./sync-agent-overrides.mjs";
+import { maybePromptGitHubStart } from "./setup-command-github.mjs";
 
-export const GITHUB_START_TARGETS = [
-  {
-    id: "lazycodex-ai",
-    label: "LazyCodex AI",
-    repo: "sisyphuslabs/lazycodex-ai",
-    url: "https://github.com/sisyphuslabs/lazycodex-ai"
-  },
-  {
-    id: "omo",
-    label: "OMO",
-    repo: "sisyphuslabs/omo",
-    url: "https://github.com/sisyphuslabs/omo"
-  },
-  {
-    id: "lfp",
-    label: "LFP",
-    repo: "islee23520/lazycodex-flavour-pack",
-    url: "https://github.com/islee23520/lazycodex-flavour-pack"
-  }
-];
+export { GITHUB_START_TARGETS, selectGitHubStartTarget } from "./setup-command-github.mjs";
 
 export async function runSetup(args, { check, root, defaultConfig }) {
   const context = { check, root, defaultConfig };
@@ -131,7 +113,6 @@ async function installAndMaybePrompt(args, root, configPath, installOpenAiCompat
     effectiveConfigPath = await prepareNonInteractiveOverrideConfig(installedConfigPath, options);
   }
   console.log(`installed ${PLUGIN_REF} to ${installed.pluginRoot}`);
-  console.log(`installed LFP agents to ${path.join(installed.codexHome, "agents")}`);
   console.log(`enabled ${PLUGIN_REF} in ${installed.configPath}`);
   printOpenAiCompatProviderState(installed);
   printInstallSmokeState();
@@ -242,45 +223,6 @@ function printSetupModelRecommendations(configPath, models, output, options) {
   output.log("");
 }
 
-async function maybePromptGitHubStart(options = {}) {
-  const output = options.output ?? console;
-  if (typeof options.gitHubStartSelector === "function") {
-    const target = await options.gitHubStartSelector();
-    if (target === null) return null;
-
-    output.log(`GitHub start: ${target.url}`);
-    return target;
-  }
-
-  const rl = options.readline ?? createInterface({ input: process.stdin, output: process.stdout });
-
-  try {
-    output.log("GitHub start targets:");
-    for (const [index, target] of GITHUB_START_TARGETS.entries()) {
-      output.log(`  ${index + 1}. ${target.label} (${target.repo})`);
-    }
-
-    const answer = await prompt(rl, "Start GitHub work from which repo? [1/2/3, Enter to skip]: ");
-    const target = selectGitHubStartTarget(answer);
-    if (target === null) return null;
-
-    output.log(`GitHub start: ${target.url}`);
-    return target;
-  } finally {
-    if (!options.readline) rl.close();
-  }
-}
-
-export function selectGitHubStartTarget(answer) {
-  const value = String(answer ?? "").trim().toLowerCase();
-  if (value.length === 0 || ["n", "no", "skip"].includes(value)) return null;
-
-  if (/^[0-9]+$/.test(value)) return GITHUB_START_TARGETS[Number(value) - 1] ?? null;
-  return GITHUB_START_TARGETS.find((target) => {
-    return value === target.id || value === target.repo.toLowerCase() || value === target.label.toLowerCase();
-  }) ?? null;
-}
-
 function printPendingSetupActions(pending) {
   for (const action of pending.actions) console.log(`would ${action}`);
   const appCacheState = getCodexAppsToolCacheState();
@@ -308,8 +250,7 @@ function shouldSyncGlobalDefaults(args) {
 function printSetupChanges(result, globalResult, check) {
   for (const item of result.changed) console.log(`${check ? "would update" : "updated"} ${item}`);
   if (!check && Array.isArray(result.skippedReadOnly) && result.skippedReadOnly.length > 0) {
-    console.log("applied to LFP-owned agents");
-    console.log("left LazyCodex agents unchanged");
+    console.log("applied model fields to configured OMO/LazyCodex agents");
   }
   if (globalResult?.preserved) {
     if (check) console.log("global defaults: preserved (agent-only mode)");
@@ -324,8 +265,4 @@ function printSetupChanges(result, globalResult, check) {
 function getEffectiveReadOnlyOverrideConfig(configPath, args) {
   if (args.config !== undefined) return null;
   return createRestoredUserOverrideConfig(configPath);
-}
-
-function prompt(rl, question) {
-  return new Promise((resolve) => rl.question(question, resolve));
 }

@@ -102,7 +102,7 @@ describe("model-fallback-resolver", () => {
     }
   });
 
-  it("given benchmark applier writes saved upstream overrides and sync skips installed TOML when resolving then keeps primary-only saved JSON", () => {
+  it("given benchmark applier writes saved upstream overrides and sync applies installed TOML when resolving then keeps primary-only saved JSON", () => {
     const root = mkdtempSync(path.join(os.tmpdir(), "lfp-resolver-applier-topology-"));
     try {
       const codexHome = path.join(root, "codex-home");
@@ -159,8 +159,8 @@ describe("model-fallback-resolver", () => {
       const installed = readFileSync(path.join(agentsDir, "explorer.toml"), "utf8");
 
       assert.deepEqual(applied, ["explorer"]);
-      assert.deepEqual(syncResult.changed, []);
-      assert.deepEqual(syncResult.skippedReadOnly, ["explorer"]);
+      assert.deepEqual(syncResult.changed, [path.join(agentsDir, "explorer.toml")]);
+      assert.deepEqual(syncResult.skippedReadOnly, []);
       assert.equal("model_fallback" in saved.overrides.explorer, false);
       assert.match(installed, /^model_fallback = "old-installed-fallback"$/m);
       assert.equal(resolved.using_fallback, false);

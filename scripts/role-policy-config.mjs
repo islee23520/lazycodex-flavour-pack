@@ -10,18 +10,12 @@ export const ROLE_POLICY_REPORT_ORDER = [
   "librarian",
   "metis",
   "plan",
-  "sisyphus",
   "momus",
   "lazycodex-executor",
   "lazycodex-code-reviewer",
   "lazycodex-qa-executor",
   "lazycodex-gate-reviewer",
-  "lazycodex-clone-fidelity-reviewer",
-  "visual-engineering",
-  "visual-looker",
-  "artistry",
-  "artistry-gen",
-  "artistry-qa"
+  "lazycodex-clone-fidelity-reviewer"
 ];
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));

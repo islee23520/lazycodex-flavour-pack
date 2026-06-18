@@ -6,6 +6,7 @@ export const SERVICE_TIERS = [
 ];
 
 export const REASONING_EFFORTS = ["low", "medium", "high", "xhigh"];
+export const BACK_SELECTION = "__lfp_back__";
 
 export function logAgentGuide(output, agentName, current, options = {}) {
   if (agentName) output?.log?.(`Agent: ${agentName}`);
@@ -40,6 +41,7 @@ export async function promptForModel(rl, { agentName, displayName, current, vani
 
   while (true) {
     const answer = (await prompt(rl, `  ${prefix} ${suffix}: `)).trim();
+    if (isBackAnswer(answer)) return BACK_SELECTION;
     if (answer.length === 0) return current;
 
     const selected = parseModelSelection(answer, choices);
@@ -63,6 +65,7 @@ export async function promptForServiceTier(rl, { agentName, displayName, current
 
   while (true) {
     const answer = (await prompt(rl, `  ${prefix} ${suffix}: `)).trim();
+    if (isBackAnswer(answer)) return BACK_SELECTION;
     if (answer.length === 0) return current;
 
     const selected = parseListedSelection(
@@ -89,6 +92,7 @@ export async function promptForReasoningEffort(rl, { agentName, displayName, cur
 
   while (true) {
     const answer = (await prompt(rl, `  ${prefix} ${suffix}: `)).trim();
+    if (isBackAnswer(answer)) return BACK_SELECTION;
     if (answer.length === 0) return current;
 
     const selected = parseListedSelection(answer, REASONING_EFFORTS);
@@ -112,6 +116,7 @@ export async function promptForYesNo(rl, question, options = {}) {
     return await yesNoSelector({ question });
   }
   const answer = (await prompt(rl, question)).trim().toLowerCase();
+  if (isBackAnswer(answer)) return BACK_SELECTION;
   return ["y", "yes"].includes(answer);
 }
 
@@ -168,4 +173,8 @@ function formatChoiceWithVanilla(label, value, vanillaRecommendation) {
 
 function prompt(rl, question) {
   return new Promise((resolve) => rl.question(question, resolve));
+}
+
+function isBackAnswer(answer) {
+  return ["b", "back", ":back", "previous"].includes(answer.trim().toLowerCase());
 }

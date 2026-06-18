@@ -14,7 +14,6 @@ const REASONING_AGENT_NAMES = new Set([
   "metis",
   "momus",
   "plan",
-  "sisyphus",
   "ulw-plan",
   "review-work",
   "lazycodex-executor",
@@ -58,7 +57,6 @@ const ROLE_MODEL_PREFERENCES = {
     ]
   },
   plan: { primary: DEEP_REASONING_PREFERENCES },
-  sisyphus: { primary: DEEP_REASONING_PREFERENCES },
   momus: {
     primary: [
       { id: "gpt-5.5" },
@@ -108,18 +106,6 @@ const ROLE_MODEL_PREFERENCES = {
     ]
   }
 };
-
-for (const role of ["visual-engineering", "visual-looker", "artistry", "artistry-gen", "artistry-qa"]) {
-  ROLE_MODEL_PREFERENCES[role] = {
-    primary: [
-      { id: "gemini-pro-agent" },
-      { family: "gemini", capability: "reasoning" },
-      { family: "gemini", capability: "vision" },
-      { family: "grok", capability: "reasoning" },
-      { family: "gpt", capability: "reasoning", pattern: /^(?!.*mini).*$/i }
-    ]
-  };
-}
 
 export function buildRecommendedModelOverrides(overrides, models, options = {}) {
   const policyConfig = options.policyConfig ?? readRolePolicyConfig(options);

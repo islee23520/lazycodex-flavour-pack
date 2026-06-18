@@ -59,36 +59,6 @@ const ROLE_GUIDES = {
     tuneFor: "verifying design-token fidelity and catching hardcoded fake clones.",
     minimum: "Use a frontier reasoning model with xhigh reasoning."
   },
-  sisyphus: {
-    role: "Loop lead for implementation orchestration.",
-    tuneFor: "persistent task decomposition and done-claim verification.",
-    minimum: "Use a high-context reasoning model with high or xhigh reasoning."
-  },
-  "visual-engineering": {
-    role: "Visual UI/UX judgment and screenshot-backed QA.",
-    tuneFor: "layout, typography, overlap, rendering, and visual defects.",
-    minimum: "Use a vision-capable model with high reasoning."
-  },
-  "visual-looker": {
-    role: "Multimodal visual evidence extraction.",
-    tuneFor: "reading screenshots, diagrams, rendered docs, and image details.",
-    minimum: "Use a vision-capable model with high reasoning."
-  },
-  artistry: {
-    role: "Art direction and production-loop supervision.",
-    tuneFor: "creative direction, briefs, checkpoints, and final judgment.",
-    minimum: "Use a vision-capable creative model with high reasoning."
-  },
-  "artistry-gen": {
-    role: "Computer Use production worker for art tasks.",
-    tuneFor: "cheap repeated tool operation and fast iteration.",
-    minimum: "Use a low-reasoning model that can follow UI operation steps reliably."
-  },
-  "artistry-qa": {
-    role: "Visual QA inspector for generated art.",
-    tuneFor: "detecting mismatches, artifacts, and checkpoint failures.",
-    minimum: "Use a vision-capable model with high reasoning."
-  }
 };
 
 const FALLBACK_GUIDE = {

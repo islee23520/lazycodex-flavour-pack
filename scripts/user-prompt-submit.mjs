@@ -2,11 +2,7 @@
 import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
-import { runUserPromptSubmitHook } from "./visual-engineering-hook.mjs";
-import { runArtTeamHook } from "./art-team-hook.mjs";
 import { runModelFallbackGuidance } from "./model-fallback-guidance.mjs";
-
-const SPECIALIST_AGENT_NAMES = new Set(["visual-engineering", "visual-looker", "artistry", "artistry-gen", "artistry-qa"]);
 
 if (isDirectRun()) {
   const input = readStdinJson();
@@ -22,35 +18,8 @@ export async function runDispatcher(value) {
     if (!(error instanceof Error)) throw error;
   }
 
-  const contexts = [];
   const mainAgent = getMainAgentName(value, process.env);
-  const shouldEmitDelegationGuidance = mainAgent === null || !SPECIALIST_AGENT_NAMES.has(mainAgent);
-
-  if (shouldEmitDelegationGuidance) {
-    const visual = runUserPromptSubmitHook(value);
-    if (visual) {
-      try {
-        const parsed = JSON.parse(visual);
-        if (parsed?.hookSpecificOutput?.additionalContext) {
-          contexts.push(withMainAgentContext(parsed.hookSpecificOutput.additionalContext, mainAgent));
-        }
-      } catch (error) {
-        if (!(error instanceof SyntaxError)) throw error;
-      }
-    }
-
-    const art = runArtTeamHook(value);
-    if (art) {
-      try {
-        const parsed = JSON.parse(art);
-        if (parsed?.hookSpecificOutput?.additionalContext) {
-          contexts.push(withMainAgentContext(parsed.hookSpecificOutput.additionalContext, mainAgent));
-        }
-      } catch (error) {
-        if (!(error instanceof SyntaxError)) throw error;
-      }
-    }
-  }
+  const contexts = [];
 
   const fallback = value ? runModelFallbackGuidance(value) : { emit: false };
   if (fallback?.emit && fallback.guidance) {

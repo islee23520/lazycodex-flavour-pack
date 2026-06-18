@@ -1,13 +1,11 @@
 import { getCodexAppsToolCacheState, quarantineDuplicateCodexAppsToolCaches } from "./codex-apps-cache.mjs";
-import { getInstallSmokeState, getVisualSmokeState } from "./codex-plugin-install.mjs";
-import { readCurrentConfig } from "./art-team-config.mjs";
+import { getInstallSmokeState } from "./codex-plugin-install.mjs";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { AGENT_MODEL_FIELDS, VIRTUAL_OVERRIDE_SECTIONS } from "./model-field-scope.mjs";
 import { getProviderModelInventoryState } from "./model-provider.mjs";
 import { classifyModelInventory } from "./model-inventory.mjs";
 import { readOverrideConfig } from "./model-override-config.mjs";
-import { isLfpOwnedAgent } from "./agent-model-metadata.mjs";
 import { readRolePolicyConfig, ROLE_POLICY_REPORT_ORDER } from "./role-policy-config.mjs";
 import { readTomlString } from "./toml-string-utils.mjs";
 
@@ -167,44 +165,10 @@ export function printInstallSmokeState() {
   return false;
 }
 
-export function printVisualSmokeState() {
-  const smoke = getVisualSmokeState();
-  if (smoke.verified) {
-    const summary = smoke.checks.map((check) => `${check.name}: ${check.actualModel}`).join(", ");
-    console.log(`lfp doctor: visual smoke: verified (${summary})`);
-    return true;
-  }
-
-  console.log("lfp doctor: visual smoke: failed");
-  for (const check of smoke.checks) {
-    if (check.status === "verified") continue;
-    if (check.status === "missing") {
-      console.log(`lfp doctor: visual smoke: ${check.name} missing (${check.filePath})`);
-      continue;
-    }
-    if (check.status === "malformed") {
-      console.log(`lfp doctor: visual smoke: ${check.name} missing model (${check.filePath})`);
-      continue;
-    }
-    console.log(
-      `lfp doctor: visual smoke: ${check.name} model mismatch: expected ${check.model}, got ${check.actualModel}`
-    );
-  }
-  return false;
-}
-
-export function printArtTeamConfig() {
-  const config = readCurrentConfig();
-  console.log("lfp doctor: art team config:");
-  for (const [name, fields] of Object.entries(config)) {
-    console.log(`  ${name}: model=${fields.model}, reasoning=${fields.model_reasoning_effort}, tier=${fields.service_tier}`);
-  }
-}
-
 function collectAgentModelDrift(configPath) {
   const config = readOverrideConfig(configPath);
   const overrides = Object.entries(config.overrides ?? {}).filter(
-    ([agentName]) => !VIRTUAL_OVERRIDE_SECTIONS.has(agentName) && isLfpOwnedAgent(agentName)
+    ([agentName]) => !VIRTUAL_OVERRIDE_SECTIONS.has(agentName)
   );
   const items = [];
 

@@ -1,7 +1,7 @@
 {
   "name": "@islee23520/lfp",
-  "version": "0.3.14",
-  "description": "LazyCodex extension plugin that brings the full OMO feature set into Codex: complete agent roster, category routing, MCP fallback resolver for saved override configurations, art team, and visual specialists.",
+  "version": "0.3.15",
+  "description": "LazyCodex extension plugin for Codex model/provider configuration, category routing guidance, and MCP fallback lookup.",
   "author": "islee23520",
   "homepage": "https://linalab.io",
   "repository": "https://github.com/islee23520/lazycodex-flavour-pack",
@@ -12,13 +12,13 @@
     "codex",
     "hooks",
     "agents",
-    "art-team"
+    "model-routing"
   ],
   "hooks": "./hooks/hooks.json",
   "interface": {
     "displayName": "LFP — Full OMO Bridge for Codex",
-    "shortDescription": "Extends LazyCodex with the complete OMO feature set: all agents, category routing, MCP fallback resolver for saved override configurations, art team, and visual specialists.",
-    "longDescription": "LFP bridges the gap between LazyCodex (OMO Light edition) and the full OMO feature set. It installs LFP-owned agents (sisyphus, visual specialists, art team), manages primary model overrides on upstream agents, provides category-based model routing guidance, exposes an MCP tool for manual model fallback resolution from saved override configurations, runs interactive TUI setup, performs atomic runtime promotion with rollback, and orchestrates multi-agent workflows.",
+    "shortDescription": "Extends LazyCodex with model/provider setup, category routing guidance, and MCP fallback lookup.",
+    "longDescription": "LFP keeps LazyCodex/OMO agents as the source of truth and focuses on model operations: provider setup, configurable primary model fields, category-based model routing guidance, an MCP tool for manual fallback lookup from saved override configurations, interactive TUI setup, and atomic runtime promotion with rollback.",
     "developerName": "islee23520",
     "category": "Developer Tools",
     "capabilities": [
@@ -31,12 +31,9 @@
     "privacyPolicyURL": "https://linalab.io",
     "termsOfServiceURL": "https://linalab.io",
     "defaultPrompt": [
-      "Run UI work with visual QA.",
-      "Sync LazyCodex agent model overrides.",
-      "Use visual-engineering for screenshot-backed review.",
-      "Use visual-looker for Gemini multimodal visual evidence inspection.",
-      "Use artistry for art direction, artistry-gen for Computer Use production, artistry-qa for visual inspection.",
-      "Use sisyphus for Sisyphus-style implementation loops and independent done-claim verification."
+      "Use LFP to configure LazyCodex/OMO model routing and provider defaults.",
+      "Use the model_fallback_resolver tool when a configured agent hits quota, rate-limit, or provider failure.",
+      "Keep agent behavior owned by LazyCodex/OMO; LFP only manages supported model fields and saved fallback lookup."
     ],
     "brandColor": "#2563EB",
     "screenshots": []
@@ -47,14 +44,7 @@
       "lazycodex-ai"
     ],
     "modelOverrideSource": "./agent-configs/omo-agent-model-overrides.toml",
-    "additionalAgents": [
-      "./agent-configs/visual-engineering.toml",
-      "./agent-configs/visual-looker.toml",
-      "./agent-configs/artistry.toml",
-      "./agent-configs/artistry-gen.toml",
-      "./agent-configs/artistry-qa.toml",
-      "./agent-configs/sisyphus.toml"
-    ],
+    "additionalAgents": [],
     "tools": [
       {
         "name": "model_fallback_resolver",
@@ -64,7 +54,7 @@
           "properties": {
             "agent": {
               "type": "string",
-              "description": "Agent name, e.g. explorer, metis, plan, sisyphus, visual-engineering, visual-looker, momus"
+              "description": "Agent name, e.g. explorer, metis, plan, momus"
             },
             "reason": {
               "type": "string",

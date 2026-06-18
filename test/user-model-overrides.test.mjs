@@ -331,7 +331,7 @@ test("given legacy LFP TOML saved user override exists when configuring then mig
   }
 });
 
-test("given previous upstream saved override config when restoring agent model application then saved config returns and installed TOML is unchanged", () => {
+test("given previous upstream saved override config when restoring agent model application then saved config returns and installed TOML is updated", () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-user-models-rollback-"));
   try {
     const codexHome = path.join(root, "codex-home");
@@ -379,14 +379,16 @@ test("given previous upstream saved override config when restoring agent model a
     const agentText = readFileSync(path.join(agentsDir, "explorer.toml"), "utf8");
     const savedJson = JSON.parse(readFileSync(currentSavedPath, "utf8"));
 
-    assert.deepEqual(result.changed, []);
+    assert.deepEqual(result.changed, [path.join(agentsDir, "explorer.toml")]);
     assert.equal(result.savedConfigPath, currentSavedPath);
     assert.equal(savedJson.overrides.explorer.model, "previous-primary");
     assert.equal(savedJson.overrides.explorer.model_fallback, "previous-fallback");
-    assert.match(agentText, /model = "new-primary"/);
-    assert.match(agentText, /model_reasoning_effort = "high"/);
-    assert.match(agentText, /service_tier = "fast"/);
+    assert.match(agentText, /model = "previous-primary"/);
+    assert.match(agentText, /model_reasoning_effort = "low"/);
+    assert.match(agentText, /service_tier = "default"/);
     assert.match(agentText, /^model_fallback = "new-fallback"$/m);
+    assert.match(agentText, /^model_fallback_reasoning_effort = "medium"$/m);
+    assert.match(agentText, /^model_fallback_service_tier = "fast"$/m);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

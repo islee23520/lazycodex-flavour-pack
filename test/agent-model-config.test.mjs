@@ -405,7 +405,7 @@ test("given additional installed OMO agent when user opts in then appends overri
   try {
     const configPath = path.join(root, "overrides.toml");
     writeFileSync(path.join(root, "metis.toml"), agentText("metis", "gpt-5.5", "fast"));
-    writeFileSync(path.join(root, "artistry.toml"), agentText("artistry", "gpt-5.5", "default"));
+    writeFileSync(path.join(root, "plan.toml"), agentText("plan", "gpt-5.5", "default"));
     writeFileSync(
       configPath,
       [
@@ -433,7 +433,7 @@ test("given additional installed OMO agent when user opts in then appends overri
     assert.equal(config.overrides.metis.model_reasoning_effort, "high");
     assert.match(updated, /\[agents\.metis]\nmodel = "gpt-5\.4-mini"\nmodel_reasoning_effort = "high"\nservice_tier = "fast"/);
     assert.ok(configOutput.questions.some((question) => /metis \(current: gpt-5\.5\)/.test(question)));
-    assert.doesNotMatch(updated, /\[agents\.artistry]/);
+    assert.doesNotMatch(updated, /\[agents\.plan]/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -513,6 +513,113 @@ test("given additional installed OMO agent when user declines then does not appe
 
     assert.equal(config.overrides.momus, undefined);
     assert.doesNotMatch(readFileSync(configPath, "utf8"), /\[agents\.momus]/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("given agent field prompt when user goes back from reasoning then revisits service tier", async () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-models-"));
+  try {
+    const configPath = path.join(root, "overrides.toml");
+    writeFileSync(
+      configPath,
+      [
+        "[source]",
+        `agents_dir = "${root}"`,
+        "",
+        "[agents.explorer]",
+        'model = "grok-4.3"',
+        'model_reasoning_effort = "medium"',
+        'service_tier = "default"',
+        ""
+      ].join("\n")
+    );
+
+    const config = await configureAgentModelOverrides(configPath, {
+      models: ["gpt-5.4-mini", "grok-4.3"],
+      readline: fakeReadline(["1", "2", "back", "1", "3"]),
+      output: silentOutput(),
+      persistUserOverrides: false
+    });
+
+    assert.equal(config.overrides.explorer.model, "gpt-5.4-mini");
+    assert.equal(config.overrides.explorer.service_tier, "default");
+    assert.equal(config.overrides.explorer.model_reasoning_effort, "high");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("given default model sections when user goes back from ULW then revisits Default Codex", async () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-models-"));
+  try {
+    const configPath = path.join(root, "overrides.toml");
+    writeFileSync(
+      configPath,
+      [
+        "[source]",
+        `agents_dir = "${root}"`,
+        "",
+        "[agents.default]",
+        'model = "gpt-5.4-mini"',
+        'model_reasoning_effort = "low"',
+        'service_tier = "default"',
+        "",
+        "[agents.ulw]",
+        'model = "gpt-5.4-mini"',
+        'model_reasoning_effort = "low"',
+        'service_tier = "default"',
+        ""
+      ].join("\n")
+    );
+
+    const config = await configureAgentModelOverrides(configPath, {
+      models: ["gpt-5.4-mini", "grok-4.3"],
+      readline: fakeReadline(["1", "1", "1", "back", "2", "2", "3", "1", "1", "1"]),
+      output: silentOutput(),
+      persistUserOverrides: false
+    });
+
+    assert.equal(config.overrides.default.model, "grok-4.3");
+    assert.equal(config.overrides.default.service_tier, "fast");
+    assert.equal(config.overrides.default.model_reasoning_effort, "high");
+    assert.equal(config.overrides.ulw.model, "gpt-5.4-mini");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("given additional agent confirmation when user goes back then returns to prior configured agent", async () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-models-"));
+  try {
+    const configPath = path.join(root, "overrides.toml");
+    writeFileSync(path.join(root, "metis.toml"), agentText("metis", "gpt-5.5", "fast"));
+    writeFileSync(
+      configPath,
+      [
+        "[source]",
+        `agents_dir = "${root}"`,
+        "",
+        "[agents.explorer]",
+        'model = "grok-4.3"',
+        'model_reasoning_effort = "low"',
+        'service_tier = "default"',
+        ""
+      ].join("\n")
+    );
+
+    const config = await configureAgentModelOverrides(configPath, {
+      models: ["gpt-5.4-mini", "grok-4.3"],
+      readline: fakeReadline(["", "", "", "back", "1", "2", "3", "n"]),
+      output: silentOutput(),
+      persistUserOverrides: false
+    });
+
+    assert.equal(config.overrides.explorer.model, "gpt-5.4-mini");
+    assert.equal(config.overrides.explorer.service_tier, "fast");
+    assert.equal(config.overrides.explorer.model_reasoning_effort, "high");
+    assert.equal(config.overrides.metis, undefined);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

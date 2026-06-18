@@ -26,17 +26,9 @@ export const PLUGIN_ID = "lfp";
 export const PLUGIN_REF = `${PLUGIN_ID}@${MARKETPLACE_ID}`;
 
 const DEFAULT_PACKAGE_ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-export const ADDITIONAL_AGENT_CONFIGS = [
-  "visual-engineering.toml",
-  "visual-looker.toml",
-  "artistry.toml",
-  "artistry-gen.toml",
-  "artistry-qa.toml",
-  "sisyphus.toml"
-];
+export const ADDITIONAL_AGENT_CONFIGS = [];
 const PROTECTED_UPSTREAM_AGENT_CONFIGS = ["explorer.toml"];
 const LAZYCODEX_PLUGIN_REFS = new Set(["omo@sisyphuslabs", "lazycodex-ai"]);
-const VISUAL_AGENT_CONFIGS = ["artistry.toml", "artistry-gen.toml", "artistry-qa.toml", "visual-engineering.toml", "visual-looker.toml"];
 
 const RUNTIME_ENTRIES = [
   ".codex-plugin",
@@ -73,45 +65,9 @@ export function getCodexPluginState(options = {}) {
     pluginEnabled: pluginBlock.includes("enabled = true"),
     openAiCompatProvider,
     anyModelProviderConfigured,
-    additionalAgentsInstalled: ADDITIONAL_AGENT_CONFIGS.every((fileName) =>
-      existsSync(path.join(agentsRoot, fileName))
-    ),
+    additionalAgentsInstalled: true,
     additionalAgentFiles: ADDITIONAL_AGENT_CONFIGS.map((fileName) => path.join(agentsRoot, fileName))
   };
-}
-
-export function getVisualSmokeState(options = {}) {
-  const codexHome = getCodexHome(options.env);
-  const agentsRoot = path.join(codexHome, "agents");
-  const checks = getVisualAgentExpectations(options.packageRoot ?? DEFAULT_PACKAGE_ROOT).map((expected) => {
-    const filePath = path.join(agentsRoot, expected.fileName);
-    const text = readTextIfExists(filePath);
-    if (text.length === 0) return { ...expected, filePath, status: "missing" };
-
-    const actualModel = readTomlString(text, "model");
-    if (actualModel === null) return { ...expected, filePath, status: "malformed", actualModel: null };
-    if (actualModel !== expected.model) {
-      return { ...expected, filePath, status: "model-mismatch", actualModel };
-    }
-
-    return { ...expected, filePath, status: "verified", actualModel };
-  });
-
-  return {
-    verified: checks.every((check) => check.status === "verified"),
-    checks
-  };
-}
-
-function getVisualAgentExpectations(packageRoot) {
-  return VISUAL_AGENT_CONFIGS.map((fileName) => {
-    const sourcePath = path.join(packageRoot, "agent-configs", fileName);
-    return {
-      name: path.basename(fileName, ".toml"),
-      fileName,
-      model: readTomlString(readTextIfExists(sourcePath), "model")
-    };
-  });
 }
 
 export function getInstallSmokeState(options = {}) {
@@ -153,7 +109,6 @@ export function getPendingCodexPluginActions(options = {}) {
   const state = getCodexPluginState(options);
   const actions = [];
   if (!state.pluginFilesInstalled) actions.push(`install plugin files to ${state.pluginRoot}`);
-  if (!state.additionalAgentsInstalled) actions.push(`install LFP agents to ${path.join(state.codexHome, "agents")}`);
   if (!state.marketplaceConfigured) actions.push(`configure marketplace ${MARKETPLACE_ID} in ${state.configPath}`);
   if (!state.pluginEnabled) actions.push(`enable plugin ${PLUGIN_REF} in ${state.configPath}`);
   if (options.installOpenAiCompatProvider === true && state.openAiCompatProvider.status === "missing") {
@@ -166,6 +121,7 @@ export function getPendingCodexPluginActions(options = {}) {
 }
 
 function installAdditionalAgents(packageRoot, state) {
+  if (ADDITIONAL_AGENT_CONFIGS.length === 0) return;
   const sourceRoot = path.join(packageRoot, "agent-configs");
   const targetRoot = path.join(state.codexHome, "agents");
   assertNoProtectedAgentInstallTargets();

@@ -10,12 +10,12 @@ const TRIGGER =
   /\b(?:quota|rate.?limit|429|too many|model failed|provider error|api error|timeout|context.*exceeded|fallback|switch model|different model)\b/i;
 
 const GUIDANCE = `<lfp-model-fallback-guidance>
-When you hit quota, rate-limit, 429, provider failure, or any model error for a specific agent (explorer, metis, plan, momus, visual-engineering, visual-looker, artistry-*, etc.), call the LFP model_fallback_resolver tool immediately.
+When you hit quota, rate-limit, 429, provider failure, or any model error for a specific LazyCodex/OMO agent (explorer, metis, plan, momus, etc.), call the LFP model_fallback_resolver tool immediately.
 
 Tool: model_fallback_resolver
 Input example:
   { "agent": "explorer", "reason": "quota" }
-  { "agent": "visual-engineering", "reason": "429" }
+  { "agent": "plan", "reason": "429" }
   { "agent": "plan", "reason": "rate-limit" }
 
 The tool reads the user's saved LFP model override config and returns:

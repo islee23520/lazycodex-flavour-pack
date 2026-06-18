@@ -14,10 +14,6 @@ tier = "default"
 reasoning = "xhigh"
 tier = "default"
 
-[policies.sisyphus]
-reasoning = "high"
-tier = "default"
-
 [policies.momus]
 reasoning = "xhigh"
 tier = "default"
@@ -40,24 +36,4 @@ tier = "default"
 
 [policies.lazycodex-clone-fidelity-reviewer]
 reasoning = "xhigh"
-tier = "default"
-
-[policies.visual-engineering]
-reasoning = "high"
-tier = "default"
-
-[policies.visual-looker]
-reasoning = "high"
-tier = "default"
-
-[policies.artistry]
-reasoning = "high"
-tier = "default"
-
-[policies.artistry-gen]
-reasoning = "high"
-tier = "default"
-
-[policies.artistry-qa]
-reasoning = "high"
 tier = "default"
