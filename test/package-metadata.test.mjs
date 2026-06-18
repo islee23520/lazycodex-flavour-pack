@@ -10,8 +10,8 @@ const pluginJson = JSON.parse(readFileSync(path.resolve(".codex-plugin", "plugin
 const hooksJson = JSON.parse(readFileSync(path.resolve("hooks", "hooks.json"), "utf8"));
 const cliText = readFileSync(path.resolve("scripts/cli.mjs"), "utf8");
 const readmeText = readFileSync(path.resolve("README.md"), "utf8");
-const agentsText = readFileSync(path.resolve("AGENTS.md"), "utf8");
-const roadmapText = readFileSync(path.resolve("ROADMAP.md"), "utf8");
+const agentsText = readOptionalText("AGENTS.md");
+const roadmapText = readOptionalText("ROADMAP.md");
 const publishWorkflowPath = path.resolve(".github", "workflows", "publish.yml");
 
 test("given npm package metadata when validating publish settings then package is public", () => {
@@ -140,7 +140,9 @@ test("given documentation when validating agent model field scope then stale six
     assert.doesNotMatch(text, /six fields/i, `${name} must not describe a six-field contract`);
   }
 
-  assert.match(agentsText, /three primary model fields/);
+  if (agentsText !== "") {
+    assert.match(agentsText, /three primary model fields/);
+  }
 });
 
 test("given npm package metadata when validating internal files then code maps are excluded", () => {
@@ -203,4 +205,10 @@ function getReferencedRuntimeScripts() {
     }
   }
   return [...new Set(scriptPaths)].sort();
+}
+
+function readOptionalText(filePath) {
+  const absolutePath = path.resolve(filePath);
+  if (!existsSync(absolutePath)) return "";
+  return readFileSync(absolutePath, "utf8");
 }

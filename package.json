@@ -1,6 +1,6 @@
 {
   "name": "@islee23520/lfp",
-  "version": "0.3.13",
+  "version": "0.3.14",
   "description": "LazyCodex extension plugin — brings the full OMO feature set into Codex: agents, categories, fallback chains, art team, visual specialists.",
   "type": "module",
   "license": "MIT",
