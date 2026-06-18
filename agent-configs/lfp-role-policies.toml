@@ -22,8 +22,24 @@ tier = "default"
 reasoning = "xhigh"
 tier = "default"
 
-[policies.codex-ultrawork-reviewer]
+[policies.lazycodex-executor]
 reasoning = "high"
+tier = "default"
+
+[policies.lazycodex-code-reviewer]
+reasoning = "xhigh"
+tier = "default"
+
+[policies.lazycodex-qa-executor]
+reasoning = "medium"
+tier = "default"
+
+[policies.lazycodex-gate-reviewer]
+reasoning = "xhigh"
+tier = "default"
+
+[policies.lazycodex-clone-fidelity-reviewer]
+reasoning = "xhigh"
 tier = "default"
 
 [policies.visual-engineering]

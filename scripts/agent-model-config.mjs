@@ -20,7 +20,7 @@ import { buildRecommendedModelOverrides } from "./model-recommendations.mjs";
 import { getCompatibleReasoningEffort } from "./model-reasoning-compat.mjs";
 import { discoverAdditionalAgents, readInstalledAgentFields, writeOverrideFields } from "./agent-model-config-io.mjs";
 import { getAgentDisplayName, isLfpOwnedAgent } from "./agent-model-metadata.mjs";
-import { getPrimaryFields, getVanillaPrimaryFields, logAgentCurrentAndRecommendation, mergePrimary } from "./agent-model-config-fields.mjs";
+import { getPrimaryFields, getVanillaPrimaryFields, logAgentCurrentAndRecommendation, logSetupGuide, mergePrimary } from "./agent-model-config-fields.mjs";
 import { logModelSettingScope } from "./model-setting-scopes.mjs";
 
 const DEFAULT_MODEL_SECTIONS = new Map([
@@ -153,6 +153,7 @@ async function promptForModelSection(config, agentName, options) {
   const label = options.displayName ?? agentName;
 
   logModelSettingScope(options.output, agentName, label);
+  logSetupGuide(options.output, agentName);
   logAgentGuide(options.output, label, {
     model: current,
     reasoning: currentReasoning,
@@ -204,6 +205,7 @@ async function promptForAgentFields(fields, agentName, options) {
     current: defaultPrimary.model,
     vanillaRecommendation: vanilla?.model,
     vanillaRecommendationFields: vanilla,
+    recommendationFields: recommended,
     models: options.models,
     output: options.output,
     modelSelector: options.modelSelector
@@ -213,6 +215,8 @@ async function promptForAgentFields(fields, agentName, options) {
     displayName,
     current: defaultPrimary.service_tier,
     vanillaRecommendation: vanilla?.service_tier,
+    vanillaRecommendationFields: vanilla,
+    recommendationFields: recommended,
     output: options.output,
     tierSelector: options.tierSelector
   });
@@ -221,6 +225,8 @@ async function promptForAgentFields(fields, agentName, options) {
     displayName,
     current: defaultPrimary.model_reasoning_effort,
     vanillaRecommendation: vanilla?.model_reasoning_effort,
+    vanillaRecommendationFields: vanilla,
+    recommendationFields: recommended,
     output: options.output,
     reasoningSelector: options.reasoningSelector
   }));

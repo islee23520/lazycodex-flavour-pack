@@ -276,20 +276,23 @@ test("given TUI first-run model guide when setup prompts then shows scope and de
     }
   );
 
-  const defaultNoteIndex = calls.findIndex((call) => call[0] === "note" && call[1] === "Default Codex guide");
+  const defaultNoteIndex = calls.findIndex((call) => call[0] === "note" && call[1] === "Default Codex model guide");
   const defaultSelectIndex = calls.findIndex((call) => call[0] === "select" && call[1].startsWith("Default Codex model"));
-  const ulwNoteIndex = calls.findIndex((call) => call[0] === "note" && call[1] === "ULW guide");
+  const ulwNoteIndex = calls.findIndex((call) => call[0] === "note" && call[1] === "ULW model guide");
   const ulwSelectIndex = calls.findIndex((call) => call[0] === "select" && call[1].startsWith("ULW model"));
-  const explorerNoteIndex = calls.findIndex((call) => call[0] === "note" && call[1] === "explorer guide");
+  const explorerNoteIndex = calls.findIndex((call) => call[0] === "note" && call[1] === "explorer model guide");
   const explorerSelectIndex = calls.findIndex((call) => call[0] === "select" && call[1].startsWith("explorer model"));
 
   assert.ok(defaultNoteIndex >= 0 && defaultNoteIndex < defaultSelectIndex);
   assert.ok(ulwNoteIndex >= 0 && ulwNoteIndex < ulwSelectIndex);
   assert.ok(explorerNoteIndex >= 0 && explorerNoteIndex < explorerSelectIndex);
   assert.match(calls[defaultNoteIndex][2], /Affects: normal Codex sessions via CODEX_HOME\/config\.toml/);
-  assert.match(calls[defaultNoteIndex][2], /Current\/default: gpt-5\.5/);
+  assert.match(calls[defaultNoteIndex][2], /Role guide: Default Codex sessions\./);
+  assert.match(calls[defaultNoteIndex][2], /Current\/default: gpt-5\.5 \(reasoning: unset, tier: unset\)/);
   assert.match(calls[ulwNoteIndex][2], /Affects: ultrawork runs via CODEX_HOME\/ulw\.config\.toml/);
+  assert.match(calls[ulwNoteIndex][2], /Minimum capability: Use a frontier reasoning model with high or xhigh reasoning; default tier is acceptable\./);
   assert.match(calls[explorerNoteIndex][2], /Vanilla LazyCodex recommendation: gpt-5\.4-mini \(reasoning: low, tier: fast\)/);
+  assert.match(calls[explorerNoteIndex][2], /Tune for: low-latency repository navigation and concise evidence\./);
   assert.equal(calls.some((call) => String(call[2] ?? "").includes("Edit agent model overrides now")), false);
 });
 
@@ -393,13 +396,13 @@ test("given TUI OMO overrides with additional agents then uses yesNoSelector and
         // simulate one configured agent fields (would use model/tier/reasoning selectors)
         // then the additional agent yes/no
         if (opts.yesNoSelector) {
-          const willChange = await opts.yesNoSelector({ question: "  Change codex-ultrawork-reviewer ... [y/N]: " });
+          const willChange = await opts.yesNoSelector({ question: "  Change lazycodex-code-reviewer ... [y/N]: " });
           calls.push(["additionalYes", willChange]);
         }
         // then fields for the additional
-        if (opts.modelSelector) await opts.modelSelector({ agentName: "codex-ultrawork-reviewer", current: "gpt-5.5", choices: [{value:"gpt-5.5", label:"gpt-5.5", key:"gpt-5.5", aliases:["gpt-5.5"]}] });
-        if (opts.tierSelector) await opts.tierSelector({ agentName: "codex-ultrawork-reviewer", current: "default" });
-        if (opts.reasoningSelector) await opts.reasoningSelector({ agentName: "codex-ultrawork-reviewer", current: "high" });
+        if (opts.modelSelector) await opts.modelSelector({ agentName: "lazycodex-code-reviewer", current: "gpt-5.5", choices: [{value:"gpt-5.5", label:"gpt-5.5", key:"gpt-5.5", aliases:["gpt-5.5"]}] });
+        if (opts.tierSelector) await opts.tierSelector({ agentName: "lazycodex-code-reviewer", current: "default" });
+        if (opts.reasoningSelector) await opts.reasoningSelector({ agentName: "lazycodex-code-reviewer", current: "xhigh" });
         // finally GitHub
         if (opts.gitHubStartSelector) {
           const gh = await opts.gitHubStartSelector();
@@ -411,9 +414,9 @@ test("given TUI OMO overrides with additional agents then uses yesNoSelector and
 
   assert.ok(calls.some(c => c[0] === "hasYesNo" && c[1]), "yesNoSelector provided");
   assert.ok(calls.some(c => c[0] === "hasGitHub" && c[1]), "gitHubStartSelector provided");
-  assert.ok(calls.some(c => c[0] === "confirm" && /Change codex-ultrawork-reviewer/.test(c[1])), "yes/no confirm for additional agent used");
+  assert.ok(calls.some(c => c[0] === "confirm" && /Change lazycodex-code-reviewer/.test(c[1])), "yes/no confirm for additional agent used");
   assert.ok(calls.some(c => c[0] === "additionalYes" && c[1] === true), "answered yes to additional");
-  assert.ok(calls.some(c => c[0] === "select" && /codex-ultrawork-reviewer model/.test(c[1])), "additional model select");
+  assert.ok(calls.some(c => c[0] === "select" && /lazycodex-code-reviewer model/.test(c[1])), "additional model select");
   assert.ok(calls.some(c => c[0] === "select" && /GitHub/.test(c[1])), "reached GitHub selector");
   assert.deepEqual(calls.find(c => c[0] === "github"), [
     "github",

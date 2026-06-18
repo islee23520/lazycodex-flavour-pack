@@ -243,7 +243,7 @@ test("given no saved user override when setup runs with explicit config then fin
     const metisText = readFileSync(path.join(agentsDir, "metis.toml"), "utf8");
     const momusText = readFileSync(path.join(agentsDir, "momus.toml"), "utf8");
     const planText = readFileSync(path.join(agentsDir, "plan.toml"), "utf8");
-    const reviewerText = readFileSync(path.join(agentsDir, "codex-ultrawork-reviewer.toml"), "utf8");
+    const reviewerText = readFileSync(path.join(agentsDir, "lazycodex-code-reviewer.toml"), "utf8");
 
     assert.equal(result.status, 0, result.stderr);
     const sisyphusText = readFileSync(path.join(agentsDir, "sisyphus.toml"), "utf8");
@@ -255,7 +255,7 @@ test("given no saved user override when setup runs with explicit config then fin
     assert.match(metisText, /model = "custom-metis-model"/);
     assert.match(momusText, /model_reasoning_effort = "xhigh"/);
     assert.match(planText, /model_reasoning_effort = "xhigh"/);
-    assert.match(reviewerText, /model_reasoning_effort = "high"/);
+    assert.match(reviewerText, /model_reasoning_effort = "xhigh"/);
     assert.match(sisyphusText, /model = "glm-5\.2"/);
     assert.doesNotMatch(`${explorerText}\n${librarianText}\n${metisText}\n${momusText}\n${planText}\n${reviewerText}`, /model_fallback/);
   } finally {
@@ -619,7 +619,7 @@ test("given CLI help when invoked then documents npx usage", () => {
   assert.match(result.stdout, /npx @islee23520\/lfp@latest dry-setup/);
   assert.match(result.stdout, /npx @islee23520\/lfp@latest doctor/);
   assert.match(result.stdout, /npx @islee23520\/lfp@latest agent-config/);
-  assert.match(result.stdout, /runs npx lazycodex-ai install before applying LFP/);
+  assert.match(result.stdout, /runs npx lazycodex-ai@latest install before applying LFP/);
   assert.match(result.stdout, /--no-tui/);
 });
 
@@ -1051,7 +1051,11 @@ function savedOverrideJson(overrides) {
 
 function writeOmo410AgentFixtureSet(agentsDir, overrides = {}) {
   const agents = {
-    "codex-ultrawork-reviewer": { model: "gpt-5.5", reasoning: "high", tier: "default" },
+    "lazycodex-executor": { model: "gpt-5.5", reasoning: "high", tier: "default" },
+    "lazycodex-code-reviewer": { model: "gpt-5.5", reasoning: "xhigh", tier: "default" },
+    "lazycodex-qa-executor": { model: "gpt-5.5", reasoning: "medium", tier: "default" },
+    "lazycodex-gate-reviewer": { model: "gpt-5.5", reasoning: "xhigh", tier: "default" },
+    "lazycodex-clone-fidelity-reviewer": { model: "gpt-5.5", reasoning: "xhigh", tier: "default" },
     explorer: { model: "gpt-5.4-mini", reasoning: "low", tier: "fast" },
     librarian: { model: "gpt-5.4-mini", reasoning: "low", tier: "fast" },
     metis: { model: "gpt-5.5", reasoning: "high", tier: "default" },

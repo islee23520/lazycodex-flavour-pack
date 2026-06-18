@@ -49,6 +49,10 @@ test("given line setup model prompts when configuring defaults and agents then e
     assert.match(text, /Affects: normal Codex sessions via CODEX_HOME\/config\.toml/);
     assert.match(text, /Affects: ultrawork runs via CODEX_HOME\/ulw\.config\.toml/);
     assert.match(text, /Affects: only the explorer agent when that agent is invoked/);
+    assert.match(text, /Role guide: Default Codex sessions\./);
+    assert.match(text, /Role guide: Ultrawork planning and long-form execution\./);
+    assert.match(text, /Role guide: Fast codebase search and file discovery\./);
+    assert.match(text, /Minimum capability: Use a cheap fast model with low reasoning and fast tier when available\./);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

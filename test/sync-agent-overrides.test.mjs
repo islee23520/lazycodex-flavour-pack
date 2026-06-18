@@ -216,9 +216,13 @@ test("given packaged override config when reading then targets Codex-loaded agen
     "artistry",
     "artistry-gen",
     "artistry-qa",
-    "codex-ultrawork-reviewer",
     "default",
     "explorer",
+    "lazycodex-clone-fidelity-reviewer",
+    "lazycodex-code-reviewer",
+    "lazycodex-executor",
+    "lazycodex-gate-reviewer",
+    "lazycodex-qa-executor",
     "librarian",
     "metis",
     "momus",
@@ -228,7 +232,7 @@ test("given packaged override config when reading then targets Codex-loaded agen
     "visual-engineering",
     "visual-looker"
   ]);
-  assert.equal(Object.keys(config.overrides).filter((agentName) => !["default", "ulw"].includes(agentName)).length, 12);
+  assert.equal(Object.keys(config.overrides).filter((agentName) => !["default", "ulw"].includes(agentName)).length, 16);
   assert.deepEqual(config.overrides.momus, {
     model: "gpt-5.5",
     model_reasoning_effort: "xhigh",
@@ -239,9 +243,14 @@ test("given packaged override config when reading then targets Codex-loaded agen
     model_reasoning_effort: "xhigh",
     service_tier: "default"
   });
-  assert.deepEqual(config.overrides["codex-ultrawork-reviewer"], {
+  assert.deepEqual(config.overrides["lazycodex-code-reviewer"], {
     model: "gpt-5.5",
-    model_reasoning_effort: "high",
+    model_reasoning_effort: "xhigh",
+    service_tier: "default"
+  });
+  assert.deepEqual(config.overrides["lazycodex-qa-executor"], {
+    model: "gpt-5.5",
+    model_reasoning_effort: "medium",
     service_tier: "default"
   });
   assert.deepEqual(config.overrides.sisyphus, {

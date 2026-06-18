@@ -131,21 +131,21 @@ test("given recommend-only benchmark with diverse inventory when running then pl
   }
 });
 
-test("given reviewer recommendation when spark and gpt55 are available then avoids spark tool incompatibility", async () => {
+test("given LazyCodex code reviewer recommendation when spark and gpt55 are available then avoids spark tool incompatibility", async () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-benchmark-"));
   try {
     const outputPath = path.join(root, "result.json");
     const codexHome = createCodexHome(root, {
-      "codex-ultrawork-reviewer": {
+      "lazycodex-code-reviewer": {
         model: "gpt-5.3-codex-spark",
-        model_reasoning_effort: "high",
+        model_reasoning_effort: "xhigh",
         service_tier: "default"
       }
     });
 
     const result = await runModelBenchmarks(
       {
-        roles: ["codex-ultrawork-reviewer"],
+        roles: ["lazycodex-code-reviewer"],
         samples: 1,
         dryRun: false,
         recommendOnly: true,
@@ -158,8 +158,8 @@ test("given reviewer recommendation when spark and gpt55 are available then avoi
       }
     );
 
-    assert.equal(result.recommendations["codex-ultrawork-reviewer"].model, "gpt-5.5");
-    assert.equal(result.recommendations["codex-ultrawork-reviewer"].changed, true);
+    assert.equal(result.recommendations["lazycodex-code-reviewer"].model, "gpt-5.5");
+    assert.equal(result.recommendations["lazycodex-code-reviewer"].changed, true);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

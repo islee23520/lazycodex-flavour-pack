@@ -81,7 +81,7 @@ Flags:
   --dry-run  With benchmark-models, score scenarios without provider calls.
   --apply  With benchmark-models, write winning model fields to ~/.codex/lfp.json.
 
-  This package extends LazyCodex with OMO model-routing, visual, art, fallback, and benchmark capabilities for Codex while keeping LazyCodex-owned agents pure. setup runs npx lazycodex-ai install before applying LFP, installs/enables this pack in Codex, writes canonical schemaVersion 2 config to ~/.codex/lfp.json, and applies configured three primary model fields only where LFP owns the target. Use --agent-models-only to preserve existing Codex global defaults.`;
+  This package extends LazyCodex with OMO model-routing, visual, art, fallback, and benchmark capabilities for Codex while keeping LazyCodex-owned agents pure. setup runs npx lazycodex-ai@latest install before applying LFP, installs/enables this pack in Codex, writes canonical schemaVersion 2 config to ~/.codex/lfp.json, and applies configured three primary model fields only where LFP owns the target. Use --agent-models-only to preserve existing Codex global defaults.`;
 
 if (isDirectRun()) {
   runCli(process.argv.slice(2)).catch((error) => {

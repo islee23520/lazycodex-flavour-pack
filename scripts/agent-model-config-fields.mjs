@@ -1,5 +1,6 @@
 import { logAgentGuide } from "./model-config-prompts.mjs";
 import { getAgentDescription, getAgentDisplayName } from "./agent-model-metadata.mjs";
+import { formatPrimaryFields, getModelSetupGuide } from "./model-setup-guidance.mjs";
 
 export function getPrimaryFields(fields, models) {
   return {
@@ -31,22 +32,26 @@ export function logAgentCurrentAndRecommendation(output, agentName, currentField
   const displayName = getAgentDisplayName(agentName);
   const description = getAgentDescription(agentName);
   if (description) output?.log?.(`Role: ${description}`);
+  logSetupGuide(output, agentName);
   logAgentGuide(output, displayName, {
     model: current.model,
     reasoning: current.model_reasoning_effort,
     tier: current.service_tier
   }, { preferCurrent: true });
   if (vanilla?.model) {
-    output?.log?.(
-      `  Vanilla LazyCodex recommendation: ${vanilla.model} (reasoning: ${vanilla.model_reasoning_effort ?? "unset"}, tier: ${vanilla.service_tier ?? "unset"})`
-    );
+    output?.log?.(`  Vanilla LazyCodex recommendation: ${formatPrimaryFields(vanilla)}`);
   }
   output?.log?.(
     `  Original/current: ${current.model ?? "unknown"} (reasoning: ${current.model_reasoning_effort}, tier: ${current.service_tier})`
   );
   if (recommendation.model) {
-    output?.log?.(
-      `  LFP recommendation: ${recommendation.model} (reasoning: ${recommendation.model_reasoning_effort}, tier: ${recommendation.service_tier})`
-    );
+    output?.log?.(`  LFP recommendation: ${formatPrimaryFields(recommendation)}`);
   }
+}
+
+export function logSetupGuide(output, agentName) {
+  const guide = getModelSetupGuide(agentName);
+  output?.log?.(`  Role guide: ${guide.role}`);
+  output?.log?.(`  Tune for: ${guide.tuneFor}`);
+  output?.log?.(`  Minimum capability: ${guide.minimum}`);
 }

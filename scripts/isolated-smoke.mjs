@@ -37,11 +37,15 @@ writeFileSync(
     ""
   ].join("\n")
 );
-writeOmo410UltraworkAgents();
+writeOmo411UltraworkAgents();
 writeOverrideConfig(overrideConfigPath, agentsDir, {
   default: { model: "grok-4.20-0309-reasoning", model_reasoning_effort: "xhigh", service_tier: "default" },
   ulw: { model: "grok-4.20-0309-reasoning", model_reasoning_effort: "xhigh", service_tier: "default" },
-  "codex-ultrawork-reviewer": { model: "gpt-5.5", model_reasoning_effort: "high", service_tier: "default" },
+  "lazycodex-executor": { model: "gpt-5.5", model_reasoning_effort: "high", service_tier: "default" },
+  "lazycodex-code-reviewer": { model: "gpt-5.5", model_reasoning_effort: "xhigh", service_tier: "default" },
+  "lazycodex-qa-executor": { model: "gpt-5.5", model_reasoning_effort: "medium", service_tier: "default" },
+  "lazycodex-gate-reviewer": { model: "gpt-5.5", model_reasoning_effort: "xhigh", service_tier: "default" },
+  "lazycodex-clone-fidelity-reviewer": { model: "gpt-5.5", model_reasoning_effort: "xhigh", service_tier: "default" },
   explorer: { model: "gpt-5.4-mini", model_reasoning_effort: "low", service_tier: "fast" },
   librarian: { model: "gpt-5.4-mini", model_reasoning_effort: "low", service_tier: "fast" },
   metis: { model: "gpt-5.5", model_reasoning_effort: "high", service_tier: "default" },
@@ -51,7 +55,11 @@ writeOverrideConfig(overrideConfigPath, agentsDir, {
 writeOverrideConfig(savedOverridePath, null, {
   default: { model: "gpt-5.5", model_reasoning_effort: "high", service_tier: "default" },
   ulw: { model: "gpt-5.5", model_reasoning_effort: "xhigh", service_tier: "default" },
-  "codex-ultrawork-reviewer": { model: "gpt-5.5", model_reasoning_effort: "high", service_tier: "default" },
+  "lazycodex-executor": { model: "gpt-5.5", model_reasoning_effort: "high", service_tier: "default" },
+  "lazycodex-code-reviewer": { model: "gpt-5.5", model_reasoning_effort: "xhigh", service_tier: "default" },
+  "lazycodex-qa-executor": { model: "gpt-5.5", model_reasoning_effort: "medium", service_tier: "default" },
+  "lazycodex-gate-reviewer": { model: "gpt-5.5", model_reasoning_effort: "xhigh", service_tier: "default" },
+  "lazycodex-clone-fidelity-reviewer": { model: "gpt-5.5", model_reasoning_effort: "xhigh", service_tier: "default" },
   explorer: { model: "gpt-5.4-mini", model_reasoning_effort: "low", service_tier: "fast" },
   librarian: { model: "gpt-5.4-mini", model_reasoning_effort: "low", service_tier: "fast" },
   metis: { model: "gpt-5.5", model_reasoning_effort: "high", service_tier: "fast" },
@@ -87,7 +95,8 @@ const explorerText = readFileSync(path.join(agentsDir, "explorer.toml"), "utf8")
 const metisText = readFileSync(path.join(agentsDir, "metis.toml"), "utf8");
 const momusText = readFileSync(path.join(agentsDir, "momus.toml"), "utf8");
 const planText = readFileSync(path.join(agentsDir, "plan.toml"), "utf8");
-const reviewerText = readFileSync(path.join(agentsDir, "codex-ultrawork-reviewer.toml"), "utf8");
+const codeReviewerText = readFileSync(path.join(agentsDir, "lazycodex-code-reviewer.toml"), "utf8");
+const qaExecutorText = readFileSync(path.join(agentsDir, "lazycodex-qa-executor.toml"), "utf8");
 
 assertIncludes(configText, '[plugins."lfp@islee23520"]', "isolated config enables lfp@islee23520");
 assertIncludes(configText, "[marketplaces.islee23520]", "isolated config uses islee23520 marketplace");
@@ -98,8 +107,9 @@ assertIncludes(metisText, 'model = "gpt-5.5"', "LazyCodex metis original model p
 assertIncludes(metisText, 'model_reasoning_effort = "high"', "LazyCodex metis original reasoning preserved");
 assertIncludes(momusText, 'model_reasoning_effort = "xhigh"', "current OMO momus xhigh reasoning preserved");
 assertIncludes(planText, 'model_reasoning_effort = "xhigh"', "current OMO plan xhigh reasoning preserved");
-assertIncludes(reviewerText, 'model_reasoning_effort = "high"', "current OMO reviewer high reasoning preserved");
-assertManagedOmoAgents(overrideConfigPath, 6);
+assertIncludes(codeReviewerText, 'model_reasoning_effort = "xhigh"', "LazyCodex code reviewer xhigh reasoning preserved");
+assertIncludes(qaExecutorText, 'model_reasoning_effort = "medium"', "LazyCodex QA executor medium reasoning preserved");
+assertManagedOmoAgents(overrideConfigPath, 10);
 if (!cacheState.healthy) throw new Error(`Codex Apps cache is not clean: ${JSON.stringify(cacheState.duplicateFiles)}`);
 if (!output.questions.some((question) => /Adjust LFP model overrides now/.test(question))) {
   throw new Error("Saved override adjust prompt was not shown");
@@ -107,10 +117,12 @@ if (!output.questions.some((question) => /Adjust LFP model overrides now/.test(q
 if (!output.questions.some((question) => /explorer model/.test(question))) {
   throw new Error("Model override prompts did not continue after saved override restore");
 }
-if (!sync.skippedReadOnly.includes("metis")) {
-  throw new Error("Expected metis to be skipped as a read-only LazyCodex agent");
+for (const agentName of ["metis", "lazycodex-code-reviewer", "lazycodex-qa-executor"]) {
+  if (!sync.skippedReadOnly.includes(agentName)) {
+    throw new Error(`Expected ${agentName} to be skipped as a read-only LazyCodex agent`);
+  }
 }
-if (sync.changed.some((filePath) => filePath.endsWith("metis.toml") || filePath.endsWith("explorer.toml"))) {
+if (sync.changed.some((filePath) => filePath.endsWith("metis.toml") || filePath.endsWith("explorer.toml") || filePath.includes("lazycodex-"))) {
   throw new Error(`LazyCodex agents should not be updated: ${sync.changed.join(", ")}`);
 }
 if (!readFileSync(savedOverridePath, "utf8").includes('"schemaVersion": 2')) {
@@ -121,9 +133,11 @@ console.log("isolated smoke: PASS");
 console.log(`isolated smoke: CODEX_HOME=${codexHome}`);
 console.log(`isolated smoke: setup installed lfp@islee23520=${configText.includes('[plugins."lfp@islee23520"]')}`);
 console.log(`isolated smoke: ulw profile synced=${ulwConfigText.includes('model = "grok-4.20-0309-reasoning"')}`);
-console.log(`isolated smoke: omo 4.10 momus xhigh=${momusText.includes('model_reasoning_effort = "xhigh"')}`);
-console.log(`isolated smoke: omo 4.10 plan xhigh=${planText.includes('model_reasoning_effort = "xhigh"')}`);
+console.log(`isolated smoke: lazycodex 4.11 momus xhigh=${momusText.includes('model_reasoning_effort = "xhigh"')}`);
+console.log(`isolated smoke: lazycodex 4.11 plan xhigh=${planText.includes('model_reasoning_effort = "xhigh"')}`);
 console.log(`isolated smoke: omo managed agents=${countManagedOmoAgents(overrideConfigPath)}`);
+console.log(`isolated smoke: lazycodex 4.11 code reviewer xhigh=${codeReviewerText.includes('model_reasoning_effort = "xhigh"')}`);
+console.log(`isolated smoke: lazycodex 4.11 qa executor medium=${qaExecutorText.includes('model_reasoning_effort = "medium"')}`);
 console.log(`isolated smoke: duplicate tool cache healthy=${cacheState.healthy}`);
 console.log(`isolated smoke: saved adjust prompt shown=true`);
 console.log(`isolated smoke: prompts continued after saved adjust=true`);
@@ -170,8 +184,12 @@ function countManagedOmoAgents(configPath) {
   return configuredAgents.size;
 }
 
-function writeOmo410UltraworkAgents() {
-  writeAgent("codex-ultrawork-reviewer", "gpt-5.5", "high", "default");
+function writeOmo411UltraworkAgents() {
+  writeAgent("lazycodex-executor", "gpt-5.5", "high", "default");
+  writeAgent("lazycodex-code-reviewer", "gpt-5.5", "xhigh", "default");
+  writeAgent("lazycodex-qa-executor", "gpt-5.5", "medium", "default");
+  writeAgent("lazycodex-gate-reviewer", "gpt-5.5", "xhigh", "default");
+  writeAgent("lazycodex-clone-fidelity-reviewer", "gpt-5.5", "xhigh", "default");
   writeAgent("explorer", "gpt-5.4-mini", "low", "fast");
   writeAgent("librarian", "gpt-5.4-mini", "low", "fast");
   writeAgent("metis", "gpt-5.5", "high", "default");

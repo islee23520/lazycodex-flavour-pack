@@ -3,8 +3,26 @@ import { getCompatibleReasoningEffort } from "./model-reasoning-compat.mjs";
 import { readRolePolicyConfig } from "./role-policy-config.mjs";
 import { VIRTUAL_OVERRIDE_SECTIONS } from "./model-field-scope.mjs";
 
-const XHIGH_REASONING_AGENT_NAMES = new Set(["momus", "plan"]);
-const REASONING_AGENT_NAMES = new Set(["metis", "momus", "plan", "sisyphus", "ulw-plan", "review-work"]);
+const XHIGH_REASONING_AGENT_NAMES = new Set([
+  "momus",
+  "plan",
+  "lazycodex-code-reviewer",
+  "lazycodex-gate-reviewer",
+  "lazycodex-clone-fidelity-reviewer"
+]);
+const REASONING_AGENT_NAMES = new Set([
+  "metis",
+  "momus",
+  "plan",
+  "sisyphus",
+  "ulw-plan",
+  "review-work",
+  "lazycodex-executor",
+  "lazycodex-code-reviewer",
+  "lazycodex-qa-executor",
+  "lazycodex-gate-reviewer",
+  "lazycodex-clone-fidelity-reviewer"
+]);
 
 const DEEP_REASONING_PREFERENCES = [
   { family: "glm", capability: "reasoning" },
@@ -49,7 +67,39 @@ const ROLE_MODEL_PREFERENCES = {
       { family: "glm", capability: "reasoning" }
     ]
   },
-  "codex-ultrawork-reviewer": {
+  "lazycodex-executor": {
+    primary: [
+      { id: "gpt-5.5" },
+      { family: "gpt", capability: "reasoning", pattern: /^(?!.*codex-spark).*$/i },
+      { family: "grok", capability: "reasoning" },
+      { family: "glm", capability: "reasoning" }
+    ]
+  },
+  "lazycodex-code-reviewer": {
+    primary: [
+      { id: "gpt-5.5" },
+      { family: "gpt", capability: "reasoning", pattern: /^(?!.*codex-spark).*$/i },
+      { family: "grok", capability: "reasoning" },
+      { family: "glm", capability: "reasoning" }
+    ]
+  },
+  "lazycodex-qa-executor": {
+    primary: [
+      { id: "gpt-5.5" },
+      { family: "gpt", capability: "reasoning", pattern: /^(?!.*codex-spark).*$/i },
+      { family: "grok", capability: "reasoning" },
+      { family: "glm", capability: "reasoning" }
+    ]
+  },
+  "lazycodex-gate-reviewer": {
+    primary: [
+      { id: "gpt-5.5" },
+      { family: "gpt", capability: "reasoning", pattern: /^(?!.*codex-spark).*$/i },
+      { family: "grok", capability: "reasoning" },
+      { family: "glm", capability: "reasoning" }
+    ]
+  },
+  "lazycodex-clone-fidelity-reviewer": {
     primary: [
       { id: "gpt-5.5" },
       { family: "gpt", capability: "reasoning", pattern: /^(?!.*codex-spark).*$/i },

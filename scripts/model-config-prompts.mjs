@@ -17,7 +17,7 @@ export function logAgentGuide(output, agentName, current, options = {}) {
   output?.log?.("  Guide: no preset — choose a model from the available list or type a custom id.");
 }
 
-export async function promptForModel(rl, { agentName, displayName, current, vanillaRecommendation, vanillaRecommendationFields, models, output, modelSelector }) {
+export async function promptForModel(rl, { agentName, displayName, current, vanillaRecommendation, vanillaRecommendationFields, recommendationFields, models, output, modelSelector }) {
   const choices = groupModelAliases(models);
   const defaultIndex = choices.findIndex((choice) => choice.aliases.includes(current) || choice.key === current) + 1;
   const suffix = defaultIndex > 0 ? `[${defaultIndex}]` : `[${current}]`;
@@ -32,6 +32,7 @@ export async function promptForModel(rl, { agentName, displayName, current, vani
       current,
       vanillaRecommendation,
       vanillaRecommendationFields,
+      recommendationFields,
       scope,
       choices: choices.map((choice) => ({ ...choice, label: formatModelChoice(choice) }))
     });
@@ -48,9 +49,9 @@ export async function promptForModel(rl, { agentName, displayName, current, vani
   }
 }
 
-export async function promptForServiceTier(rl, { agentName, displayName, current, vanillaRecommendation, output, tierSelector }) {
+export async function promptForServiceTier(rl, { agentName, displayName, current, vanillaRecommendation, vanillaRecommendationFields, recommendationFields, output, tierSelector }) {
   if (typeof tierSelector === "function") {
-    return await tierSelector({ agentName, displayName: displayName ?? agentName, current, vanillaRecommendation });
+    return await tierSelector({ agentName, displayName: displayName ?? agentName, current, vanillaRecommendation, vanillaRecommendationFields, recommendationFields });
   }
 
   if (vanillaRecommendation !== undefined) output?.log?.(`  Vanilla LazyCodex service tier: ${vanillaRecommendation}`);
@@ -74,9 +75,9 @@ export async function promptForServiceTier(rl, { agentName, displayName, current
   }
 }
 
-export async function promptForReasoningEffort(rl, { agentName, displayName, current, vanillaRecommendation, output, reasoningSelector }) {
+export async function promptForReasoningEffort(rl, { agentName, displayName, current, vanillaRecommendation, vanillaRecommendationFields, recommendationFields, output, reasoningSelector }) {
   if (typeof reasoningSelector === "function") {
-    return await reasoningSelector({ agentName, displayName: displayName ?? agentName, current, vanillaRecommendation });
+    return await reasoningSelector({ agentName, displayName: displayName ?? agentName, current, vanillaRecommendation, vanillaRecommendationFields, recommendationFields });
   }
 
   if (vanillaRecommendation !== undefined) output?.log?.(`  Vanilla LazyCodex reasoning effort: ${vanillaRecommendation}`);

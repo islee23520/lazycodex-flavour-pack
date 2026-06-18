@@ -3,6 +3,7 @@ import pc from "picocolors";
 
 import { SERVICE_TIERS, REASONING_EFFORTS } from "./model-config-prompts.mjs";
 import { getModelSettingScope } from "./model-setting-scopes.mjs";
+import { formatPrimaryFields, getModelSetupGuide } from "./model-setup-guidance.mjs";
 
 import { PLUGIN_REF } from "./codex-plugin-install.mjs";
 import { createProviderConsentSelector } from "./setup-provider-tui.mjs";
@@ -57,11 +58,19 @@ export async function runSetupTui(args, context, deps = {}) {
 }
 
 function createModelSelector(prompts) {
-  return async ({ agentName, displayName, current, vanillaRecommendation, vanillaRecommendationFields, scope, choices }) => {
+  return async ({ agentName, displayName, current, vanillaRecommendation, vanillaRecommendationFields, recommendationFields, scope, choices }) => {
     const options = buildModelOptions(current, vanillaRecommendation, choices);
     const label = displayName ?? agentName;
     const settingScope = scope ?? getModelSettingScope(agentName);
-    const note = buildModelGuideNote(label, current, vanillaRecommendationFields ?? vanillaRecommendation, settingScope);
+    const note = buildModelGuideNote({
+      label,
+      agentName,
+      fieldName: "model",
+      currentFields: { model: current },
+      vanillaFields: vanillaRecommendationFields ?? asModelFields(vanillaRecommendation),
+      recommendationFields,
+      scope: settingScope
+    });
     prompts.note(note.message, note.title);
     const selected = await prompts.select({
       message: formatModelSelectorMessage(label, settingScope),
@@ -96,20 +105,26 @@ function getModelOptionHint(choice, current, vanillaRecommendation) {
   return undefined;
 }
 
-function buildModelGuideNote(label, current, vanillaRecommendation, scope) {
+function buildModelGuideNote({ label, agentName, fieldName, currentFields, vanillaFields, recommendationFields, scope }) {
+  const guide = getModelSetupGuide(agentName);
   const lines = [];
   if (scope?.line) lines.push(`Affects: ${scope.line}`);
-  lines.push(`Current/default: ${current ?? "unknown"}`);
-  if (vanillaRecommendation !== undefined) lines.push(`Vanilla LazyCodex recommendation: ${formatVanillaRecommendation(vanillaRecommendation)}`);
-  return { title: `${label ?? "Model"} guide`, message: lines.join("\n") };
+  lines.push(`Role guide: ${guide.role}`);
+  lines.push(`Tune for: ${guide.tuneFor}`);
+  lines.push(`Minimum capability: ${guide.minimum}`);
+  lines.push(`Current/default: ${formatPrimaryFields(currentFields)}`);
+  if (vanillaFields !== null && vanillaFields !== undefined) {
+    lines.push(`Vanilla LazyCodex recommendation: ${formatPrimaryFields(vanillaFields)}`);
+  }
+  if (hasRecommendedFields(recommendationFields)) {
+    lines.push(`LFP recommendation: ${formatPrimaryFields(recommendationFields)}`);
+  }
+  return { title: `${label ?? "Model"} ${fieldName} guide`, message: lines.join("\n") };
 }
 
-function formatVanillaRecommendation(vanillaRecommendation) {
-  if (typeof vanillaRecommendation !== "object" || vanillaRecommendation === null) return vanillaRecommendation;
-  const model = vanillaRecommendation.model ?? "unknown";
-  const reasoning = vanillaRecommendation.model_reasoning_effort ?? "unset";
-  const tier = vanillaRecommendation.service_tier ?? "unset";
-  return `${model} (reasoning: ${reasoning}, tier: ${tier})`;
+function asModelFields(model) {
+  if (model === undefined) return null;
+  return { model };
 }
 
 function formatModelSelectorMessage(label, scope) {
@@ -144,13 +159,24 @@ function createYesNoSelector(prompts) {
 }
 
 function createTierSelector(prompts) {
-  return async ({ agentName, displayName, current, vanillaRecommendation }) => {
+  return async ({ agentName, displayName, current, vanillaRecommendation, vanillaRecommendationFields, recommendationFields }) => {
     const options = SERVICE_TIERS.map((tier) => ({
       value: tier.value,
       label: tier.label,
       hint: getFieldOptionHint(tier.value, current, vanillaRecommendation)
     }));
     const label = displayName ?? agentName;
+    const scope = getModelSettingScope(agentName);
+    const note = buildModelGuideNote({
+      label,
+      agentName,
+      fieldName: "service tier",
+      currentFields: { service_tier: current },
+      vanillaFields: vanillaRecommendationFields ?? (vanillaRecommendation === undefined ? null : { service_tier: vanillaRecommendation }),
+      recommendationFields,
+      scope
+    });
+    prompts.note(note.message, note.title);
     const selected = await prompts.select({
       message: formatFieldSelectorMessage(label, "service tier", vanillaRecommendation),
       options,
@@ -165,13 +191,24 @@ function createTierSelector(prompts) {
 }
 
 function createReasoningSelector(prompts) {
-  return async ({ agentName, displayName, current, vanillaRecommendation }) => {
+  return async ({ agentName, displayName, current, vanillaRecommendation, vanillaRecommendationFields, recommendationFields }) => {
     const options = REASONING_EFFORTS.map((effort) => ({
       value: effort,
       label: effort,
       hint: getFieldOptionHint(effort, current, vanillaRecommendation)
     }));
     const label = displayName ?? agentName;
+    const scope = getModelSettingScope(agentName);
+    const note = buildModelGuideNote({
+      label,
+      agentName,
+      fieldName: "reasoning effort",
+      currentFields: { model_reasoning_effort: current },
+      vanillaFields: vanillaRecommendationFields ?? (vanillaRecommendation === undefined ? null : { model_reasoning_effort: vanillaRecommendation }),
+      recommendationFields,
+      scope
+    });
+    prompts.note(note.message, note.title);
     const selected = await prompts.select({
       message: formatFieldSelectorMessage(label, "reasoning effort", vanillaRecommendation),
       options,
@@ -198,6 +235,10 @@ function formatFieldSelectorMessage(label, fieldName, vanillaRecommendation) {
   const prefix = label ? `${label} ${fieldName}` : fieldName;
   if (vanillaRecommendation === undefined) return prefix;
   return `${prefix} (vanilla LazyCodex: ${vanillaRecommendation})`;
+}
+
+function hasRecommendedFields(fields) {
+  return Boolean(fields?.model || fields?.model_reasoning_effort || fields?.service_tier);
 }
 
 function createGitHubStartSelector(prompts) {

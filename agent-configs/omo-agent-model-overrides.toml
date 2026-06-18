@@ -36,9 +36,29 @@ model = "gpt-5.5"
 model_reasoning_effort = "xhigh"
 service_tier = "default"
 
-[agents.codex-ultrawork-reviewer]
+[agents.lazycodex-executor]
 model = "gpt-5.5"
 model_reasoning_effort = "high"
+service_tier = "default"
+
+[agents.lazycodex-code-reviewer]
+model = "gpt-5.5"
+model_reasoning_effort = "xhigh"
+service_tier = "default"
+
+[agents.lazycodex-qa-executor]
+model = "gpt-5.5"
+model_reasoning_effort = "medium"
+service_tier = "default"
+
+[agents.lazycodex-gate-reviewer]
+model = "gpt-5.5"
+model_reasoning_effort = "xhigh"
+service_tier = "default"
+
+[agents.lazycodex-clone-fidelity-reviewer]
+model = "gpt-5.5"
+model_reasoning_effort = "xhigh"
 service_tier = "default"
 
 [agents.sisyphus]

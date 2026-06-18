@@ -217,9 +217,8 @@ test("given recommended agent when user presses enter then shows current versus 
     assert.equal(config.overrides.plan.service_tier, "default");
     assert.equal("model_fallback" in config.overrides.plan, false);
     assert.match(outputText, /Original\/current: old-plan-model \(reasoning: low, tier: fast\)/);
-    assert.match(outputText, /LFP recommendation: glm-5\.2 \(reasoning: undefined, tier: default\)/);
+    assert.match(outputText, /LFP recommendation: glm-5\.2 \(reasoning: unset, tier: default\)/);
     assert.doesNotMatch(outputText, /reasoning: high/);
-    assert.doesNotMatch(outputText, /fallback/i);
     assert.doesNotMatch(outputText, /fallback/i);
     assert.equal(configOutput.questions.some((question) => /plan fallback model/.test(question)), false);
     assert.doesNotMatch(updated, /^model_fallback/m);
@@ -440,14 +439,14 @@ test("given additional installed OMO agent when user opts in then appends overri
   }
 });
 
-test("given discovered reviewer agent has recommendation when user opts in then writes primary fields only", async () => {
+test("given discovered LazyCodex code reviewer agent has recommendation when user opts in then writes primary fields only", async () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-models-"));
   try {
     const configPath = path.join(root, "overrides.toml");
     writeFileSync(
-      path.join(root, "codex-ultrawork-reviewer.toml"),
+      path.join(root, "lazycodex-code-reviewer.toml"),
       [
-        'name = "codex-ultrawork-reviewer"',
+        'name = "lazycodex-code-reviewer"',
         'model = "old-reviewer-model"',
         'model_reasoning_effort = "medium"',
         'service_tier = "fast"',
@@ -474,13 +473,13 @@ test("given discovered reviewer agent has recommendation when user opts in then 
     const updated = readFileSync(configPath, "utf8");
     const outputText = output.lines.join("\n");
 
-    assert.equal(config.overrides["codex-ultrawork-reviewer"].model, "gpt-5.5");
-    assert.equal("model_fallback" in config.overrides["codex-ultrawork-reviewer"], false);
-    assert.match(outputText, /Agent: codex-ultrawork-reviewer/);
+    assert.equal(config.overrides["lazycodex-code-reviewer"].model, "gpt-5.5");
+    assert.equal("model_fallback" in config.overrides["lazycodex-code-reviewer"], false);
+    assert.match(outputText, /Agent: lazycodex-code-reviewer/);
     assert.match(outputText, /Original\/current: old-reviewer-model \(reasoning: medium, tier: fast\)/);
     assert.doesNotMatch(outputText, /Recommended fallback/);
-    assert.equal(configOutput.questions.some((question) => /codex-ultrawork-reviewer fallback model/.test(question)), false);
-    assert.match(updated, /\[agents\.codex-ultrawork-reviewer]/);
+    assert.equal(configOutput.questions.some((question) => /lazycodex-code-reviewer fallback model/.test(question)), false);
+    assert.match(updated, /\[agents\.lazycodex-code-reviewer]/);
     assert.doesNotMatch(updated, /^model_fallback/m);
   } finally {
     rmSync(root, { recursive: true, force: true });

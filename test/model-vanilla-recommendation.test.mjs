@@ -147,6 +147,11 @@ test("given TUI model selector when vanilla LazyCodex fields are available then 
             model_reasoning_effort: "low",
             service_tier: "fast"
           },
+          recommendationFields: {
+            model: "gpt-5.4-mini",
+            model_reasoning_effort: "low",
+            service_tier: "fast"
+          },
           choices: [
             { value: "gpt-5.4-mini", label: "gpt-5.4-mini", aliases: ["gpt-5.4-mini"], key: "gpt-5.4-mini" },
             { value: "gpt-5.5", label: "gpt-5.5", aliases: ["gpt-5.5"], key: "gpt-5.5" }
@@ -155,20 +160,56 @@ test("given TUI model selector when vanilla LazyCodex fields are available then 
         await options.tierSelector({
           agentName: "explorer",
           current: "default",
-          vanillaRecommendation: "fast"
+          vanillaRecommendation: "fast",
+          vanillaRecommendationFields: {
+            model: "gpt-5.5",
+            model_reasoning_effort: "low",
+            service_tier: "fast"
+          },
+          recommendationFields: {
+            model: "gpt-5.4-mini",
+            model_reasoning_effort: "low",
+            service_tier: "fast"
+          }
         });
         await options.reasoningSelector({
           agentName: "explorer",
           current: "medium",
-          vanillaRecommendation: "low"
+          vanillaRecommendation: "low",
+          vanillaRecommendationFields: {
+            model: "gpt-5.5",
+            model_reasoning_effort: "low",
+            service_tier: "fast"
+          },
+          recommendationFields: {
+            model: "gpt-5.4-mini",
+            model_reasoning_effort: "low",
+            service_tier: "fast"
+          }
         });
       }
     }
   );
 
   assert.match(
-    calls.find((call) => call[0] === "note" && call[1] === "explorer guide")?.[2],
+    calls.find((call) => call[0] === "note" && call[1] === "explorer model guide")?.[2],
     /Vanilla LazyCodex recommendation: gpt-5\.5 \(reasoning: low, tier: fast\)/
+  );
+  assert.match(
+    calls.find((call) => call[0] === "note" && call[1] === "explorer model guide")?.[2],
+    /LFP recommendation: gpt-5\.4-mini \(reasoning: low, tier: fast\)/
+  );
+  assert.match(
+    calls.find((call) => call[0] === "note" && call[1] === "explorer service tier guide")?.[2],
+    /Vanilla LazyCodex recommendation: gpt-5\.5 \(reasoning: low, tier: fast\)/
+  );
+  assert.match(
+    calls.find((call) => call[0] === "note" && call[1] === "explorer reasoning effort guide")?.[2],
+    /Minimum capability: Use a cheap fast model with low reasoning and fast tier when available\./
+  );
+  assert.equal(
+    calls.filter((call) => call[0] === "note" && String(call[1]).startsWith("explorer ")).length,
+    3
   );
   assert.deepEqual(calls.find((call) => call[0] === "select" && call[1] === "explorer model (affects this agent only)")?.[2], [
     { value: "gpt-5.4-mini", label: "gpt-5.4-mini", hint: "current" },

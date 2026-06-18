@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 
 const NPX_LAZYCODEX_INSTALL_BIN = "npx";
-const NPX_LAZYCODEX_INSTALL_ARGS = ["lazycodex-ai", "install"];
+const NPX_LAZYCODEX_INSTALL_ARGS = ["lazycodex-ai@latest", "install"];
 
 export function formatLazyCodexInstallCommand(env = process.env) {
   const command = getLazyCodexInstallCommand(env);

@@ -29,11 +29,11 @@ export const BENCHMARK_SCENARIOS = {
     checks: ["REJECT", "evidence"],
     currentFallback: { model_reasoning_effort: "xhigh", service_tier: "default" }
   },
-  "codex-ultrawork-reviewer": {
+  "lazycodex-code-reviewer": {
     prompt:
       'Strictly review: benchmark command has no dry-run, no secret redaction, and no saved output. Return compact JSON with {"verdict":"FAIL","issues":[...]}',
     checks: ["FAIL", "dry-run", "secret"],
-    currentFallback: { model_reasoning_effort: "high", service_tier: "default" }
+    currentFallback: { model_reasoning_effort: "xhigh", service_tier: "default" }
   }
 };
 

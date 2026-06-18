@@ -34,6 +34,16 @@ test("given npm package metadata when validating bin entries then publish-safe t
   }
 });
 
+test("given npm package metadata when validating package entry then bare import target ships", () => {
+  const entryTarget = packageJson.exports?.["."] ?? packageJson.main;
+
+  assert.equal(typeof entryTarget, "string", "bare import target must be declared");
+  assert.equal(path.isAbsolute(entryTarget), false, "bare import target must be package-relative");
+  const normalizedTarget = entryTarget.replace(/^\.\//, "");
+  assert.equal(existsSync(path.resolve(normalizedTarget)), true, "bare import target must exist");
+  assert.equal(packageJson.files.includes(normalizedTarget), true, "bare import target must be included in package files");
+});
+
 test("given local npm scripts when validating setup command then they run LazyCodex install first", () => {
   assert.doesNotMatch(packageJson.scripts.setup, /--skip-lazycodex-install/);
   assert.doesNotMatch(packageJson.scripts["dry-setup"], /--skip-lazycodex-install/);
@@ -77,6 +87,7 @@ test("given npm package metadata when validating release files then package incl
     "scripts/model-provider.mjs",
     "scripts/model-reasoning-compat.mjs",
     "scripts/model-recommendations.mjs",
+    "scripts/model-setup-guidance.mjs",
     "scripts/model-setting-scopes.mjs",
     "scripts/provider-consent.mjs",
     "scripts/role-policy-config.mjs",

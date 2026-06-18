@@ -38,9 +38,29 @@
       "model_reasoning_effort": "xhigh",
       "service_tier": "default"
     },
-    "codex-ultrawork-reviewer": {
+    "lazycodex-executor": {
       "model": "gpt-5.5",
       "model_reasoning_effort": "high",
+      "service_tier": "default"
+    },
+    "lazycodex-code-reviewer": {
+      "model": "gpt-5.5",
+      "model_reasoning_effort": "xhigh",
+      "service_tier": "default"
+    },
+    "lazycodex-qa-executor": {
+      "model": "gpt-5.5",
+      "model_reasoning_effort": "medium",
+      "service_tier": "default"
+    },
+    "lazycodex-gate-reviewer": {
+      "model": "gpt-5.5",
+      "model_reasoning_effort": "xhigh",
+      "service_tier": "default"
+    },
+    "lazycodex-clone-fidelity-reviewer": {
+      "model": "gpt-5.5",
+      "model_reasoning_effort": "xhigh",
       "service_tier": "default"
     },
     "sisyphus": {
