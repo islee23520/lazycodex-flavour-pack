@@ -2,6 +2,7 @@ import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import { AGENT_MODEL_FIELDS } from "./model-field-scope.mjs";
+import { REMOVED_LFP_AGENT_NAMES } from "./removed-lfp-agents.mjs";
 import { readTomlString } from "./toml-string-utils.mjs";
 
 const WRITABLE_FIELDS = [...AGENT_MODEL_FIELDS];
@@ -15,7 +16,7 @@ export function discoverAdditionalAgents(sourceDir, overrides) {
   for (const fileName of safeReadDir(sourceDir)) {
     if (!fileName.endsWith(".toml")) continue;
     const name = fileName.slice(0, -".toml".length);
-    if (configured.has(name) || LFP_AGENT_NAMES.has(name)) continue;
+    if (configured.has(name) || LFP_AGENT_NAMES.has(name) || REMOVED_LFP_AGENT_NAMES.has(name)) continue;
 
     const text = readFileSync(path.join(sourceDir, fileName), "utf8");
     agents.push({

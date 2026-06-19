@@ -33,6 +33,35 @@ test("given installed LFP plugin when runtime is promoted then hook registration
   }
 });
 
+test("given stale removed LFP agent files when installing then setup deletes them", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-stale-agent-cleanup-"));
+  const originalEnv = process.env.CODEX_HOME;
+  try {
+    const codexHome = path.join(root, "codex-home");
+    const agentsDir = path.join(codexHome, "agents");
+    process.env.CODEX_HOME = codexHome;
+    mkdirSync(agentsDir, { recursive: true });
+    writeFileSync(path.join(agentsDir, "visual-engineering.toml"), 'name = "visual-engineering"\n');
+    writeFileSync(path.join(agentsDir, "visual-looker.toml"), 'name = "visual-looker"\n');
+    writeFileSync(path.join(agentsDir, "sisyphus.toml"), 'name = "sisyphus"\n');
+    writeFileSync(path.join(agentsDir, "explorer.toml"), 'name = "explorer"\n');
+
+    installCodexPlugin(path.resolve("."), { env: { ...process.env, CODEX_HOME: codexHome } });
+
+    assert.equal(existsSync(path.join(agentsDir, "visual-engineering.toml")), false);
+    assert.equal(existsSync(path.join(agentsDir, "visual-looker.toml")), false);
+    assert.equal(existsSync(path.join(agentsDir, "sisyphus.toml")), false);
+    assert.equal(existsSync(path.join(agentsDir, "explorer.toml")), true);
+  } finally {
+    if (originalEnv === undefined) {
+      delete process.env.CODEX_HOME;
+    } else {
+      process.env.CODEX_HOME = originalEnv;
+    }
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("given installed LFP plugin when a later copy fails then previous plugin files are preserved", () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-atomic-install-"));
   const originalEnv = process.env.CODEX_HOME;

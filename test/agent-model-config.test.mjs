@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -10,7 +10,7 @@ import {
   normalizeModelsPayload,
   readActiveModelProvider
 } from "../scripts/agent-model-config.mjs";
-import { writeOverrideFields } from "../scripts/agent-model-config-io.mjs";
+import { discoverAdditionalAgents, writeOverrideFields } from "../scripts/agent-model-config-io.mjs";
 
 test("given Codex provider config when reading active model provider then returns model endpoint settings", () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-models-"));
@@ -72,6 +72,62 @@ test("given provider models endpoint when fetching available models then returns
     });
 
     assert.deepEqual(models, ["gpt-5.4-mini", "grok-4.3"]);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("given stale removed LFP agent TOMLs when discovering additional agents then setup ignores them", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-models-"));
+  try {
+    const agentsDir = path.join(root, "agents");
+    mkdirSync(agentsDir);
+    writeFileSync(path.join(agentsDir, "visual-engineering.toml"), 'name = "visual-engineering"\nmodel = "gemini"\n');
+    writeFileSync(path.join(agentsDir, "sisyphus.toml"), 'name = "sisyphus"\nmodel = "gpt-5.5"\n');
+    writeFileSync(path.join(agentsDir, "custom-reviewer.toml"), 'name = "custom-reviewer"\nmodel = "gpt-5.4-mini"\n');
+
+    const agents = discoverAdditionalAgents(agentsDir, {});
+
+    assert.deepEqual(agents.map((agent) => agent.name), ["custom-reviewer"]);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("given override config contains removed LFP agents when configuring then setup does not prompt for them", async () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-models-"));
+  try {
+    const configPath = path.join(root, "overrides.toml");
+    writeFileSync(
+      configPath,
+      [
+        "[source]",
+        `agents_dir = "${root}"`,
+        "",
+        "[agents.explorer]",
+        'model = "grok-4.3"',
+        "",
+        "[agents.visual-engineering]",
+        'model = "gemini"',
+        "",
+        "[agents.sisyphus]",
+        'model = "gpt-5.5"',
+        ""
+      ].join("\n")
+    );
+    const output = captureOutput();
+
+    const config = await configureAgentModelOverrides(configPath, {
+      models: ["gpt-5.4-mini", "grok-4.3"],
+      readline: fakeReadline(["1", "1", "1"]),
+      output,
+      persistUserOverrides: false
+    });
+
+    assert.equal(config.overrides["visual-engineering"], undefined);
+    assert.equal(config.overrides.sisyphus, undefined);
+    assert.ok(configOutput.questions.some((question) => /explorer model/.test(question)));
+    assert.ok(!configOutput.questions.some((question) => /visual-engineering|sisyphus/.test(question)));
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

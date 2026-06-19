@@ -5,6 +5,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { AGENT_MODEL_FIELDS, VIRTUAL_OVERRIDE_SECTIONS } from "./model-field-scope.mjs";
 import { readOverrideConfig } from "./model-override-config.mjs";
+import { REMOVED_LFP_AGENT_NAMES } from "./removed-lfp-agents.mjs";
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const DEFAULT_CONFIG = path.join(ROOT, "agent-configs", "omo-agent-model-overrides.toml");
@@ -13,15 +14,6 @@ const UNSUPPORTED_AGENT_MODEL_FIELDS = new Set([
   "model_fallback_reasoning_effort",
   "model_fallback_service_tier"
 ]);
-const REMOVED_LFP_AGENT_NAMES = new Set([
-  "artistry",
-  "artistry-gen",
-  "artistry-qa",
-  "sisyphus",
-  "visual-engineering",
-  "visual-looker"
-]);
-
 export { readOverrideConfig } from "./model-override-config.mjs";
 export { syncGlobalModelDefaults } from "./global-model-defaults.mjs";
 

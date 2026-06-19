@@ -1,4 +1,4 @@
-import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -19,6 +19,7 @@ import {
   prepareRuntimePromotion,
   rollbackRuntimePromotion
 } from "./runtime-promotion.mjs";
+import { REMOVED_LFP_AGENT_FILES } from "./removed-lfp-agents.mjs";
 import { escapeRegExp, getTableBlock, readTomlString } from "./toml-string-utils.mjs";
 
 export const MARKETPLACE_ID = "islee23520";
@@ -66,7 +67,10 @@ export function getCodexPluginState(options = {}) {
     openAiCompatProvider,
     anyModelProviderConfigured,
     additionalAgentsInstalled: true,
-    additionalAgentFiles: ADDITIONAL_AGENT_CONFIGS.map((fileName) => path.join(agentsRoot, fileName))
+    additionalAgentFiles: [...ADDITIONAL_AGENT_CONFIGS, ...REMOVED_LFP_AGENT_FILES].map((fileName) =>
+      path.join(agentsRoot, fileName)
+    ),
+    removedLfpAgentFiles: REMOVED_LFP_AGENT_FILES.map((fileName) => path.join(agentsRoot, fileName))
   };
 }
 
@@ -93,6 +97,7 @@ export function installCodexPlugin(packageRoot, options = {}) {
 
   try {
     installAdditionalAgents(packageRoot, state);
+    removeStaleLfpAgents(state);
     upsertCodexConfig(state, { installOpenAiCompatProvider: options.installOpenAiCompatProvider === true });
     commitRuntimePromotion(promotion);
     cleanupInstallSnapshot(snapshot);
@@ -117,6 +122,10 @@ export function getPendingCodexPluginActions(options = {}) {
   if (state.openAiCompatProvider.status === "drifted") {
     actions.push(`resolve drifted OpenAI-compatible provider ${state.openAiCompatProvider.id} in ${state.configPath}`);
   }
+  const staleAgentFiles = state.removedLfpAgentFiles.filter((filePath) => existsSync(filePath));
+  if (staleAgentFiles.length > 0) {
+    actions.push(`remove stale LFP agent files ${staleAgentFiles.join(", ")}`);
+  }
   return { state, actions };
 }
 
@@ -128,6 +137,12 @@ function installAdditionalAgents(packageRoot, state) {
   mkdirSync(targetRoot, { recursive: true });
   for (const fileName of ADDITIONAL_AGENT_CONFIGS) {
     cpSync(path.join(sourceRoot, fileName), path.join(targetRoot, fileName));
+  }
+}
+
+function removeStaleLfpAgents(state) {
+  for (const filePath of state.removedLfpAgentFiles) {
+    rmSync(filePath, { force: true });
   }
 }
 

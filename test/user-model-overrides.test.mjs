@@ -226,6 +226,53 @@ test("given saved user override when user declines adjust then keeps saved setti
   }
 });
 
+test("given saved user override includes removed LFP agents when setup adjusts then prunes them and does not prompt", async () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-user-models-"));
+  try {
+    const codexHome = path.join(root, "codex-home");
+    const configPath = path.join(root, "overrides.toml");
+    const savedPath = path.join(codexHome, "lfp.json");
+    writeFileSync(configPath, overrideText("${CODEX_HOME}/agents", "grok-4.3", "low", "default"));
+    mkdirSync(path.dirname(savedPath), { recursive: true });
+    writeFileSync(
+      savedPath,
+      `${JSON.stringify({
+        schemaVersion: 2,
+        source: { agentsDir: "${CODEX_HOME}/agents" },
+        overrides: {
+          explorer: {
+            model: "gpt-5.4-mini",
+            model_reasoning_effort: "low",
+            service_tier: "default"
+          },
+          sisyphus: { model: "gpt-5.5" },
+          "visual-engineering": { model: "gemini-2.5" }
+        },
+        rolePolicies: {}
+      }, null, 2)}\n`
+    );
+    const output = captureOutput();
+
+    const result = await configureAgentModelOverrides(configPath, {
+      env: { ...process.env, CODEX_HOME: codexHome },
+      models: ["gpt-5.4-mini", "grok-4.3"],
+      readline: fakeReadline(["y", "1", "1", "1"]),
+      output
+    });
+    const savedJson = JSON.parse(readFileSync(savedPath, "utf8"));
+    const restoredText = readFileSync(configPath, "utf8");
+
+    assert.equal(result.overrides["visual-engineering"], undefined);
+    assert.equal(result.overrides.sisyphus, undefined);
+    assert.equal(savedJson.overrides["visual-engineering"], undefined);
+    assert.equal(savedJson.overrides.sisyphus, undefined);
+    assert.doesNotMatch(restoredText, /visual-engineering|sisyphus/);
+    assert.ok(!output.questions.some((question) => /visual-engineering|sisyphus/.test(question)));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("given saved user override includes fallback fields when user declines adjust then restores fallback fields", async () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-user-models-"));
   try {

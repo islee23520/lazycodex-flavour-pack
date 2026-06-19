@@ -41,7 +41,7 @@ npm run agent-config
 npm run smoke:isolated
 ```
 
-`setup` installs/enables LFP under `CODEX_HOME/local-marketplaces/islee23520/plugins/lfp` and applies configured model-field overrides to existing LazyCodex/OMO agent TOMLs. Agent TOML sync is limited to the three primary model fields: `model`, `model_reasoning_effort`, and `service_tier`; global default sync remains limited to the same three fields for top-level `config.toml` and `ulw.config.toml`.
+`setup` installs/enables LFP under `CODEX_HOME/local-marketplaces/islee23520/plugins/lfp`, removes obsolete LFP-owned helper agent TOMLs from older installs, and applies configured model-field overrides to existing LazyCodex/OMO agent TOMLs. Agent TOML sync is limited to the three primary model fields: `model`, `model_reasoning_effort`, and `service_tier`; global default sync remains limited to the same three fields for top-level `config.toml` and `ulw.config.toml`.
 
 The canonical user config is `${CODEX_HOME}/lfp.json` (normally `~/.codex/lfp.json`) with `schemaVersion: 2`. It stores `source`, `overrides`, and `rolePolicies` in one JSON document. Setup and `agent-config` create or update this file; `benchmark-models --apply` writes winning model fields back to this same canonical path.
 

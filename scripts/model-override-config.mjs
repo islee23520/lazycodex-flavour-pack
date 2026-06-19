@@ -7,6 +7,7 @@ import {
   parseModelOverrideConfig,
   SavedUserModelOverrideConfigSchema
 } from "./model-override-schema.mjs";
+import { pruneRemovedLfpAgentOverrides } from "./removed-lfp-agents.mjs";
 
 const MODEL_FIELDS = new Set(["model", "model_reasoning_effort", "service_tier"]);
 const FALLBACK_FIELDS = new Set(["model_fallback", "model_fallback_reasoning_effort", "model_fallback_service_tier"]);
@@ -70,6 +71,7 @@ function normalizeOverrideConfig(config, env) {
   const parsed = parseModelOverrideConfig(migrateJsonOverrideConfig(config));
   return {
     ...parsed,
+    overrides: pruneRemovedLfpAgentOverrides(parsed.overrides ?? {}),
     source: {
       ...parsed.source,
       agentsDir: expandConfigPath(parsed.source?.agentsDir, env)

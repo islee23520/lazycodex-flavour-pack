@@ -89,6 +89,7 @@ test("given npm package metadata when validating release files then package incl
     "scripts/model-setup-guidance.mjs",
     "scripts/model-setting-scopes.mjs",
     "scripts/provider-consent.mjs",
+    "scripts/removed-lfp-agents.mjs",
     "scripts/role-policy-config.mjs",
     "scripts/runtime-promotion.mjs",
     "scripts/setup-command-github.mjs",

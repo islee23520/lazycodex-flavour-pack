@@ -5,6 +5,7 @@ import path from "node:path";
 
 import { LegacyV1SavedUserOverrideConfigSchema, SavedUserModelOverrideConfigSchema } from "./model-override-schema.mjs";
 import { readOverrideConfig } from "./model-override-config.mjs";
+import { pruneRemovedLfpAgentOverrides } from "./removed-lfp-agents.mjs";
 import { syncAgentOverrides } from "./sync-agent-overrides.mjs";
 
 const USER_OVERRIDE_CONFIG_NAME = "lfp.json";
@@ -151,15 +152,22 @@ function parseLegacyOverrideToml(configPath) {
 
 function readSavedUserOverrideConfig(userConfigPath) {
   const text = readFileSync(userConfigPath, "utf8");
-  return SavedUserModelOverrideConfigSchema.parse(migrateToV2(JSON.parse(text)));
+  return sanitizeSavedOverrideConfig(SavedUserModelOverrideConfigSchema.parse(migrateToV2(JSON.parse(text))));
 }
 
 function writeSavedUserOverrideConfig(userConfigPath, value) {
-  const parsed = SavedUserModelOverrideConfigSchema.parse(migrateToV2(value));
+  const parsed = sanitizeSavedOverrideConfig(SavedUserModelOverrideConfigSchema.parse(migrateToV2(value)));
   mkdirSync(path.dirname(userConfigPath), { recursive: true });
   const tmpPath = `${userConfigPath}.tmp`;
   writeFileSync(tmpPath, `${JSON.stringify(parsed, null, 2)}\n`);
   renameSync(tmpPath, userConfigPath);
+}
+
+function sanitizeSavedOverrideConfig(config) {
+  return {
+    ...config,
+    overrides: pruneRemovedLfpAgentOverrides(config.overrides ?? {})
+  };
 }
 
 function migrateToV2(config) {

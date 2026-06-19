@@ -1,6 +1,6 @@
 {
   "name": "@islee23520/lfp",
-  "version": "0.3.15",
+  "version": "0.3.16",
   "description": "LazyCodex extension plugin for Codex model/provider configuration, category routing guidance, and MCP fallback lookup.",
   "author": "islee23520",
   "homepage": "https://linalab.io",
