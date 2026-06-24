@@ -1,6 +1,6 @@
 {
   "name": "@islee23520/lfp",
-  "version": "0.3.16",
+  "version": "0.3.17",
   "description": "LazyCodex extension plugin — TypeScript-powered model/provider setup and routing guidance for Codex.",
   "type": "module",
   "license": "MIT",
