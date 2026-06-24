@@ -17,7 +17,7 @@ OpenAI-compatible provider setup is consent-gated. In interactive setup, LFP ask
 ## Contents
 
 - `scripts/sync-agent-overrides-hook.mjs`: quietly applies configured model overrides at session start and before prompt guidance.
-- `scripts/sync-agent-overrides.mjs`: reapplies supported three-primary-field model settings for existing LazyCodex/OMO agent targets from the configured override source.
+- `src/model/sync-agent-overrides.ts`: reapplies supported three-primary-field model settings for existing LazyCodex/OMO agent targets from the configured override source.
 - `agent-configs/omo-agent-model-overrides.toml`: packaged default model recommendation seed used before a user `~/.codex/lfp.json` exists.
 - `agent-configs/codex-openai-compat-provider.toml`: durable provider source for Codex OpenAI-compatible setup.
 - `agent-overrides/omo.json`: legacy JSON override source retained for compatibility with older script callers.

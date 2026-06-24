@@ -6,7 +6,7 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["src/**/*.ts", "*.json", ".codex-plugin/**/*.json", "hooks/**/*.json"]
+    "includes": ["src/**/*.ts", "test/**/*.ts", "*.json", ".codex-plugin/**/*.json", "hooks/**/*.json"]
   },
   "formatter": {
     "enabled": true,

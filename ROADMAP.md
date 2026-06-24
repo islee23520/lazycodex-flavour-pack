@@ -1,6 +1,6 @@
 # LFP Roadmap
 
-LFP (LazyCodex Flavour Pack) extends LazyCodex — the OMO Light edition for Codex — to bring the full OMO feature set into the Codex environment. LazyCodex intentionally ships only a portable subset (rules, ultrawork, lsp, 6 core agents) because it targets GPT-only workflows. LFP bridges the rest: the complete agent roster, category-based model routing, MCP fallback resolver for saved override configurations, art team orchestration, visual specialists, and multi-model provider support.
+LFP (LazyCodex Flavour Pack) extends LazyCodex — the OMO Light edition for Codex — to bring the full OMO feature set into the Codex environment. LazyCodex intentionally ships only a portable subset (rules, ultrawork, lsp, 6 core agents) because it targets GPT-only workflows. LFP bridges the rest: the complete agent roster, category-based model routing, fallback resolver for saved override configurations, art team orchestration, visual specialists, and multi-model provider support.
 
 Track roadmap work in GitHub issues: <https://github.com/islee23520/lazycodex-flavour-pack/issues>.
 
@@ -10,7 +10,7 @@ Track roadmap work in GitHub issues: <https://github.com/islee23520/lazycodex-fl
 - `agent-configs/` is the source of truth for LFP-owned agents, model overrides, categories, and fallback configuration.
 - Setup stays safe: install/update upstream LazyCodex first, register LFP, install LFP agents, configure the provider when consented, verify upstream, then apply model-field overrides.
 - Agent TOML override sync on upstream OMO agents is limited to exactly three primary model fields. LFP-owned agents have full TOML control.
-- Codex only supports `SessionStart` and `UserPromptSubmit` hooks. Category routing, runtime fallback, and orchestration work within this constraint — via guidance hooks, MCP tools, resolver logic, and multi-agent patterns.
+- Codex only supports `SessionStart` and `UserPromptSubmit` hooks. Category routing, runtime fallback, and orchestration work within this constraint — via guidance hooks, resolver logic, and multi-agent patterns.
 - Install safety is mandatory for every agent or config write: snapshot → write → promote with rollback.
 
 ## OMO Feature Gap
@@ -19,7 +19,7 @@ Track roadmap work in GitHub issues: <https://github.com/islee23520/lazycodex-fl
 | --- | --- | --- | --- |
 | 11 agents | 6 core | +6 LFP-owned = 12 total | +5 missing = 17 total |
 | 8 categories with model routing | None | None | Full category system |
-| Per-agent + per-category fallback chains | None | MCP resolver tool for saved override configurations | Manual chains + resolver |
+| Per-agent + per-category fallback chains | None | Resolver for saved override configurations | Manual chains + resolver |
 | Runtime fallback (retry on 408/429/5xx) | None | Guidance hook | Retry engine |
 | 14+ skills | Subset | None | Port remaining skills |
 | Background agents / parallel orchestration | None | None | Emulated via multi-agent patterns |
@@ -51,8 +51,8 @@ Track roadmap work in GitHub issues: <https://github.com/islee23520/lazycodex-fl
 
 **Files to modify:**
 - `.codex-plugin/plugin.json` — add 5 agents to `additionalAgents`
-- `scripts/codex-plugin-install.mjs` — verify new agents install correctly
-- `scripts/cli-reporting.mjs` — doctor reports new agents
+- `src/install/codex-plugin-install.ts` — verify new agents install correctly
+- `src/cli/cli-reporting.ts` — doctor reports new agents
 
 **Test:** New test file verifying all 5 agent TOMLs parse, install, and pass smoke check.
 
@@ -64,13 +64,13 @@ Track roadmap work in GitHub issues: <https://github.com/islee23520/lazycodex-fl
 
 **Files to create:**
 - `agent-configs/lfp-categories.toml` — declarative category definitions (model, reasoning_effort, service_tier, fallback_models per category)
-- `scripts/category-resolver.mjs` — resolves a category name → model + agent + fallback chain
-- `scripts/category-guidance-hook.mjs` — UserPromptSubmit hook that emits category routing guidance when a category keyword is detected
-- `test/category-resolver.test.mjs` — tests for category resolution
+- `src/model/category-resolver.ts` — resolves a category name → model + agent + fallback chain
+- `src/hooks/category-guidance-hook.ts` — UserPromptSubmit hook that emits category routing guidance when a category keyword is detected
+- `test/category-resolver.test.ts` — tests for category resolution
 
 **Files to modify:**
-- `scripts/user-prompt-submit.mjs` — route to category guidance hook
-- `.codex-plugin/plugin.json` — add category resolver MCP tool if needed
+- `src/hooks/user-prompt-submit.ts` — route to category guidance hook
+- `.codex-plugin/plugin.json` — add category resolver as a hook if needed
 
 **Constraint:** Category routing is guidance + resolver based. Codex has no native category dispatch; LFP guides the agent to use the right model/agent for the category.
 
@@ -80,34 +80,34 @@ Track roadmap work in GitHub issues: <https://github.com/islee23520/lazycodex-fl
 
 **Files to create:**
 - `agent-configs/lfp-fallback-chains.toml` — per-agent + per-category ordered fallback model arrays
-- `test/fallback-chains.test.mjs` — tests for chain resolution
+- `test/fallback-chains.test.ts` — tests for chain resolution
 
 **Files to modify:**
-- `scripts/model-fallback-resolver.mjs` — read declarative chains, return ordered fallback list
-- `scripts/model-override-schema.mjs` — add fallback chain schema
-- `scripts/model-fallback-guidance.mjs` — emit full chain on quota/429 trigger, not just first fallback
+- `src/model/model-fallback-resolver.ts` — read declarative chains, return ordered fallback list
+- `src/model/model-override-schema.ts` — add fallback chain schema
+- `src/model/model-fallback-guidance.ts` — emit full chain on quota/429 trigger, not just first fallback
 
 ### Phase 4: Runtime Fallback Engine
 
 **Goal:** Implement OMO's runtime retry logic for transient errors (408/429/5xx).
 
 **Files to create:**
-- `scripts/runtime-fallback-engine.mjs` — retry policy engine (max attempts, cooldown, timeout, notify)
+- `src/model/runtime-fallback-engine.ts` — retry policy engine (max attempts, cooldown, timeout, notify)
 - `agent-configs/lfp-runtime-fallback.toml` — runtime fallback config (retry_on_errors, max_fallback_attempts, cooldown_seconds, timeout_seconds, notify_on_fallback)
-- `test/runtime-fallback.test.mjs` — tests for retry logic
+- `test/runtime-fallback.test.ts` — tests for retry logic
 
 **Files to modify:**
-- `scripts/model-fallback-guidance.mjs` — use runtime engine for retry guidance
-- `.codex-plugin/plugin.json` — expose runtime fallback MCP tool
+- `src/model/model-fallback-guidance.ts` — use runtime engine for retry guidance
+- `.codex-plugin/plugin.json` — expose runtime fallback guidance hook
 
-**Constraint:** Codex hooks cannot intercept model API calls directly. Runtime fallback works via guidance (tell agent to retry with fallback model) + MCP resolver, not automatic retry. True automatic retry depends on future Codex failure-hook support.
+**Constraint:** Codex hooks cannot intercept model API calls directly. Runtime fallback works via guidance (tell agent to retry with fallback model) + resolver, not automatic retry. True automatic retry depends on future Codex failure-hook support.
 
 ### Phase 5: Full Feature Parity
 
 **Goal:** Port remaining OMO capabilities that Codex can support.
 
 **Sub-phases:**
-- **5a: Background agent emulation** — multi-agent dispatch patterns via spawn_agent + MCP tools
+- **5a: Background agent emulation** — multi-agent dispatch patterns via spawn_agent + guidance hooks
 - **5b: Team Mode emulation** — extend art team pattern (role separation, checkpoints, evidence-bound QA) to general orchestration
 - **5c: Remaining skills** — port OMO skills not shipped by LazyCodex (security-research, opencode-qa, hyperplan, github-triage, etc.)
 - **5d: Model fallback title** — experimental model_fallback_title feature from OMO config

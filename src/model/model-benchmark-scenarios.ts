@@ -1,7 +1,7 @@
 export const BENCHMARK_SCENARIOS = {
   explorer: {
     prompt:
-      'Given this repo map: scripts/cli.mjs is the CLI entrypoint, scripts/sync-agent-overrides.mjs syncs agent TOML files. Return compact JSON with {"path":"<entrypoint>","reason":"<why>"}.',
+      'Given this repo map: scripts/cli.mjs is the CLI entrypoint, src/model/sync-agent-overrides.ts syncs agent TOML files. Return compact JSON with {"path":"<entrypoint>","reason":"<why>"}.',
     checks: ["scripts/cli.mjs", "entrypoint"],
     currentFallback: { model_reasoning_effort: "low", service_tier: "default" }
   },

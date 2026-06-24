@@ -146,7 +146,7 @@ function parseSavedJson(text) {
     return { source: {}, overrides: parsed.overrides };
 }
 if (process.argv[1] !== undefined &&
-    (import.meta.url === `file://${process.argv[1]}` || path.basename(process.argv[1]) === "model-fallback-resolver.mjs")) {
+    (import.meta.url === `file://${process.argv[1]}` || path.basename(process.argv[1]) === "model-fallback-resolver.ts")) {
     const agent = process.argv[2];
     const onErrorArg = process.argv.find((a) => a.startsWith("--on-error="));
     const onError = onErrorArg
@@ -155,7 +155,7 @@ if (process.argv[1] !== undefined &&
             ? process.argv[process.argv.indexOf("--on-error") + 1]
             : null;
     if (!agent) {
-        console.error("Usage: node scripts/model-fallback-resolver.mjs <agent> [--on-error quota]");
+        console.error("Usage: npx tsx src/model/model-fallback-resolver.ts <agent> [--on-error quota]");
         process.exit(1);
     }
     console.log(JSON.stringify(resolve(agent, { onError }), null, 2));
