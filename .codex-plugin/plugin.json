@@ -1,75 +1,35 @@
 {
-  "name": "@islee23520/lfp",
+  "name": "lfp",
   "version": "0.3.16",
-  "description": "LazyCodex extension plugin for Codex model/provider configuration, category routing guidance, and MCP fallback lookup.",
+  "description": "LazyCodex extension plugin for Codex model/provider configuration and category routing guidance.",
   "author": "islee23520",
   "homepage": "https://linalab.io",
   "repository": "https://github.com/islee23520/lazycodex-flavour-pack",
   "license": "MIT",
-  "keywords": [
-    "lazycodex",
-    "flavour-pack",
-    "codex",
-    "hooks",
-    "agents",
-    "model-routing"
-  ],
+  "keywords": ["lazycodex", "flavour-pack", "codex", "hooks", "agents", "model-routing"],
   "hooks": "./hooks/hooks.json",
   "interface": {
     "displayName": "LFP — Full OMO Bridge for Codex",
-    "shortDescription": "Extends LazyCodex with model/provider setup, category routing guidance, and MCP fallback lookup.",
-    "longDescription": "LFP keeps LazyCodex/OMO agents as the source of truth and focuses on model operations: provider setup, configurable primary model fields, category-based model routing guidance, an MCP tool for manual fallback lookup from saved override configurations, interactive TUI setup, and atomic runtime promotion with rollback.",
+    "shortDescription": "Extends LazyCodex with model/provider setup, category routing guidance, and fallback lookup.",
+    "longDescription": "LFP keeps LazyCodex/OMO agents as the source of truth and focuses on model operations: provider setup, configurable primary model fields, category-based model routing guidance, interactive TUI setup, and atomic runtime promotion with rollback.",
     "developerName": "islee23520",
     "category": "Developer Tools",
-    "capabilities": [
-      "Hooks",
-      "Agents",
-      "Tools",
-      "Workflow"
-    ],
+    "capabilities": ["Hooks", "Agents", "Workflow"],
     "websiteURL": "https://linalab.io",
     "privacyPolicyURL": "https://linalab.io",
     "termsOfServiceURL": "https://linalab.io",
     "defaultPrompt": [
       "Use LFP to configure LazyCodex/OMO model routing and provider defaults.",
-      "Use the model_fallback_resolver tool when a configured agent hits quota, rate-limit, or provider failure.",
+      "Use the fallback guidance when a configured agent hits quota, rate-limit, or provider failure.",
       "Keep agent behavior owned by LazyCodex/OMO; LFP only manages supported model fields and saved fallback lookup."
     ],
     "brandColor": "#2563EB",
     "screenshots": []
   },
   "x-lfp": {
-    "extends": [
-      "omo@sisyphuslabs",
-      "lazycodex-ai"
-    ],
+    "extends": ["omo@sisyphuslabs", "lazycodex-ai"],
     "modelOverrideSource": "./agent-configs/omo-agent-model-overrides.toml",
-    "additionalAgents": [],
-    "tools": [
-      {
-        "name": "model_fallback_resolver",
-        "description": "MCP tool for manual fallback lookup. Given an agent name and optional error reason (quota, rate-limit, 429, error), returns the effective model from saved override configurations (primary or configured fallback). Never writes anything. Safe to call from any agent on quota/rate/provider failure.",
-        "input_schema": {
-          "type": "object",
-          "properties": {
-            "agent": {
-              "type": "string",
-              "description": "Agent name, e.g. explorer, metis, plan, momus"
-            },
-            "reason": {
-              "type": "string",
-              "description": "Optional error category that triggers fallback: quota, rate-limit, 429, error, fail"
-            }
-          },
-          "required": [
-            "agent"
-          ]
-        },
-        "path": "./scripts/mcp-model-fallback.mjs"
-      }
-    ]
+    "additionalAgents": []
   },
-  "capabilities": [
-    "Tools"
-  ]
+  "capabilities": []
 }

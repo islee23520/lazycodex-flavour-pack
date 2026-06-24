@@ -29,6 +29,7 @@ test("given LFP is installed when delete runs then removes only LFP-owned runtim
     assert.equal(existsSync(path.join(fixture.codexHome, "lfp.json")), true);
     assert.match(codexConfig, /\[plugins\."omo@sisyphuslabs"\]/);
     assert.match(codexConfig, /\[model_providers\.custom]/);
+    assert.doesNotMatch(codexConfig, /\[mcp_servers\.lfp_tools]/);
     assert.doesNotMatch(codexConfig, /\[plugins\."lfp@islee23520"\]/);
     assert.doesNotMatch(codexConfig, /\[marketplaces\.islee23520]/);
   } finally {
@@ -51,6 +52,7 @@ test("given LFP marketplace contains another plugin when delete runs then market
     assert.equal(deletion.status, 0, deletion.stderr);
     assert.equal(existsSync(siblingRoot), true);
     assert.match(codexConfig, /\[marketplaces\.islee23520]/);
+    assert.doesNotMatch(codexConfig, /\[mcp_servers\.lfp_tools]/);
     assert.doesNotMatch(codexConfig, /\[plugins\."lfp@islee23520"\]/);
   } finally {
     rmSync(root, { recursive: true, force: true });
@@ -74,6 +76,7 @@ test("given LFP marketplace config contains another plugin when delete runs then
     assert.equal(deletion.status, 0, deletion.stderr);
     assert.match(codexConfig, /\[marketplaces\.islee23520]/);
     assert.match(codexConfig, /\[plugins\."other@islee23520"]/);
+    assert.doesNotMatch(codexConfig, /\[mcp_servers\.lfp_tools]/);
     assert.doesNotMatch(codexConfig, /\[plugins\."lfp@islee23520"]/);
   } finally {
     rmSync(root, { recursive: true, force: true });

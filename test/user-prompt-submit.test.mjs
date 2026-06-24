@@ -55,7 +55,7 @@ test("given model error prompt when dispatcher runs then emits fallback guidance
 
   const parsed = JSON.parse(output);
   assert.match(parsed.hookSpecificOutput.additionalContext, /<lfp-model-fallback-guidance>/);
-  assert.match(parsed.hookSpecificOutput.additionalContext, /model_fallback_resolver/);
+  assert.match(parsed.hookSpecificOutput.additionalContext, /saved LFP model override config/);
 });
 
 test("given art prompt with model error when dispatcher runs then emits only fallback guidance", async () => {

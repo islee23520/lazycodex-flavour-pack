@@ -1,0 +1,119 @@
+import { readFileSync } from "node:fs";
+import os from "node:os";
+import path from "node:path";
+
+import { getTableBlock, readTomlString, readTopLevelTomlString } from "../utils/toml-string-utils.js";
+
+const DEFAULT_CONFIG_NAME = "config.toml";
+
+export async function fetchAvailableModels(options = {}) {
+  const state = await getProviderModelInventoryState(options);
+  return state.status === "available" ? state.models : [];
+}
+
+export async function getProviderModelInventoryState(options = {}) {
+  let provider;
+  try {
+    provider = readActiveModelProvider(options);
+  } catch (error) {
+    return {
+      status: "unavailable",
+      provider: { id: null, baseUrl: null, bearerToken: null, bearerTokenEnv: null },
+      models: [],
+      error: error instanceof Error ? error.message : String(error)
+    };
+  }
+
+  if (provider.id === null)
+    return { status: "missing", provider, models: [], error: "active provider is not configured" };
+  if (provider.baseUrl === null)
+    return { status: "unavailable", provider, models: [], error: "active provider has no base_url" };
+
+  const fetchImpl = options.fetch ?? globalThis.fetch;
+  if (typeof fetchImpl !== "function")
+    return { status: "unavailable", provider, models: [], error: "fetch is unavailable" };
+
+  const url = new URL("models", withTrailingSlash(provider.baseUrl));
+  const headers = {};
+  const token = provider.bearerToken ?? readBearerTokenFromEnv(provider, options.env ?? process.env);
+  if (token !== null) headers.authorization = `Bearer ${token}`;
+  const timeoutMs = options.timeoutMs ?? 2000;
+  const controller = typeof AbortController === "function" ? new AbortController() : null;
+  const timeout =
+    controller === null
+      ? null
+      : setTimeout(() => {
+          controller.abort();
+        }, timeoutMs);
+  timeout?.unref?.();
+
+  let response;
+  try {
+    response = await fetchImpl(url, { headers, signal: controller?.signal });
+  } catch (error) {
+    return {
+      status: "unavailable",
+      provider,
+      models: [],
+      error: error instanceof Error ? error.message : String(error)
+    };
+  } finally {
+    if (timeout !== null) clearTimeout(timeout);
+  }
+  if (!response.ok) return { status: "unavailable", provider, models: [], error: `HTTP ${response.status}` };
+
+  let payload;
+  try {
+    payload = await response.json();
+  } catch (error) {
+    return {
+      status: "unavailable",
+      provider,
+      models: [],
+      error: error instanceof Error ? error.message : String(error)
+    };
+  }
+  const models = normalizeModelsPayload(payload);
+  if (models.length === 0) return { status: "unavailable", provider, models, error: "provider returned no models" };
+  return { status: "available", provider, models, error: null };
+}
+
+export function readActiveModelProvider(options = {}) {
+  const env = options.env ?? process.env;
+  const configPath =
+    options.codexConfigPath ??
+    path.join(env.CODEX_HOME?.trim() || path.join(os.homedir(), ".codex"), DEFAULT_CONFIG_NAME);
+  const text = readFileSync(configPath, "utf8");
+  const activeProvider = readTopLevelTomlString(text, "model_provider");
+  if (activeProvider === null) return { id: null, baseUrl: null, bearerToken: null, bearerTokenEnv: null };
+
+  const providerBlock = getTableBlock(text, `model_providers.${activeProvider}`);
+  return {
+    id: activeProvider,
+    baseUrl: readTomlString(providerBlock, "base_url"),
+    bearerToken: readTomlString(providerBlock, "experimental_bearer_token"),
+    bearerTokenEnv: readTomlString(providerBlock, "env_key") ?? readTomlString(providerBlock, "api_key_env")
+  };
+}
+
+export function normalizeModelsPayload(payload) {
+  const entries = Array.isArray(payload?.data) ? payload.data : Array.isArray(payload?.models) ? payload.models : [];
+  const models = [];
+
+  for (const entry of entries) {
+    const model = typeof entry === "string" ? entry : entry?.id;
+    if (typeof model === "string" && model.trim().length > 0) models.push(model.trim());
+  }
+
+  return [...new Set(models)].sort((a, b) => a.localeCompare(b));
+}
+
+function readBearerTokenFromEnv(provider, env) {
+  if (provider.bearerTokenEnv && env[provider.bearerTokenEnv]?.trim()) return env[provider.bearerTokenEnv].trim();
+  if (env.OPENAI_API_KEY?.trim()) return env.OPENAI_API_KEY.trim();
+  return null;
+}
+
+function withTrailingSlash(value) {
+  return value.endsWith("/") ? value : `${value}/`;
+}

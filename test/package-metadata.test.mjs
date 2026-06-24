@@ -8,7 +8,7 @@ import { escapeRegExp } from "../scripts/toml-string-utils.mjs";
 const packageJson = JSON.parse(readFileSync(path.resolve("package.json"), "utf8"));
 const pluginJson = JSON.parse(readFileSync(path.resolve(".codex-plugin", "plugin.json"), "utf8"));
 const hooksJson = JSON.parse(readFileSync(path.resolve("hooks", "hooks.json"), "utf8"));
-const cliText = readFileSync(path.resolve("scripts/cli.mjs"), "utf8");
+const cliText = readFileSync(path.resolve("src", "cli", "cli.ts"), "utf8");
 const readmeText = readFileSync(path.resolve("README.md"), "utf8");
 const agentsText = readOptionalText("AGENTS.md");
 const roadmapText = readOptionalText("ROADMAP.md");
@@ -41,7 +41,7 @@ test("given npm package metadata when validating package entry then bare import 
   assert.equal(path.isAbsolute(entryTarget), false, "bare import target must be package-relative");
   const normalizedTarget = entryTarget.replace(/^\.\//, "");
   assert.equal(existsSync(path.resolve(normalizedTarget)), true, "bare import target must exist");
-  assert.equal(packageJson.files.includes(normalizedTarget), true, "bare import target must be included in package files");
+  assert.equal(isPublishedFile(normalizedTarget), true, "bare import target must be included in package files");
 });
 
 test("given local npm scripts when validating setup command then they run LazyCodex install first", () => {
@@ -55,55 +55,8 @@ test("given npm package metadata when validating release files then package incl
     "agent-configs",
     "agent-overrides",
     "hooks",
-    "scripts/agent-model-config-io.mjs",
-    "scripts/agent-model-config-fields.mjs",
-    "scripts/agent-model-config-flow.mjs",
-    "scripts/agent-model-config.mjs",
-    "scripts/agent-model-metadata.mjs",
-    "scripts/cli-args.mjs",
-    "scripts/cli-reporting.mjs",
-    "scripts/cli.mjs",
-    "scripts/codex-apps-cache.mjs",
-    "scripts/codex-plugin-install.mjs",
-    "scripts/codex-plugin-delete.mjs",
-    "scripts/codex-provider-config.mjs",
-    "scripts/global-model-defaults.mjs",
-    "scripts/install-transaction.mjs",
-    "scripts/lazycodex-install.mjs",
-    "scripts/mcp-model-fallback.mjs",
-    "scripts/model-benchmark-recommendations.mjs",
-    "scripts/model-benchmark-scenarios.mjs",
-    "scripts/model-benchmark-overrides.mjs",
-    "scripts/model-benchmark-results.mjs",
-    "scripts/model-benchmark.mjs",
-    "scripts/model-config-prompts.mjs",
-    "scripts/model-field-scope.mjs",
-    "scripts/model-fallback-guidance.mjs",
-    "scripts/model-fallback-resolver.mjs",
-    "scripts/model-override-config.mjs",
-    "scripts/model-override-schema.mjs",
-    "scripts/model-inventory.mjs",
-    "scripts/model-provider.mjs",
-    "scripts/model-reasoning-compat.mjs",
-    "scripts/model-recommendations.mjs",
-    "scripts/model-setup-guidance.mjs",
-    "scripts/model-setting-scopes.mjs",
-    "scripts/provider-consent.mjs",
-    "scripts/removed-lfp-agents.mjs",
-    "scripts/role-policy-config.mjs",
-    "scripts/runtime-promotion.mjs",
-    "scripts/setup-command-github.mjs",
-    "scripts/setup-command.mjs",
-    "scripts/setup-provider-tui.mjs",
-    "scripts/setup-provider.mjs",
-    "scripts/setup-tui-selectors.mjs",
-    "scripts/setup-tui.mjs",
-    "scripts/sync-agent-overrides-hook.mjs",
-    "scripts/sync-agent-overrides.mjs",
-    "scripts/toml-string-utils.mjs",
-    "scripts/delete-command.mjs",
-    "scripts/user-prompt-submit.mjs",
-    "scripts/user-model-overrides.mjs",
+    "scripts",
+    "dist",
     "README.md"
   ]);
 });
@@ -111,15 +64,18 @@ test("given npm package metadata when validating release files then package incl
 test("given plugin metadata references runtime scripts when validating release files then package includes them", () => {
   const publishedFiles = new Set(packageJson.files);
   for (const filePath of getReferencedRuntimeScripts()) {
-    assert.equal(publishedFiles.has(filePath), true, `${filePath} must be included in package files`);
+    assert.equal(isPublishedFile(filePath), true, `${filePath} must be included in package files`);
   }
 });
 
 test("given plugin manifest when validating release metadata then bundled manifest is parseable", () => {
-  assert.equal(pluginJson.name, packageJson.name);
+  assert.equal(pluginJson.name, "lfp");
+  assert.equal(packageJson.name, "@islee23520/lfp");
   assert.equal(pluginJson.version, packageJson.version);
   assert.equal(pluginJson.hooks, "./hooks/hooks.json");
+  assert.equal(Object.hasOwn(pluginJson, "mcpServers"), false);
   assert.deepEqual(pluginJson["x-lfp"].additionalAgents, []);
+  assert.deepEqual(pluginJson["x-lfp"].tools ?? [], []);
 });
 
 test("given scoped npm package name when validating docs and CLI help then npx commands use package identity", () => {
@@ -151,7 +107,7 @@ test("given npm package metadata when validating internal files then code maps a
   assert.equal(publishedFiles.has("AGENTS.md"), false);
   assert.equal(publishedFiles.has("ROADMAP.md"), false);
   assert.equal(publishedFiles.has("test"), false);
-  assert.equal(publishedFiles.has("scripts/isolated-smoke.mjs"), false);
+  assert.equal(publishedFiles.has("src"), false);
   assert.equal(existsSync(path.resolve(".npmignore")), true);
 });
 
@@ -194,9 +150,6 @@ test("given role policy defaults when validating package metadata then packaged 
 
 function getReferencedRuntimeScripts() {
   const scriptPaths = [];
-  for (const tool of pluginJson["x-lfp"]?.tools ?? []) {
-    if (typeof tool.path === "string") scriptPaths.push(tool.path.replace(/^\.\//, ""));
-  }
   for (const eventHooks of Object.values(hooksJson.hooks ?? {})) {
     for (const entry of eventHooks) {
       for (const hook of entry.hooks ?? []) {
@@ -206,6 +159,11 @@ function getReferencedRuntimeScripts() {
     }
   }
   return [...new Set(scriptPaths)].sort();
+}
+
+function isPublishedFile(filePath) {
+  const normalized = filePath.replace(/^\.\//, "");
+  return packageJson.files.some((entry) => normalized === entry || normalized.startsWith(`${entry}/`));
 }
 
 function readOptionalText(filePath) {

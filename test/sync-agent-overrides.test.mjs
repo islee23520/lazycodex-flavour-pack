@@ -507,6 +507,34 @@ test("given stale saved config includes removed LFP agents when syncing then ign
   }
 });
 
+test("given stale saved config includes removed OMO ultrawork reviewer when syncing then ignores that entry", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-agent-sync-"));
+  try {
+    const sourceDir = path.join(root, "source");
+    const configPath = path.join(root, "config.json");
+    const explorerPath = path.join(sourceDir, "explorer.toml");
+    mkdirSync(sourceDir);
+    writeFileSync(explorerPath, 'name = "explorer"\nmodel = "old"\n');
+    writeFileSync(
+      configPath,
+      JSON.stringify({
+        source: { agentsDir: sourceDir },
+        overrides: {
+          explorer: { model: "new" },
+          "codex-ultrawork-reviewer": { model: "legacy-reviewer" }
+        }
+      })
+    );
+
+    const result = syncAgentOverrides(configPath);
+
+    assert.deepEqual(result.changed, [explorerPath]);
+    assert.equal(existsSync(path.join(sourceDir, "codex-ultrawork-reviewer.toml")), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("given fallback fields in default and ulw overrides when syncing global defaults then ignores fallback fields", () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-global-defaults-"));
   try {

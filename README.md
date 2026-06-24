@@ -2,7 +2,7 @@
 
 LazyCodex extension plugin that brings the full OMO feature set into Codex.
 
-LazyCodex is the OMO Light edition for Codex. LFP keeps LazyCodex/OMO as the owner of agent behavior and adds the operational layer for model/provider setup, category-based model routing guidance, MCP fallback resolver for saved override configurations, and model benchmarking.
+LazyCodex is the OMO Light edition for Codex. LFP keeps LazyCodex/OMO as the owner of agent behavior and adds the operational layer for model/provider setup, category-based model routing guidance, fallback guidance for saved override configurations, and model benchmarking.
 
 LFP runs `npx lazycodex-ai@latest install` first, then registers this plugin in Codex, optionally configures a generic OpenAI-compatible provider only after operator consent, and writes saved model-routing choices to `~/.codex/lfp.json`. It applies only Codex-supported primary model fields (`model`, `model_reasoning_effort`, `service_tier`) to existing LazyCodex/OMO agent TOMLs plus Codex global defaults when that mode is enabled.
 
@@ -45,7 +45,7 @@ npm run smoke:isolated
 
 The canonical user config is `${CODEX_HOME}/lfp.json` (normally `~/.codex/lfp.json`) with `schemaVersion: 2`. It stores `source`, `overrides`, and `rolePolicies` in one JSON document. Setup and `agent-config` create or update this file; `benchmark-models --apply` writes winning model fields back to this same canonical path.
 
-Fallback model resolution is available via the MCP resolver tool for saved override configurations that include fallback fields. Installed Codex agent TOMLs receive primary model fields only.
+Fallback model guidance is available for saved override configurations that include fallback fields. Installed Codex agent TOMLs receive primary model fields only.
 
 Interactive terminals get a Clack setup shell with confirm/cancel framing around the same setup work. Non-interactive setup, `dry-setup`, and `doctor` keep line-output behavior. Use `setup --no-tui` to force the legacy line-output setup path in a TTY.
 
@@ -61,7 +61,7 @@ Role recommendation policy defaults live in `agent-configs/lfp-role-policies.tom
 
 `smoke:isolated` runs setup, saved user override restore, override sync, doctor, and Codex Apps cache cleanup against a temporary `CODEX_HOME`; it does not touch the real Codex install.
 
-LFP prompt guidance scripts stay lightweight. The override sync path is the only path that mutates agent TOMLs, applying the configured three primary agent model fields; fallback prompt guidance remains read-only and points agents at the MCP resolver.
+LFP prompt guidance scripts stay lightweight. The override sync path is the only path that mutates agent TOMLs, applying the configured three primary agent model fields; fallback prompt guidance remains read-only and points agents at the saved fallback configuration.
 
 The packaged override configs resolve `${CODEX_HOME}` at runtime, so the same release works across different user home directories and custom Codex homes without editing the shipped files.
 

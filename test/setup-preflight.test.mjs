@@ -196,6 +196,43 @@ test("given upstream LazyCodex install fails when setup runs then LFP leaves Cod
   }
 });
 
+test("given saved config contains removed upstream reviewer when setup runs then skips stale entry", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-preflight-stale-upstream-"));
+  try {
+    const codexHome = path.join(root, "codex-home");
+    const agentsDir = path.join(codexHome, "agents");
+    writeOmoAgentFixtureSet(agentsDir, { explorer: { model: "upstream-original" } });
+    writeFileSync(
+      path.join(codexHome, "lfp.json"),
+      JSON.stringify(
+        {
+          schemaVersion: 2,
+          source: { agentsDir: "${CODEX_HOME}/agents" },
+          overrides: {
+            explorer: { model: "gpt-5.4-mini" },
+            "codex-ultrawork-reviewer": { model: "legacy-reviewer" }
+          },
+          rolePolicies: {}
+        },
+        null,
+        2
+      )
+    );
+
+    const result = spawnSync(process.execPath, [CLI, "setup", "--skip-lazycodex-install", "--skip-model-prompt"], {
+      env: { ...process.env, CODEX_HOME: codexHome, HOME: root },
+      encoding: "utf8"
+    });
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.doesNotMatch(result.stderr, /incomplete or stale/i);
+    assert.match(readFileSync(path.join(agentsDir, "explorer.toml"), "utf8"), /^model = "gpt-5\.4-mini"$/m);
+    assert.equal(existsSync(path.join(agentsDir, "codex-ultrawork-reviewer.toml")), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("given provider fetch fails in non-interactive setup then writes lfp json from packaged seed", () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-preflight-fallback-"));
   try {

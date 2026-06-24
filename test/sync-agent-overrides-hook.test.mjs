@@ -232,7 +232,7 @@ test("given fallback guidance hook when it runs then it does not mutate agent TO
     const after = readFileSync(fixture.agentPath, "utf8");
 
     assert.equal(fallbackOutput.emit, true);
-    assert.match(fallbackOutput.guidance, /model_fallback_resolver/);
+    assert.match(fallbackOutput.guidance, /saved LFP model override config/);
     assert.equal(after, before);
   } finally {
     rmSync(root, { recursive: true, force: true });

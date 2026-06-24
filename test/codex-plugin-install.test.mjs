@@ -16,11 +16,19 @@ test("given installed LFP plugin when runtime is promoted then hook registration
     const state = installCodexPlugin(path.resolve("."), { env: { ...process.env, CODEX_HOME: codexHome } });
     const hooksPath = path.join(state.pluginRoot, "hooks", "hooks.json");
     const manifestPath = path.join(state.pluginRoot, ".codex-plugin", "plugin.json");
+    const marketplacePath = state.marketplaceManifestPath;
+    const configText = readFileSync(state.configPath, "utf8");
     const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+    const marketplace = JSON.parse(readFileSync(marketplacePath, "utf8"));
     const hooks = JSON.parse(readFileSync(hooksPath, "utf8"));
 
     assert.equal(existsSync(hooksPath), true);
+    assert.equal(marketplace.name, "islee23520");
+    assert.deepEqual(marketplace.plugins[0].source, { source: "local", path: "./plugins/lfp" });
     assert.equal(manifest.hooks, "./hooks/hooks.json");
+    assert.equal(Object.hasOwn(manifest, "mcpServers"), false);
+    assert.doesNotMatch(configText, /\[mcp_servers\.lfp_tools]/);
+    assert.doesNotMatch(configText, /\[plugins\."lfp@islee23520"\.mcp_servers\.lfp_tools]/);
     assert.match(hooks.hooks.SessionStart[0].hooks[0].command, /sync-agent-overrides-hook\.mjs/);
     assert.match(hooks.hooks.UserPromptSubmit[0].hooks[0].command, /user-prompt-submit\.mjs/);
   } finally {
