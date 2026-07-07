@@ -7,13 +7,13 @@ import { configureAgentModelOverrides } from "../model/agent-model-config.js";
 import { runBenchmarkCommand } from "../model/model-benchmark.js";
 import { syncAgentOverrides, syncGlobalModelDefaults } from "../model/sync-agent-overrides.js";
 import { createRestoredUserOverrideConfig, getUserOverrideConfigPath } from "../model/user-model-overrides.js";
+import { runSkillManagerCommand, SkillManagerUsageError } from "../skills/skill-manager.js";
 import { getPackageRoot } from "../utils/package-root.js";
+import { XaiAuthUsageError } from "../xai/xai-auth.js";
 import { parseDoctorArgs, parseSyncArgs } from "./cli-args.js";
 import { printAgentModelDrift, printApplierPreservationStatus, printCodexAppsCacheFixApply, printCodexAppsCacheFixPreview, printCodexAppsCacheState, printInstallSmokeState, printOpenAiCompatProviderState, printProviderInventoryVisibility, printRolePolicyConfig } from "./cli-reporting.js";
 import { runDelete } from "./delete-command.js";
 import { dispatchXaiAuthCommand } from "./xai-auth-command.js";
-import { runSkillManagerCommand, SkillManagerUsageError } from "../skills/skill-manager.js";
-import { XaiAuthUsageError } from "../xai/xai-auth.js";
 const ROOT = getPackageRoot(import.meta.url);
 const DEFAULT_CONFIG = path.join(ROOT, "agent-configs", "omo-agent-model-overrides.toml");
 const HELP = `lfp
