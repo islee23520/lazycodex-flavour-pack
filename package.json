@@ -1,6 +1,6 @@
 {
   "name": "@islee23520/lfp",
-  "version": "0.3.17",
+  "version": "0.3.18",
   "description": "LazyCodex extension plugin — TypeScript-powered model/provider setup and routing guidance for Codex.",
   "type": "module",
   "license": "MIT",
@@ -49,7 +49,9 @@
     "dry-setup": "node scripts/cli.mjs dry-setup",
     "delete": "node scripts/cli.mjs delete",
     "doctor": "node scripts/cli.mjs doctor",
+    "sync": "node scripts/cli.mjs sync",
     "agent-config": "node scripts/cli.mjs agent-config",
+    "global-cli": "npm run build && npm install -g .",
     "smoke:isolated": "node scripts/isolated-smoke.mjs",
     "pack:check": "npm run build && npm pack --dry-run"
   },

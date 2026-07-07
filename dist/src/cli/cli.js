@@ -6,7 +6,7 @@ import { runSetup } from "../install/setup-command.js";
 import { configureAgentModelOverrides } from "../model/agent-model-config.js";
 import { runBenchmarkCommand } from "../model/model-benchmark.js";
 import { syncAgentOverrides, syncGlobalModelDefaults } from "../model/sync-agent-overrides.js";
-import { createRestoredUserOverrideConfig } from "../model/user-model-overrides.js";
+import { createRestoredUserOverrideConfig, getUserOverrideConfigPath } from "../model/user-model-overrides.js";
 import { getPackageRoot } from "../utils/package-root.js";
 import { parseDoctorArgs, parseSyncArgs } from "./cli-args.js";
 import { printAgentModelDrift, printApplierPreservationStatus, printCodexAppsCacheFixApply, printCodexAppsCacheFixPreview, printCodexAppsCacheState, printInstallSmokeState, printOpenAiCompatProviderState, printProviderInventoryVisibility, printRolePolicyConfig } from "./cli-reporting.js";
@@ -20,6 +20,7 @@ Usage:
   lfp dry-setup [--config <path>] [--agent-models-only|--sync-global-defaults]
   lfp delete [--check]
   lfp doctor [--config <path>] [--fix-cache [--apply]]
+  lfp sync [--config <path>] [--check]
   lfp agent-config [--config <path>] [--agent-models-only|--sync-global-defaults]
   lfp benchmark-models [--recommend-only] [--roles <csv>] [--models <csv>] [--samples <n>] [--output <path>] [--dry-run] [--apply]
   lfp help
@@ -29,6 +30,7 @@ npx:
   npx @islee23520/lfp@latest dry-setup
   npx @islee23520/lfp@latest delete
   npx @islee23520/lfp@latest doctor
+  npx @islee23520/lfp@latest sync
   npx @islee23520/lfp@latest agent-config
   npx @islee23520/lfp@latest benchmark-models
 
@@ -42,6 +44,7 @@ Commands:
   dry-setup        Preview what setup would do without writing.
   delete           Remove installed LFP plugin files and LFP config tables.
   doctor           Check LFP install status, saved config, agent models, and overrides.
+  sync             Apply ~/.codex/lfp.json model settings to installed agent TOMLs without prompting.
   agent-config     Reconfigure ~/.codex/lfp.json model settings and apply supported OMO/LazyCodex agent model fields.
   benchmark-models Recommend or benchmark role-based model routing against the active OpenAI-compatible provider.
   help             Show this help.
@@ -91,6 +94,10 @@ export async function runCli(argv) {
     }
     if (command === "doctor") {
         await runDoctor(args);
+        return;
+    }
+    if (command === "sync") {
+        runSync(args);
         return;
     }
     if (command === "agent-config") {
@@ -167,6 +174,17 @@ function getEffectiveReadOnlyOverrideConfig(configPath, args) {
     if (args.config !== undefined)
         return null;
     return createRestoredUserOverrideConfig(configPath);
+}
+function runSync(argv) {
+    const args = parseSyncArgs(argv);
+    const configPath = args.config ?? getUserOverrideConfigPath();
+    const result = syncAgentOverrides(configPath, { check: args.check });
+    for (const item of result.changed)
+        console.log(`${args.check ? "would update" : "updated"} ${item}`);
+    if (result.changed.length === 0)
+        console.log("agent overrides already applied");
+    if (args.check && result.changed.length > 0)
+        process.exitCode = 1;
 }
 async function runAgentConfig(argv) {
     const args = parseSyncArgs(argv);

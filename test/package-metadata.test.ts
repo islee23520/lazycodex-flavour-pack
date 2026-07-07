@@ -49,6 +49,11 @@ test("given local npm scripts when validating setup command then they run LazyCo
   assert.doesNotMatch(packageJson.scripts["dry-setup"], /--skip-lazycodex-install/);
 });
 
+test("given local npm scripts when validating sync and global CLI commands then build output reaches the global tool", () => {
+  assert.equal(packageJson.scripts.sync, "node scripts/cli.mjs sync");
+  assert.equal(packageJson.scripts["global-cli"], "npm run build && npm install -g .");
+});
+
 test("given npm package metadata when validating release files then package includes runtime surface", () => {
   assert.deepEqual(packageJson.files, [
     ".codex-plugin",

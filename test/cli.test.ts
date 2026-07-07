@@ -341,6 +341,42 @@ test("given saved LFP overrides when doctor runs then checks saved agent set", (
   }
 });
 
+test("given saved LFP overrides when sync runs then applies user config to agent TOMLs", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-cli-sync-"));
+  try {
+    const codexHome = path.join(root, "codex-home");
+    const agentsDir = path.join(codexHome, "agents");
+    const savedPath = path.join(codexHome, "lfp.json");
+    mkdirSync(agentsDir, { recursive: true });
+    writeFileSync(path.join(agentsDir, "explorer.toml"), 'name = "explorer"\nmodel = "gpt-5.4-mini"\n');
+    writeFileSync(path.join(agentsDir, "librarian.toml"), 'name = "librarian"\nmodel = "gpt-5.4-mini"\n');
+    writeFileSync(
+      savedPath,
+      savedOverrideJson({
+        explorer: { model: "xai/grok-code-fast-1", model_reasoning_effort: "low", service_tier: "fast" },
+        librarian: { model: "xai/grok-code-fast-1", model_reasoning_effort: "low", service_tier: "fast" }
+      })
+    );
+
+    const result = spawnSync(process.execPath, [CLI, "sync"], {
+      env: { ...process.env, CODEX_HOME: codexHome },
+      encoding: "utf8"
+    });
+    const explorer = readFileSync(path.join(agentsDir, "explorer.toml"), "utf8");
+    const librarian = readFileSync(path.join(agentsDir, "librarian.toml"), "utf8");
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /updated .*explorer\.toml/);
+    assert.match(result.stdout, /updated .*librarian\.toml/);
+    assert.match(explorer, /model = "xai\/grok-code-fast-1"/);
+    assert.doesNotMatch(explorer, /^model_reasoning_effort = /m);
+    assert.doesNotMatch(explorer, /^service_tier = /m);
+    assert.match(librarian, /model = "xai\/grok-code-fast-1"/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("given Korean postposition is attached to setup flag when CLI runs then accepts the intended flag", () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-cli-"));
   try {

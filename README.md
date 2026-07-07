@@ -30,6 +30,7 @@ npx @islee23520/lfp@latest setup --no-tui
 npx @islee23520/lfp@latest dry-setup
 npx @islee23520/lfp@latest delete
 npx @islee23520/lfp@latest doctor
+npx @islee23520/lfp@latest sync
 npx @islee23520/lfp@latest agent-config
 
 npm test
@@ -37,7 +38,9 @@ npm run setup
 npm run dry-setup
 npm run delete
 npm run doctor
+npm run sync
 npm run agent-config
+npm run global-cli
 npm run smoke:isolated
 ```
 
@@ -53,7 +56,9 @@ Interactive setup enters a single model selection flow by default, covering Defa
 
 When interactive model setup changes override values, LFP saves a schema-versioned JSON user copy at `${CODEX_HOME}/lfp.json`. On later interactive `setup` runs after an npx/package patch, LFP asks whether you want to adjust model overrides; answering no keeps the saved settings without rerunning the per-agent prompts. Answering yes loads the saved copy and continues into the model selection flow. Older `${CODEX_HOME}/lfp/omo-agent-model-overrides.json`, `${CODEX_HOME}/lfp/omo-agent-model-overrides.toml`, and `${CODEX_HOME}/.ledger/lfp/omo-agent-model-overrides.toml` copies are migrated automatically into the canonical JSON config path.
 
-`agent-config` runs the same LFP model selector without reinstalling the plugin. It lists already-configured override targets and writes selections to `${CODEX_HOME}/lfp.json`. Agent TOML writes are restricted to the three primary model fields on existing LazyCodex/OMO targets.
+`sync` applies `${CODEX_HOME}/lfp.json` directly to `${CODEX_HOME}/agents/*.toml` without prompting. `agent-config` runs the same LFP model selector without reinstalling the plugin. It lists already-configured override targets and writes selections to `${CODEX_HOME}/lfp.json`. Agent TOML writes are restricted to the three primary model fields on existing LazyCodex/OMO targets.
+
+`npm run global-cli` builds the local checkout and installs it as the global `lfp` command, so newly built commands such as `lfp sync` are available through `/opt/homebrew/bin/lfp` or the active npm global bin.
 
 Role recommendation policy defaults live in `agent-configs/lfp-role-policies.toml`. The canonical override location is `${CODEX_HOME}/lfp.json` under `rolePolicies`; when present, those values take priority. The legacy sidecar `${CODEX_HOME}/lfp/lfp-role-policies.toml` with `[policies.<role>]` sections still works for now. Model preference order stays code-managed.
 
