@@ -11,6 +11,9 @@ import { getPackageRoot } from "../utils/package-root.js";
 import { parseDoctorArgs, parseSyncArgs } from "./cli-args.js";
 import { printAgentModelDrift, printApplierPreservationStatus, printCodexAppsCacheFixApply, printCodexAppsCacheFixPreview, printCodexAppsCacheState, printInstallSmokeState, printOpenAiCompatProviderState, printProviderInventoryVisibility, printRolePolicyConfig } from "./cli-reporting.js";
 import { runDelete } from "./delete-command.js";
+import { dispatchXaiAuthCommand } from "./xai-auth-command.js";
+import { runSkillManagerCommand, SkillManagerUsageError } from "../skills/skill-manager.js";
+import { XaiAuthUsageError } from "../xai/xai-auth.js";
 const ROOT = getPackageRoot(import.meta.url);
 const DEFAULT_CONFIG = path.join(ROOT, "agent-configs", "omo-agent-model-overrides.toml");
 const HELP = `lfp
@@ -23,6 +26,8 @@ Usage:
   lfp sync [--config <path>] [--check]
   lfp agent-config [--config <path>] [--agent-models-only|--sync-global-defaults]
   lfp benchmark-models [--recommend-only] [--roles <csv>] [--models <csv>] [--samples <n>] [--output <path>] [--dry-run] [--apply]
+  lfp skill-manager [--check|--apply] [--json]
+  lfp xai auth [status|set-api-key|import-grok|refresh|logout] [--api-key <key>] [--json]
   lfp help
 
 npx:
@@ -33,6 +38,8 @@ npx:
   npx @islee23520/lfp@latest sync
   npx @islee23520/lfp@latest agent-config
   npx @islee23520/lfp@latest benchmark-models
+  npx @islee23520/lfp@latest skill-manager
+  npx @islee23520/lfp@latest xai auth status
 
 Commands:
   setup            Install LFP plugin and saved model config into Codex.
@@ -47,6 +54,8 @@ Commands:
   sync             Apply ~/.codex/lfp.json model settings to installed agent TOMLs without prompting.
   agent-config     Reconfigure ~/.codex/lfp.json model settings and apply supported OMO/LazyCodex agent model fields.
   benchmark-models Recommend or benchmark role-based model routing against the active OpenAI-compatible provider.
+  skill-manager    Audit local skill folders, report invalid skills, and optionally move them to skills.disabled.
+  xai auth         Manage dedicated LFP xAI credentials under CODEX_HOME/xai-oauth without registering MCP servers.
   help             Show this help.
 
 Flags:
@@ -66,6 +75,10 @@ Flags:
   --recommend-only  With benchmark-models, use prebenchmarked family routing over active /v1/models without completion calls.
   --dry-run  With benchmark-models, score scenarios without provider calls.
   --apply  With benchmark-models, write winning model fields to ~/.codex/lfp.json.
+  --check  With skill-manager, preview planned skill moves without writing (default).
+  --apply  With skill-manager, move invalid skills to matching skills.disabled roots and write a receipt.
+  --json   With skill-manager or xai auth, emit machine-readable JSON on stdout.
+  --api-key  With xai auth set-api-key, provide the xAI API key non-interactively.
 
   This package extends LazyCodex with model/provider setup, OMO model-routing guidance, fallback lookup, and benchmark capabilities for Codex. setup runs npx lazycodex-ai@latest install before applying LFP, installs/enables this pack in Codex, writes canonical schemaVersion 2 config to ~/.codex/lfp.json, and applies configured three primary model fields to existing OMO/LazyCodex agent TOMLs. Use --agent-models-only to preserve existing Codex global defaults.`;
 if (isDirectRun()) {
@@ -108,6 +121,43 @@ export async function runCli(argv) {
         const result = await runBenchmarkCommand(args, { output: console });
         if (result.applied.length > 0)
             console.log("global defaults: preserved (agent-only mode)");
+        return;
+    }
+    if (command === "skill-manager") {
+        try {
+            runSkillManagerCommand(args, { output: console });
+        }
+        catch (error) {
+            if (error instanceof SkillManagerUsageError) {
+                console.error(error.message);
+                process.exitCode = error.exitCode;
+                return;
+            }
+            throw error;
+        }
+        return;
+    }
+    if (command === "xai") {
+        if (args[0] !== "auth") {
+            console.error('Expected subcommand "auth"');
+            process.exitCode = 2;
+            return;
+        }
+        try {
+            const result = await dispatchXaiAuthCommand(args.slice(1), { env: process.env });
+            if (typeof result === "string")
+                console.log(result);
+            else
+                console.log(JSON.stringify(result, null, 2));
+        }
+        catch (error) {
+            if (error instanceof XaiAuthUsageError) {
+                console.error(error.message);
+                process.exitCode = error.exitCode;
+                return;
+            }
+            throw error;
+        }
         return;
     }
     throw new Error(`Unknown command: ${command}\n\n${HELP}`);
