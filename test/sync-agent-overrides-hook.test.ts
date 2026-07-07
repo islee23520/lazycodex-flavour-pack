@@ -20,8 +20,8 @@ test("given SessionStart hook when override is pending then applies model fields
 
     assert.equal(output, "");
     assert.match(updated, /model = "gemini-pro-agent"/);
-    assert.match(updated, /model_reasoning_effort = "high"/);
-    assert.match(updated, /service_tier = "default"/);
+    assert.doesNotMatch(updated, /^model_reasoning_effort = /m);
+    assert.doesNotMatch(updated, /^service_tier = /m);
     assert.doesNotMatch(updated, /^model_fallback/m);
     assert.match(updated, /developer_instructions = """keep me"""/);
   } finally {
@@ -67,8 +67,8 @@ test("given UserPromptSubmit hook when saved override exists then saved model wi
 
     assert.equal(output, "");
     assert.match(updated, /model = "gemini-saved-agent"/);
-    assert.match(updated, /model_reasoning_effort = "medium"/);
-    assert.match(updated, /service_tier = "fast"/);
+    assert.doesNotMatch(updated, /^model_reasoning_effort = /m);
+    assert.doesNotMatch(updated, /^service_tier = /m);
     assert.doesNotMatch(updated, /^model_fallback/m);
   } finally {
     rmSync(root, { recursive: true, force: true });

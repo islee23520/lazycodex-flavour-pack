@@ -230,8 +230,40 @@ test("given benchmark recommendation with fallback fields when applying then wri
     assert.deepEqual(applied, ["explorer"]);
     assert.deepEqual(saved.overrides.explorer, {
       model: "new-model",
-      model_reasoning_effort: "low",
-      service_tier: "fast"
+      model_reasoning_effort: "low"
+    });
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("given benchmark recommendation omits unsupported fields when applying then stale saved fields are removed", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-benchmark-apply-"));
+  try {
+    const codexHome = createCodexHome(root, {
+      explorer: { model: "old-model", model_reasoning_effort: "low", service_tier: "default" }
+    });
+
+    const applied = applyRecommendedOverrides(
+      {
+        schemaVersion: 2,
+        overrides: {
+          explorer: { model: "old-model", model_reasoning_effort: "low", service_tier: "default" }
+        }
+      },
+      {
+        explorer: {
+          changed: true,
+          model: "grok-code-fast-1"
+        }
+      },
+      { ...process.env, CODEX_HOME: codexHome }
+    );
+    const saved = JSON.parse(readFileSync(path.join(codexHome, "lfp.json"), "utf8"));
+
+    assert.deepEqual(applied, ["explorer"]);
+    assert.deepEqual(saved.overrides.explorer, {
+      model: "grok-code-fast-1"
     });
   } finally {
     rmSync(root, { recursive: true, force: true });

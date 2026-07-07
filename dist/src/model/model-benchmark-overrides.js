@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { AGENT_MODEL_FIELDS } from "./model-field-scope.js";
 import { readOverrideConfig } from "./model-override-config.js";
+import { getCompatibleModelFields } from "./model-reasoning-compat.js";
 import { getUserOverrideConfigPath, migrateLegacyUserOverrideConfig } from "./user-model-overrides.js";
 const MODEL_FIELDS = [...AGENT_MODEL_FIELDS];
 export function applyRecommendedOverrides(currentConfig, recommendations, env) {
@@ -16,7 +17,10 @@ export function applyRecommendedOverrides(currentConfig, recommendations, env) {
     for (const [role, recommendation] of Object.entries(recommendations)) {
         if (!recommendation.changed)
             continue;
-        next.overrides[role] = { ...(next.overrides[role] ?? {}), ...pickOverrideFields(recommendation) };
+        next.overrides[role] = getCompatibleModelFields({
+            ...(next.overrides[role] ?? {}),
+            ...pickOverrideFields(recommendation)
+        });
         applied.push(role);
     }
     if (applied.length > 0) {
@@ -39,9 +43,9 @@ function pickAllOverrideFields(overrides) {
     return picked;
 }
 function pickOverrideFields(fields) {
-    const picked = {};
+    const picked = getCompatibleModelFields(fields);
     for (const key of MODEL_FIELDS)
         if (fields[key])
             picked[key] = fields[key];
-    return picked;
+    return getCompatibleModelFields(picked);
 }

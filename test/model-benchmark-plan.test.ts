@@ -33,7 +33,7 @@ test("given normal plan benchmark when applying winner then saves xhigh reasonin
 
     assert.equal(saved.overrides.plan.model, "fast-model");
     assert.equal(saved.overrides.plan.model_reasoning_effort, "xhigh");
-    assert.equal(saved.overrides.plan.service_tier, "default");
+    assert.equal(saved.overrides.plan.service_tier, undefined);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

@@ -71,7 +71,8 @@ export function writeOverrideFields(configPath, overrides) {
     const key = line.includes("=") ? line.split("=", 1)[0].trim() : "";
     if (agentName !== null && WRITABLE_FIELDS.includes(key)) {
       writtenFields.add(key);
-      if (overrides[agentName]?.[key]) {
+      if (Object.hasOwn(overrides[agentName] ?? {}, key)) {
+        if (overrides[agentName]?.[key] === undefined || overrides[agentName]?.[key] === null) continue;
         output.push(`${key} = ${JSON.stringify(String(overrides[agentName][key]))}`);
         continue;
       }
@@ -85,7 +86,8 @@ export function writeOverrideFields(configPath, overrides) {
     if (seenAgentSections.has(agentName)) continue;
     output.push("", `[agents.${agentName}]`);
     for (const key of WRITABLE_FIELDS) {
-      if (fields?.[key]) output.push(`${key} = ${JSON.stringify(String(fields[key]))}`);
+      if (fields?.[key] !== undefined && fields?.[key] !== null)
+        output.push(`${key} = ${JSON.stringify(String(fields[key]))}`);
     }
   }
 

@@ -92,6 +92,49 @@ test("given upstream agent override config when syncing then writes supported mo
   }
 });
 
+test("given OpenCodex incompatible model fields when syncing then removes unsupported agent fields", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-agent-sync-"));
+  try {
+    const sourceDir = path.join(root, "source");
+    const configPath = path.join(root, "config.json");
+    const agentPath = path.join(sourceDir, "explorer.toml");
+    mkdirSync(sourceDir);
+    writeFileSync(
+      agentPath,
+      [
+        'name = "explorer"',
+        'model = "gpt-5.4-mini"',
+        'model_reasoning_effort = "medium"',
+        'service_tier = "default"',
+        ""
+      ].join("\n")
+    );
+    writeFileSync(
+      configPath,
+      JSON.stringify({
+        source: { agentsDir: sourceDir },
+        overrides: {
+          explorer: {
+            model: "grok-code-fast-1",
+            model_reasoning_effort: "low",
+            service_tier: "fast"
+          }
+        }
+      })
+    );
+
+    const result = syncAgentOverrides(configPath);
+    const updated = readFileSync(agentPath, "utf8");
+
+    assert.deepEqual(result.changed, [agentPath]);
+    assert.match(updated, /^model = "grok-code-fast-1"$/m);
+    assert.doesNotMatch(updated, /^model_reasoning_effort = /m);
+    assert.doesNotMatch(updated, /^service_tier = /m);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("given TOML override config with fallback fields when syncing then preserves installed fallback fields", () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-agent-sync-"));
   try {
@@ -134,7 +177,7 @@ test("given TOML override config with fallback fields when syncing then preserve
     assert.deepEqual(result.skippedReadOnly, []);
     assert.match(updated, /model = "new"/);
     assert.match(updated, /model_reasoning_effort = "low"/);
-    assert.match(updated, /service_tier = "fast"/);
+    assert.doesNotMatch(updated, /^service_tier = /m);
     assert.match(updated, /^model_fallback = "old-fallback"$/m);
     assert.doesNotMatch(updated, /model_fallback = "fallback"/);
   } finally {
@@ -294,7 +337,7 @@ test("given configured OMO agents in override config when syncing then writes mo
     assert.deepEqual(result.skippedReadOnly, []);
     assert.match(updatedPlan, /^model = "grok-4\.20-0309-reasoning"$/m);
     assert.match(updatedPlan, /^model_reasoning_effort = "xhigh"$/m);
-    assert.match(updatedPlan, /^service_tier = "default"$/m);
+    assert.doesNotMatch(updatedPlan, /^service_tier = /m);
     assert.match(updatedMetis, /^model = "gpt-5\.5"$/m);
     assert.match(updatedMetis, /^model_reasoning_effort = "high"$/m);
     assert.match(updatedMetis, /^service_tier = "default"$/m);

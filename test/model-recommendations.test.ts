@@ -45,11 +45,12 @@ test("given CLIPROXY-like inventory when recommending role models then recommend
   );
 
   assert.equal(recommendations.explorer.model, "grok-3-mini-fast");
-  assert.equal(recommendations.explorer.service_tier, "fast");
+  assert.equal("service_tier" in recommendations.explorer, false);
   assert.equal("model_fallback" in recommendations.explorer, false);
 
   assert.equal(recommendations.metis.model, "glm-5.2");
   assert.equal("model_reasoning_effort" in recommendations.metis, false);
+  assert.equal("service_tier" in recommendations.metis, false);
   assert.equal("model_fallback" in recommendations.metis, false);
 
   assert.equal(recommendations.plan.model, "glm-5.2");
@@ -94,7 +95,7 @@ test("given only one usable model when recommending role models then does not fo
   assert.equal("model_fallback_service_tier" in recommendations.explorer, false);
 });
 
-test("given user role policy when recommending role models then uses configured reasoning and tier", () => {
+test("given user role policy when recommending OpenCodex role models then uses compatible fields only", () => {
   const codexHome = mkdtempSync(path.join(os.tmpdir(), "lfp-role-policy-"));
   try {
     mkdirSync(path.join(codexHome, "lfp"), { recursive: true });
@@ -110,14 +111,14 @@ test("given user role policy when recommending role models then uses configured 
 
     assert.equal(recommendations.explorer.model, "grok-3-mini-fast");
     assert.equal(recommendations.explorer.model_reasoning_effort, "medium");
-    assert.equal(recommendations.explorer.service_tier, "default");
+    assert.equal("service_tier" in recommendations.explorer, false);
   } finally {
     clearRolePolicyConfigCache();
     rmSync(codexHome, { recursive: true, force: true });
   }
 });
 
-test("given user xhigh role policy for GLM when recommending role models then downgrades incompatible reasoning", () => {
+test("given user xhigh role policy for GLM when recommending role models then omits incompatible fields", () => {
   const codexHome = mkdtempSync(path.join(os.tmpdir(), "lfp-role-policy-"));
   try {
     mkdirSync(path.join(codexHome, "lfp"), { recursive: true });
@@ -130,11 +131,19 @@ test("given user xhigh role policy for GLM when recommending role models then do
 
     assert.equal(recommendations.metis.model, "glm-5.2");
     assert.equal("model_reasoning_effort" in recommendations.metis, false);
-    assert.equal(recommendations.metis.service_tier, "default");
+    assert.equal("service_tier" in recommendations.metis, false);
   } finally {
     clearRolePolicyConfigCache();
     rmSync(codexHome, { recursive: true, force: true });
   }
+});
+
+test("given known OpenCodex non-reasoning model when recommending role models then omits unsupported options", () => {
+  const recommendations = buildRecommendedModelOverrides({ explorer: {} }, ["grok-code-fast-1", "gpt-5.5"]);
+
+  assert.equal(recommendations.explorer.model, "grok-code-fast-1");
+  assert.equal("model_reasoning_effort" in recommendations.explorer, false);
+  assert.equal("service_tier" in recommendations.explorer, false);
 });
 
 test("given CLIPROXY-like model ids when classifying inventory then reports stable families providers and capabilities", () => {

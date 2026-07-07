@@ -189,7 +189,7 @@ test("given saved user override config when setup runs again then restores model
 
     assert.equal(restored.overrides.explorer.model, "grok-4.3");
     assert.equal(restored.overrides.explorer.model_reasoning_effort, "medium");
-    assert.equal(restored.overrides.explorer.service_tier, "default");
+    assert.equal(restored.overrides.explorer.service_tier, undefined);
     const restoredText = readFileSync(configPath, "utf8");
     assert.match(restoredText, /agents_dir = "\$\{CODEX_HOME}\/agents"/);
     assert.match(restoredText, /model = "grok-4\.3"/);
@@ -446,7 +446,7 @@ test("given previous upstream saved override config when restoring agent model a
     assert.equal(savedJson.overrides.explorer.model_fallback, "previous-fallback");
     assert.match(agentText, /model = "previous-primary"/);
     assert.match(agentText, /model_reasoning_effort = "low"/);
-    assert.match(agentText, /service_tier = "default"/);
+    assert.doesNotMatch(agentText, /^service_tier = /m);
     assert.match(agentText, /^model_fallback = "new-fallback"$/m);
     assert.match(agentText, /^model_fallback_reasoning_effort = "medium"$/m);
     assert.match(agentText, /^model_fallback_service_tier = "fast"$/m);

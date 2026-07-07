@@ -171,15 +171,12 @@ test("given interactive OMO override setup when user selects listed model tier a
     assert.equal(config.overrides.explorer.service_tier, "fast");
     assert.equal(config.overrides.explorer.model_reasoning_effort, "xhigh");
     assert.equal(config.overrides.librarian.model, "grok-4.3");
-    assert.equal(config.overrides.librarian.service_tier, "default");
+    assert.equal(config.overrides.librarian.service_tier, undefined);
     assert.equal(config.overrides.librarian.model_reasoning_effort, "low");
     assert.match(updated, /model = "gpt-5\.4-mini"/);
     assert.match(updated, /service_tier = "fast"/);
     assert.match(updated, /model_reasoning_effort = "xhigh"/);
-    assert.match(
-      updated,
-      /\[agents\.librarian]\nmodel = "grok-4\.3"\nmodel_reasoning_effort = "low"\nservice_tier = "default"/
-    );
+    assert.match(updated, /\[agents\.librarian]\nmodel = "grok-4\.3"\nmodel_reasoning_effort = "low"/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -230,7 +227,7 @@ test("given setup recommendation flow when user presses enter per agent then wri
     assert.equal(config.overrides.librarian.service_tier, "fast");
     assert.equal(config.overrides.librarian.model_reasoning_effort, "low");
     assert.equal(config.overrides.metis.model, "grok-4.3");
-    assert.equal(config.overrides.metis.service_tier, "default");
+    assert.equal(config.overrides.metis.service_tier, undefined);
     assert.equal(config.overrides.metis.model_reasoning_effort, "high");
     assert.equal("model_fallback" in config.overrides.metis, false);
     assert.ok(configOutput.questions.some((question) => /explorer model \[1]/.test(question)));
@@ -240,10 +237,7 @@ test("given setup recommendation flow when user presses enter per agent then wri
       updated,
       /\[agents\.explorer]\nmodel = "gpt-5\.4-mini"\nmodel_reasoning_effort = "low"\nservice_tier = "fast"/
     );
-    assert.match(
-      updated,
-      /\[agents\.metis]\nmodel = "grok-4\.3"\nmodel_reasoning_effort = "high"\nservice_tier = "default"/
-    );
+    assert.match(updated, /\[agents\.metis]\nmodel = "grok-4\.3"\nmodel_reasoning_effort = "high"/);
     assert.doesNotMatch(updated, /^model_fallback/m);
     assert.match(output.lines.join("\n"), /LFP recommendation: gpt-5\.4-mini/);
     assert.match(output.lines.join("\n"), /Available models \(enter number or exact model id\):/);
@@ -282,10 +276,10 @@ test("given recommended agent when user presses enter then shows current versus 
     const outputText = output.lines.join("\n");
 
     assert.equal(config.overrides.plan.model, "glm-5.2");
-    assert.equal(config.overrides.plan.service_tier, "default");
+    assert.equal(config.overrides.plan.service_tier, undefined);
     assert.equal("model_fallback" in config.overrides.plan, false);
     assert.match(outputText, /Original\/current: old-plan-model \(reasoning: low, tier: fast\)/);
-    assert.match(outputText, /LFP recommendation: glm-5\.2 \(reasoning: unset, tier: default\)/);
+    assert.match(outputText, /LFP recommendation: glm-5\.2 \(reasoning: unset, tier: unset\)/);
     assert.doesNotMatch(outputText, /reasoning: high/);
     assert.doesNotMatch(outputText, /fallback/i);
     assert.equal(
@@ -325,7 +319,7 @@ test("given setup recommendation flow when user overrides one agent then keeps m
     });
 
     assert.equal(config.overrides.explorer.model, "grok-4.3");
-    assert.equal(config.overrides.explorer.service_tier, "default");
+    assert.equal(config.overrides.explorer.service_tier, undefined);
     assert.equal(config.overrides.explorer.model_reasoning_effort, "medium");
   } finally {
     rmSync(root, { recursive: true, force: true });
@@ -405,7 +399,7 @@ test("given setup confirm configured flow when user presses enter then re-applie
     });
 
     assert.equal(config.overrides.explorer.model, "grok-4.3");
-    assert.equal(config.overrides.explorer.service_tier, "default");
+    assert.equal(config.overrides.explorer.service_tier, undefined);
     assert.equal(config.overrides.explorer.model_reasoning_effort, "medium");
     assert.equal(config.overrides.metis.model, "gpt-5.4-mini");
     assert.equal(config.overrides.metis.service_tier, "fast");
@@ -457,7 +451,7 @@ test("given default and ULW model sections when configuring setup then prompts a
     const updated = readFileSync(configPath, "utf8");
 
     assert.equal(config.overrides.default.model, "grok-4.3");
-    assert.equal(config.overrides.default.service_tier, "default");
+    assert.equal(config.overrides.default.service_tier, undefined);
     assert.equal(config.overrides.default.model_reasoning_effort, "medium");
     assert.equal(config.overrides.ulw.model, "gpt-5.5");
     assert.equal(config.overrides.ulw.model_reasoning_effort, "xhigh");
@@ -467,10 +461,7 @@ test("given default and ULW model sections when configuring setup then prompts a
         configOutput.questions.findIndex((question) => /explorer model/.test(question))
     );
     assert.ok(configOutput.questions.some((question) => /ULW model/.test(question)));
-    assert.match(
-      updated,
-      /\[agents\.default]\nmodel = "grok-4\.3"\nmodel_reasoning_effort = "medium"\nservice_tier = "default"/
-    );
+    assert.match(updated, /\[agents\.default]\nmodel = "grok-4\.3"\nmodel_reasoning_effort = "medium"/);
     assert.match(
       updated,
       /\[agents\.ulw]\nmodel = "gpt-5\.5"\nmodel_reasoning_effort = "xhigh"\nservice_tier = "default"/
@@ -661,7 +652,7 @@ test("given default model sections when user goes back from ULW then revisits De
     });
 
     assert.equal(config.overrides.default.model, "grok-4.3");
-    assert.equal(config.overrides.default.service_tier, "fast");
+    assert.equal(config.overrides.default.service_tier, undefined);
     assert.equal(config.overrides.default.model_reasoning_effort, "high");
     assert.equal(config.overrides.ulw.model, "gpt-5.4-mini");
   } finally {
@@ -752,10 +743,7 @@ test("given no discovered model list when user types custom model then writes ma
     const outputText = output.lines.join("\n");
 
     assert.equal(config.overrides.metis.model, "custom-metis-model");
-    assert.match(
-      updated,
-      /\[agents\.metis]\nmodel = "custom-metis-model"\nmodel_reasoning_effort = "high"\nservice_tier = "default"/
-    );
+    assert.match(updated, /\[agents\.metis]\nmodel = "custom-metis-model"\nmodel_reasoning_effort = "high"/);
     assert.match(outputText, /Default: keep the current LazyCodex\/OMO value/);
     assert.doesNotMatch(outputText, /Guide: gpt-5\.5/);
   } finally {

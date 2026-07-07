@@ -14,7 +14,7 @@ import {
   promptForServiceTier,
   promptForYesNo
 } from "./model-config-prompts.js";
-import { getCompatibleReasoningEffort } from "./model-reasoning-compat.js";
+import { getCompatibleModelFields } from "./model-reasoning-compat.js";
 import { logModelSettingScope } from "./model-setting-scopes.js";
 
 export const DEFAULT_MODEL_SECTIONS = new Map([
@@ -142,7 +142,10 @@ async function promptForModelSection(config, agentName, options) {
       fieldIndex -= 1;
       continue;
     }
-    fields.model_reasoning_effort = getCompatibleReasoningEffort(fields.model, reasoning);
+    fields.model_reasoning_effort = reasoning;
+    const compatible = getCompatibleModelFields(fields);
+    fields.model_reasoning_effort = compatible.model_reasoning_effort;
+    fields.service_tier = compatible.service_tier;
     fieldIndex += 1;
   }
   config.overrides[agentName] = fields;
@@ -257,11 +260,15 @@ async function promptForAgentFields(fields, agentName, options) {
       fieldIndex -= 1;
       continue;
     }
-    draft.model_reasoning_effort = getCompatibleReasoningEffort(draft.model, reasoning);
+    draft.model_reasoning_effort = reasoning;
+    const compatible = getCompatibleModelFields(draft);
+    draft.model_reasoning_effort = compatible.model_reasoning_effort;
+    draft.service_tier = compatible.service_tier;
     fieldIndex += 1;
   }
-  fields.model = draft.model;
-  fields.service_tier = draft.service_tier;
-  fields.model_reasoning_effort = draft.model_reasoning_effort;
+  const compatible = getCompatibleModelFields(draft);
+  fields.model = compatible.model;
+  fields.service_tier = compatible.service_tier;
+  fields.model_reasoning_effort = compatible.model_reasoning_effort;
   return null;
 }

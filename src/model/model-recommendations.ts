@@ -1,6 +1,6 @@
 import { VIRTUAL_OVERRIDE_SECTIONS } from "./model-field-scope.js";
 import { classifyModelInventory } from "./model-inventory.js";
-import { getCompatibleReasoningEffort } from "./model-reasoning-compat.js";
+import { getCompatibleModelFields } from "./model-reasoning-compat.js";
 import { readRolePolicyConfig } from "./role-policy-config.js";
 
 const XHIGH_REASONING_AGENT_NAMES = new Set([
@@ -132,13 +132,11 @@ export function recommendRoleModelFields(agentName, models, options = {}) {
   const selected = primary ?? inventory[0] ?? null;
   if (selected === null) return {};
   const model = selected.id;
-  const compatibleReasoning = getCompatibleReasoningEffort(model, fieldPolicy.reasoning);
-  const recommendation = {
+  return getCompatibleModelFields({
     model,
+    model_reasoning_effort: fieldPolicy.reasoning,
     service_tier: fieldPolicy.tier
-  };
-  if (compatibleReasoning !== null) recommendation.model_reasoning_effort = compatibleReasoning;
-  return recommendation;
+  });
 }
 
 function getRoleFieldPolicy(agentName, policyConfig) {

@@ -4,6 +4,7 @@ import { pathToFileURL } from "node:url";
 import { getPackageRoot } from "../utils/package-root.js";
 import { AGENT_MODEL_FIELDS, VIRTUAL_OVERRIDE_SECTIONS } from "./model-field-scope.js";
 import { readOverrideConfig } from "./model-override-config.js";
+import { getCompatibleModelFields } from "./model-reasoning-compat.js";
 import { REMOVED_AGENT_NAMES } from "./removed-lfp-agents.js";
 const ROOT = getPackageRoot(import.meta.url);
 const DEFAULT_CONFIG = path.join(ROOT, "agent-configs", "omo-agent-model-overrides.toml");
@@ -41,7 +42,7 @@ export function syncAgentOverrides(configPath, options = {}) {
     for (const agentName of Object.keys(agentOverrides)) {
         const sourcePath = path.join(sourceDir, `${agentName}.toml`);
         const currentText = readFileSync(sourcePath, "utf8");
-        const nextText = applyModelOverrides(currentText, agentOverrides[agentName] ?? {});
+        const nextText = applyModelOverrides(currentText, getSyncModelFields(agentOverrides[agentName] ?? {}));
         if (currentText === nextText)
             continue;
         changed.push(sourcePath);
@@ -58,6 +59,8 @@ export function applyModelOverrides(sourceText, values) {
     for (const [index, line] of lines.entries()) {
         const key = line.includes("=") ? line.split("=", 1)[0].trim() : "";
         if (AGENT_MODEL_FIELDS.has(key) && Object.hasOwn(values, key)) {
+            if (values[key] === undefined || values[key] === null)
+                continue;
             output.push(`${key} = ${JSON.stringify(String(values[key]))}`);
             seen.add(key);
             continue;
@@ -69,10 +72,20 @@ export function applyModelOverrides(sourceText, values) {
     }
     for (const key of [...AGENT_MODEL_FIELDS].reverse()) {
         if (Object.hasOwn(values, key) && !seen.has(key)) {
+            if (values[key] === undefined || values[key] === null)
+                continue;
             output.splice(insertAt, 0, `${key} = ${JSON.stringify(String(values[key]))}`);
         }
     }
     return `${output.join("\n").replace(/\n*$/, "")}\n`;
+}
+function getSyncModelFields(fields) {
+    const compatible = getCompatibleModelFields(fields);
+    return {
+        model: compatible.model,
+        model_reasoning_effort: compatible.model_reasoning_effort,
+        service_tier: compatible.service_tier
+    };
 }
 function parseArgs(argv) {
     const parsed = { check: false };
