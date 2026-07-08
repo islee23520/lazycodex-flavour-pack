@@ -1,4 +1,4 @@
-export const LFP_OWNED_AGENT_NAMES = [];
+export const LFP_OWNED_AGENT_NAMES = ["oracle", "prometheus", "hephaestus", "atlas", "sisyphus-junior"];
 export const ART_AGENT_NAMES = [];
 export const ART_AGENT_METADATA = {};
 export function getAgentDisplayName(agentName) {

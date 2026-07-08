@@ -204,7 +204,11 @@ async function runDoctor(argv) {
     `lfp doctor: marketplace config: ${state.marketplaceConfigured ? "configured" : "missing"} (${state.configPath})`
   );
   console.log(`lfp doctor: plugin config: ${state.pluginEnabled ? "enabled" : "missing"} (${PLUGIN_REF})`);
+  console.log(
+    `lfp doctor: LFP-owned agents: ${state.additionalAgentsInstalled ? "installed" : "missing"} (oracle, prometheus, hephaestus, atlas, sisyphus-junior)`
+  );
   hasIssue ||= !state.pluginFilesInstalled || !state.marketplaceConfigured || !state.pluginEnabled;
+  hasIssue ||= !state.additionalAgentsInstalled;
   printOpenAiCompatProviderState(state);
   hasIssue ||= state.openAiCompatProvider.status === "drifted";
   await printProviderInventoryVisibility({ commandName: "doctor" });
@@ -212,6 +216,26 @@ async function runDoctor(argv) {
   printRolePolicyConfig({ commandName: "doctor" });
   const installSmokeOk = printInstallSmokeState();
   hasIssue ||= !installSmokeOk;
+  try {
+    const { getAllCategories } = await import("../model/category-resolver.js");
+    const categories = getAllCategories();
+    console.log(`lfp doctor: categories: configured (${categories.length})`);
+  } catch {
+    console.log("lfp doctor: categories: missing");
+    hasIssue = true;
+  }
+  try {
+    const { getRuntimeFallbackConfig } = await import("../model/runtime-fallback-engine.js");
+    const config = getRuntimeFallbackConfig();
+    if (config) {
+      console.log("lfp doctor: runtime fallback: configured");
+    } else {
+      console.log("lfp doctor: runtime fallback: missing");
+    }
+  } catch {
+    console.log("lfp doctor: runtime fallback: missing");
+    hasIssue = true;
+  }
   const appCacheOk = printDoctorCodexAppsCacheState(args);
   hasIssue ||= !appCacheOk;
 

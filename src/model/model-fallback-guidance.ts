@@ -4,7 +4,7 @@ const TRIGGER =
   /\b(?:quota|rate.?limit|429|too many|model failed|provider error|api error|timeout|context.*exceeded|fallback|switch model|different model)\b/i;
 
 const GUIDANCE = `<lfp-model-fallback-guidance>
-When you hit quota, rate-limit, 429, provider failure, or model errors for a LazyCodex/OMO agent, inspect the saved LFP model override config and switch to that agent's configured fallback if one exists. If no fallback is configured, report the primary model and the provider failure clearly instead of guessing a replacement.
+When you hit quota, rate-limit, 429, provider failure, or model errors for a LazyCodex/OMO agent, inspect the saved LFP model override config and switch to that agent's configured fallback chain. The declarative fallback chain in lfp-fallback-chains.toml may provide multiple ordered fallback models — try them in order. If no fallback chain is configured, report the primary model and the provider failure clearly instead of guessing a replacement.
 </lfp-model-fallback-guidance>`;
 
 const GUIDANCE_MARKER = "<lfp-model-fallback-guidance>";

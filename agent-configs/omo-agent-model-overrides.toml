@@ -60,3 +60,43 @@ service_tier = "default"
 model = "gpt-5.5"
 model_reasoning_effort = "xhigh"
 service_tier = "default"
+
+[agents.oracle]
+model = "gpt-5.5"
+model_reasoning_effort = "high"
+service_tier = "default"
+model_fallback = "gemini-3.1-pro"
+model_fallback_reasoning_effort = "high"
+model_fallback_service_tier = "default"
+
+[agents.prometheus]
+model = "gpt-5.5"
+model_reasoning_effort = "xhigh"
+service_tier = "default"
+model_fallback = "glm-5.1"
+model_fallback_reasoning_effort = "xhigh"
+model_fallback_service_tier = "default"
+
+[agents.hephaestus]
+model = "gpt-5.5"
+model_reasoning_effort = "high"
+service_tier = "default"
+model_fallback = "gpt-5.5"
+model_fallback_reasoning_effort = "medium"
+model_fallback_service_tier = "default"
+
+[agents.atlas]
+model = "gpt-5.5"
+model_reasoning_effort = "high"
+service_tier = "default"
+model_fallback = "gpt-5.5"
+model_fallback_reasoning_effort = "medium"
+model_fallback_service_tier = "default"
+
+[agents.sisyphus-junior]
+model = "gpt-5.5"
+model_reasoning_effort = "medium"
+service_tier = "default"
+model_fallback = "gpt-5.4-mini"
+model_fallback_reasoning_effort = "medium"
+model_fallback_service_tier = "default"

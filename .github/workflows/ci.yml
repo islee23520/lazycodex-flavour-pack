@@ -1,17 +1,17 @@
-name: Publish Package
+name: CI
 
 on:
-  release:
-    types: [published]
-  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
 
 permissions:
   contents: read
-  id-token: write
 
 concurrency:
-  group: publish-${{ github.ref }}
-  cancel-in-progress: false
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   verify:
@@ -49,23 +49,7 @@ jobs:
       - name: Pack check
         run: npm run pack:check
 
-  publish:
-    needs: verify
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-
-      - name: Install dependencies
-        run: npm install
-
-      - name: Build
-        run: npm run build
-
-      - name: Publish package to npm
-        run: npm publish --provenance --access public
+      - name: Verify no MCP surface
+        run: |
+          ! grep -r "mcpServers\|mcp_servers\|\.mcp\.json" src/ --include="*.ts" | grep -v "test\|TODO\|FIXME"
+          echo "OK: no MCP surface in source"

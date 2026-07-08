@@ -1,0 +1,10 @@
+# LFP Runtime Fallback Configuration
+# Retry policy for transient errors (408/429/5xx).
+# Consumed by src/model/runtime-fallback-engine.ts.
+
+[runtime]
+retry_on_errors = [408, 429, 500, 502, 503]
+max_fallback_attempts = 3
+cooldown_seconds = 30
+timeout_seconds = 120
+notify_on_fallback = true

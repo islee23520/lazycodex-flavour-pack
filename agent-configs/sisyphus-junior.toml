@@ -1,0 +1,10 @@
+[source]
+agents_dir = "${CODEX_HOME}/agents"
+
+[agents.sisyphus-junior]
+model = "gpt-5.5"
+model_reasoning_effort = "medium"
+service_tier = "default"
+model_fallback = "gpt-5.4-mini"
+model_fallback_reasoning_effort = "medium"
+model_fallback_service_tier = "default"

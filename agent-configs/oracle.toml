@@ -1,0 +1,10 @@
+[source]
+agents_dir = "${CODEX_HOME}/agents"
+
+[agents.oracle]
+model = "gpt-5.5"
+model_reasoning_effort = "high"
+service_tier = "default"
+model_fallback = "gemini-3.1-pro"
+model_fallback_reasoning_effort = "high"
+model_fallback_service_tier = "default"

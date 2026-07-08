@@ -58,6 +58,31 @@ const ROLE_GUIDES = {
     role: "LazyCodex clone and design-system fidelity reviewer.",
     tuneFor: "verifying design-token fidelity and catching hardcoded fake clones.",
     minimum: "Use a frontier reasoning model with xhigh reasoning."
+  },
+  oracle: {
+    role: "Read-only architecture and debugging consultant.",
+    tuneFor: "high-reasoning analysis of hard problems without writing code.",
+    minimum: "Use a strong reasoning model with high reasoning."
+  },
+  prometheus: {
+    role: "Strategic planner for broad or ambiguous work.",
+    tuneFor: "decomposition, risk discovery, and decision-complete plan generation.",
+    minimum: "Use a frontier reasoning model with xhigh reasoning."
+  },
+  hephaestus: {
+    role: "Autonomous deep implementation worker.",
+    tuneFor: "shipping complete changes with evidence and rollback safety.",
+    minimum: "Use a frontier reasoning model with high reasoning."
+  },
+  atlas: {
+    role: "Todo-list orchestrator coordinating subagents.",
+    tuneFor: "parallel dispatch, verification, and plan progression.",
+    minimum: "Use a frontier reasoning model with high reasoning."
+  },
+  "sisyphus-junior": {
+    role: "Focused category-spawned task executor.",
+    tuneFor: "single-task completion with TDD and cleanup.",
+    minimum: "Use a dependable general model with medium reasoning."
   }
 };
 

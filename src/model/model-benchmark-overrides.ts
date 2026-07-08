@@ -1,12 +1,10 @@
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
-import { AGENT_MODEL_FIELDS } from "./model-field-scope.js";
+import { getAgentModelFields } from "./model-field-scope.js";
 import { readOverrideConfig } from "./model-override-config.js";
 import { getCompatibleModelFields } from "./model-reasoning-compat.js";
 import { getUserOverrideConfigPath, migrateLegacyUserOverrideConfig } from "./user-model-overrides.js";
-
-const MODEL_FIELDS = [...AGENT_MODEL_FIELDS];
 
 export function applyRecommendedOverrides(currentConfig, recommendations, env) {
   const applied = [];
@@ -21,7 +19,7 @@ export function applyRecommendedOverrides(currentConfig, recommendations, env) {
     if (!recommendation.changed) continue;
     next.overrides[role] = getCompatibleModelFields({
       ...(next.overrides[role] ?? {}),
-      ...pickOverrideFields(recommendation)
+      ...pickOverrideFields(recommendation, role)
     });
     applied.push(role);
   }
@@ -41,13 +39,14 @@ export function readCurrentOverrideConfig(configPath, env) {
 function pickAllOverrideFields(overrides) {
   const picked = {};
   for (const [role, fields] of Object.entries(overrides)) {
-    picked[role] = pickOverrideFields(fields);
+    picked[role] = pickOverrideFields(fields, role);
   }
   return picked;
 }
 
-function pickOverrideFields(fields) {
+function pickOverrideFields(fields, agentName) {
   const picked = getCompatibleModelFields(fields);
-  for (const key of MODEL_FIELDS) if (fields[key]) picked[key] = fields[key];
+  const keys = agentName ? [...getAgentModelFields(agentName)] : ["model", "model_reasoning_effort", "service_tier"];
+  for (const key of keys) if (fields[key]) picked[key] = fields[key];
   return getCompatibleModelFields(picked);
 }

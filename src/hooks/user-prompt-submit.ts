@@ -3,6 +3,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { runModelFallbackGuidance } from "../model/model-fallback-guidance.js";
+import { runCategoryGuidance } from "./category-guidance-hook.js";
 
 if (isDirectRun()) {
   const input = readStdinJson();
@@ -24,6 +25,13 @@ export async function runDispatcher(value) {
   const fallback = value ? runModelFallbackGuidance(value) : { emit: false };
   if (fallback?.emit && fallback.guidance) {
     contexts.push(withMainAgentContext(fallback.guidance, mainAgent));
+  }
+
+  if (!fallback?.emit) {
+    const category = value ? runCategoryGuidance(value) : { emit: false };
+    if (category?.emit && category.guidance) {
+      contexts.push(withMainAgentContext(category.guidance, mainAgent));
+    }
   }
 
   if (contexts.length === 0) return "";

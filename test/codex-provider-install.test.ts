@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 
-import { installCodexPlugin } from "../src/install/codex-plugin-install.ts";
+import { ADDITIONAL_AGENT_CONFIGS, installCodexPlugin } from "../src/install/codex-plugin-install.ts";
 
 const CLI = path.resolve("scripts/cli.mjs");
 const LAZYCODEX_INSTALL_STUB = path.resolve("test/fixtures/lazycodex-install-stub.mjs");
@@ -218,6 +218,10 @@ function createPackageRoot(root, provider) {
       ""
     ].join("\n")
   );
+  const repoAgentConfigs = path.resolve("agent-configs");
+  for (const fileName of ADDITIONAL_AGENT_CONFIGS) {
+    cpSync(path.join(repoAgentConfigs, fileName), path.join(packageRoot, "agent-configs", fileName));
+  }
   return packageRoot;
 }
 

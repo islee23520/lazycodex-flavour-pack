@@ -9,19 +9,21 @@ import { runDispatcher } from "../src/hooks/user-prompt-submit.ts";
 test("given non-visual non-art prompt when dispatcher runs then returns empty string", async () => {
   const output = await runDispatcher({
     hook_event_name: "UserPromptSubmit",
-    prompt: "Refactor the backend repository class."
+    prompt: "hello world xyzzy random text that has no category relevance"
   });
 
   assert.equal(output, "");
 });
 
-test("given visual prompt when dispatcher runs then returns empty string", async () => {
+test("given visual prompt when dispatcher runs then emits category guidance", async () => {
   const output = await runDispatcher({
     hook_event_name: "UserPromptSubmit",
     prompt: "Run visual QA on this UI layout"
   });
 
-  assert.equal(output, "");
+  const parsed = JSON.parse(output);
+  assert.match(parsed.hookSpecificOutput.additionalContext, /<lfp-category-routing-guidance>/);
+  assert.match(parsed.hookSpecificOutput.additionalContext, /visual-engineering/);
 });
 
 test("given main agent is Hephaestus when fallback dispatcher emits guidance then it preserves main-agent ownership", async () => {
@@ -96,12 +98,10 @@ test("given transcript with existing guidance when dispatcher runs then does not
 
     const output = await runDispatcher({
       hook_event_name: "UserPromptSubmit",
-      prompt: "Refactor backend service",
+      prompt: "<lfp-category-routing-guidance>\nhello world xyzzy random text that has no category relevance",
       transcript_path: transcriptPath
     });
 
-    // Visual and art are deduped; fallback may still emit if trigger matches,
-    // but this prompt has no fallback trigger, so output should be empty.
     assert.equal(output, "");
   } finally {
     rmSync(root, { recursive: true, force: true });

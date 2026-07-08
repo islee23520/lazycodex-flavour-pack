@@ -2,7 +2,8 @@ import { readFileSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { getPackageRoot } from "../utils/package-root.js";
-import { AGENT_MODEL_FIELDS, VIRTUAL_OVERRIDE_SECTIONS } from "./model-field-scope.js";
+import { isLfpOwnedAgent } from "./agent-model-metadata.js";
+import { AGENT_MODEL_FIELDS, getAgentModelFields, VIRTUAL_OVERRIDE_SECTIONS } from "./model-field-scope.js";
 import { readOverrideConfig } from "./model-override-config.js";
 import { getCompatibleModelFields } from "./model-reasoning-compat.js";
 import { REMOVED_AGENT_NAMES } from "./removed-lfp-agents.js";
@@ -42,7 +43,7 @@ export function syncAgentOverrides(configPath, options = {}) {
     for (const agentName of Object.keys(agentOverrides)) {
         const sourcePath = path.join(sourceDir, `${agentName}.toml`);
         const currentText = readFileSync(sourcePath, "utf8");
-        const nextText = applyModelOverrides(currentText, getSyncModelFields(agentOverrides[agentName] ?? {}));
+        const nextText = applyModelOverrides(currentText, getSyncModelFields(agentOverrides[agentName] ?? {}, agentName), agentName);
         if (currentText === nextText)
             continue;
         changed.push(sourcePath);
@@ -51,14 +52,14 @@ export function syncAgentOverrides(configPath, options = {}) {
     }
     return { changed, skippedReadOnly: [] };
 }
-export function applyModelOverrides(sourceText, values) {
+export function applyModelOverrides(sourceText, values, agentName) {
     const lines = sourceText.split(/\r?\n/);
     const seen = new Set();
     const output = [];
     let insertAt = 1;
     for (const [index, line] of lines.entries()) {
         const key = line.includes("=") ? line.split("=", 1)[0].trim() : "";
-        if (AGENT_MODEL_FIELDS.has(key) && Object.hasOwn(values, key)) {
+        if (getAgentModelFields(agentName).has(key) && Object.hasOwn(values, key)) {
             if (values[key] === undefined || values[key] === null)
                 continue;
             output.push(`${key} = ${JSON.stringify(String(values[key]))}`);
@@ -70,7 +71,7 @@ export function applyModelOverrides(sourceText, values) {
             insertAt = output.length;
         }
     }
-    for (const key of [...AGENT_MODEL_FIELDS].reverse()) {
+    for (const key of [...getAgentModelFields(agentName)].reverse()) {
         if (Object.hasOwn(values, key) && !seen.has(key)) {
             if (values[key] === undefined || values[key] === null)
                 continue;
@@ -79,13 +80,22 @@ export function applyModelOverrides(sourceText, values) {
     }
     return `${output.join("\n").replace(/\n*$/, "")}\n`;
 }
-function getSyncModelFields(fields) {
+function getSyncModelFields(fields, agentName) {
     const compatible = getCompatibleModelFields(fields);
-    return {
+    const base = {
         model: compatible.model,
         model_reasoning_effort: compatible.model_reasoning_effort,
         service_tier: compatible.service_tier
     };
+    if (agentName && isLfpOwnedAgent(agentName)) {
+        return {
+            ...base,
+            model_fallback: fields.model_fallback,
+            model_fallback_reasoning_effort: fields.model_fallback_reasoning_effort,
+            model_fallback_service_tier: fields.model_fallback_service_tier
+        };
+    }
+    return base;
 }
 function parseArgs(argv) {
     const parsed = { check: false };

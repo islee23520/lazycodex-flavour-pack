@@ -312,7 +312,12 @@ function writeOmoAgentFixtureSet(agentsDir, overrides = {}) {
     librarian: { model: "gpt-5.4-mini", reasoning: "low", tier: "fast" },
     metis: { model: "gpt-5.5", reasoning: "high", tier: "default" },
     momus: { model: "gpt-5.5", reasoning: "xhigh", tier: "default" },
-    plan: { model: "gpt-5.5", reasoning: "xhigh", tier: "default" }
+    plan: { model: "gpt-5.5", reasoning: "xhigh", tier: "default" },
+    oracle: { model: "gpt-5.5", reasoning: "high", tier: "default" },
+    prometheus: { model: "gpt-5.5", reasoning: "xhigh", tier: "default" },
+    hephaestus: { model: "gpt-5.5", reasoning: "high", tier: "default" },
+    atlas: { model: "gpt-5.5", reasoning: "high", tier: "default" },
+    "sisyphus-junior": { model: "gpt-5.5", reasoning: "medium", tier: "default" }
   };
   for (const [name, defaults] of Object.entries(agents)) {
     const fields = { ...defaults, ...overrides[name] };

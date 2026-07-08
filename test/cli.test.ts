@@ -341,6 +341,62 @@ test("given saved LFP overrides when doctor runs then checks saved agent set", (
   }
 });
 
+test("given doctor when checking categories then reports configured status", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-cli-"));
+  try {
+    const codexHome = path.join(root, "codex-home");
+    const sourceDir = path.join(root, "agents");
+    const configPath = path.join(root, "config.json");
+    const agentPath = path.join(sourceDir, "explorer.toml");
+    mkdirSync(sourceDir);
+    writeFileSync(agentPath, 'name = "explorer"\nmodel = "grok-4.3"\n');
+    writeFileSync(
+      configPath,
+      JSON.stringify({
+        source: { agentsDir: sourceDir },
+        overrides: { explorer: { model: "grok-4.3" } }
+      })
+    );
+
+    const result = spawnSync(process.execPath, [CLI, "doctor", "--config", configPath], {
+      env: cliEnv(codexHome),
+      encoding: "utf8"
+    });
+
+    assert.match(result.stdout, /lfp doctor: categories: configured \(\d+\)/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("given doctor when checking runtime fallback then reports configured status", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-cli-"));
+  try {
+    const codexHome = path.join(root, "codex-home");
+    const sourceDir = path.join(root, "agents");
+    const configPath = path.join(root, "config.json");
+    const agentPath = path.join(sourceDir, "explorer.toml");
+    mkdirSync(sourceDir);
+    writeFileSync(agentPath, 'name = "explorer"\nmodel = "grok-4.3"\n');
+    writeFileSync(
+      configPath,
+      JSON.stringify({
+        source: { agentsDir: sourceDir },
+        overrides: { explorer: { model: "grok-4.3" } }
+      })
+    );
+
+    const result = spawnSync(process.execPath, [CLI, "doctor", "--config", configPath], {
+      env: cliEnv(codexHome),
+      encoding: "utf8"
+    });
+
+    assert.match(result.stdout, /lfp doctor: runtime fallback: configured/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("given saved LFP overrides when sync runs then applies user config to agent TOMLs", () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-cli-sync-"));
   try {
@@ -907,6 +963,7 @@ test("given setup has run when doctor runs then reports lfp installed in Codex",
     assert.match(doctor.stdout, /plugin files: installed/);
     assert.match(doctor.stdout, /marketplace config: configured/);
     assert.match(doctor.stdout, /plugin config: enabled/);
+    assert.match(doctor.stdout, /LFP-owned agents: installed/);
     assert.match(doctor.stdout, /agent overrides: already applied/);
   } finally {
     rmSync(root, { recursive: true, force: true });
@@ -1115,7 +1172,12 @@ function writeOmo410AgentFixtureSet(agentsDir, overrides = {}) {
     librarian: { model: "gpt-5.4-mini", reasoning: "low", tier: "fast" },
     metis: { model: "gpt-5.5", reasoning: "high", tier: "default" },
     momus: { model: "gpt-5.5", reasoning: "xhigh", tier: "default" },
-    plan: { model: "gpt-5.5", reasoning: "xhigh", tier: "default" }
+    plan: { model: "gpt-5.5", reasoning: "xhigh", tier: "default" },
+    oracle: { model: "gpt-5.5", reasoning: "high", tier: "default" },
+    prometheus: { model: "gpt-5.5", reasoning: "xhigh", tier: "default" },
+    hephaestus: { model: "gpt-5.5", reasoning: "high", tier: "default" },
+    atlas: { model: "gpt-5.5", reasoning: "high", tier: "default" },
+    "sisyphus-junior": { model: "gpt-5.5", reasoning: "medium", tier: "default" }
   };
   for (const [name, defaults] of Object.entries(agents)) {
     const fields = { ...defaults, ...overrides[name] };

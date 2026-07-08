@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { getCodexAppsToolCacheState } from "../codex/codex-apps-cache.js";
@@ -48,7 +48,12 @@ writeOverrideConfig(overrideConfigPath, agentsDir, {
   librarian: { model: "gpt-5.4-mini", model_reasoning_effort: "low", service_tier: "fast" },
   metis: { model: "gpt-5.5", model_reasoning_effort: "high", service_tier: "default" },
   momus: { model: "gpt-5.5", model_reasoning_effort: "xhigh", service_tier: "default" },
-  plan: { model: "gpt-5.5", model_reasoning_effort: "xhigh", service_tier: "default" }
+  plan: { model: "gpt-5.5", model_reasoning_effort: "xhigh", service_tier: "default" },
+  oracle: { model: "gpt-5.5", model_reasoning_effort: "high", service_tier: "default" },
+  prometheus: { model: "gpt-5.5", model_reasoning_effort: "xhigh", service_tier: "default" },
+  hephaestus: { model: "gpt-5.5", model_reasoning_effort: "high", service_tier: "default" },
+  atlas: { model: "gpt-5.5", model_reasoning_effort: "high", service_tier: "default" },
+  "sisyphus-junior": { model: "gpt-5.5", model_reasoning_effort: "medium", service_tier: "default" }
 });
 writeOverrideConfig(savedOverridePath, null, {
   default: { model: "gpt-5.5", model_reasoning_effort: "high", service_tier: "default" },
@@ -62,7 +67,12 @@ writeOverrideConfig(savedOverridePath, null, {
   librarian: { model: "gpt-5.4-mini", model_reasoning_effort: "low", service_tier: "fast" },
   metis: { model: "gpt-5.5", model_reasoning_effort: "high", service_tier: "fast" },
   momus: { model: "gpt-5.5", model_reasoning_effort: "xhigh", service_tier: "default" },
-  plan: { model: "gpt-5.5", model_reasoning_effort: "xhigh", service_tier: "default" }
+  plan: { model: "gpt-5.5", model_reasoning_effort: "xhigh", service_tier: "default" },
+  oracle: { model: "gpt-5.5", model_reasoning_effort: "high", service_tier: "default" },
+  prometheus: { model: "gpt-5.5", model_reasoning_effort: "xhigh", service_tier: "default" },
+  hephaestus: { model: "gpt-5.5", model_reasoning_effort: "high", service_tier: "default" },
+  atlas: { model: "gpt-5.5", model_reasoning_effort: "high", service_tier: "default" },
+  "sisyphus-junior": { model: "gpt-5.5", model_reasoning_effort: "medium", service_tier: "default" }
 });
 writeFileSync(
   path.join(codexHome, "cache", "codex_apps_tools", "duplicate-tools.json"),
@@ -85,6 +95,12 @@ await configureAgentModelOverrides(overrideConfigPath, {
 const sync = syncAgentOverrides(overrideConfigPath, { check: false });
 const doctor = runCli(["doctor", "--config", overrideConfigPath]);
 assertStatus(doctor, 0, "doctor");
+
+const installedAgentsDir = path.join(codexHome, "agents");
+for (const agent of ["oracle", "prometheus", "hephaestus", "atlas", "sisyphus-junior"]) {
+  const agentPath = path.join(installedAgentsDir, `${agent}.toml`);
+  if (!existsSync(agentPath)) throw new Error(`isolated smoke: ${agent}.toml installed`);
+}
 
 const cacheState = getCodexAppsToolCacheState({ env: { CODEX_HOME: codexHome } });
 const configText = readFileSync(path.join(codexHome, "config.toml"), "utf8");
@@ -111,7 +127,7 @@ assertIncludes(
   "LazyCodex code reviewer xhigh reasoning preserved"
 );
 assertIncludes(qaExecutorText, 'model_reasoning_effort = "medium"', "LazyCodex QA executor medium reasoning preserved");
-assertManagedOmoAgents(overrideConfigPath, 10);
+assertManagedOmoAgents(overrideConfigPath, 15);
 if (!cacheState.healthy) throw new Error(`Codex Apps cache is not clean: ${JSON.stringify(cacheState.duplicateFiles)}`);
 if (!output.questions.some((question) => /Adjust LFP model overrides now/.test(question))) {
   throw new Error("Saved override adjust prompt was not shown");
@@ -196,6 +212,11 @@ function writeOmo411UltraworkAgents() {
   writeAgent("metis", "gpt-5.5", "high", "default");
   writeAgent("momus", "gpt-5.5", "xhigh", "default");
   writeAgent("plan", "gpt-5.5", "xhigh", "default");
+  writeAgent("oracle", "gpt-5.5", "high", "default");
+  writeAgent("prometheus", "gpt-5.5", "xhigh", "default");
+  writeAgent("hephaestus", "gpt-5.5", "high", "default");
+  writeAgent("atlas", "gpt-5.5", "high", "default");
+  writeAgent("sisyphus-junior", "gpt-5.5", "medium", "default");
 }
 
 function writeAgent(name, model, reasoning, tier) {

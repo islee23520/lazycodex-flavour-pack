@@ -1,6 +1,6 @@
 {
   "name": "lfp",
-  "version": "0.3.19",
+  "version": "0.4.0",
   "description": "LazyCodex extension plugin for Codex model/provider configuration and category routing guidance.",
   "author": "islee23520",
   "homepage": "https://linalab.io",
@@ -29,7 +29,13 @@
   "x-lfp": {
     "extends": ["omo@sisyphuslabs", "lazycodex-ai"],
     "modelOverrideSource": "./agent-configs/omo-agent-model-overrides.toml",
-    "additionalAgents": []
+    "additionalAgents": [
+      "./agent-configs/oracle.toml",
+      "./agent-configs/prometheus.toml",
+      "./agent-configs/hephaestus.toml",
+      "./agent-configs/atlas.toml",
+      "./agent-configs/sisyphus-junior.toml"
+    ]
   },
   "capabilities": []
 }

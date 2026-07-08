@@ -8,6 +8,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { getPackageRoot } from "../utils/package-root.js";
 import { LegacyV1SavedUserOverrideConfigSchema, SavedUserModelOverrideConfigSchema } from "./model-override-schema.js";
 import { getUserOverrideConfigPath } from "./user-model-overrides.js";
 const LEGACY_JSON_CONFIG_NAME = "omo-agent-model-overrides.json";
@@ -132,6 +133,57 @@ export function resolve(agentName, options = {}) {
         source: ledgerPath,
         fallback_available: !!entry.model_fallback
     };
+}
+let cachedChains = null;
+function loadFallbackChains() {
+    if (cachedChains)
+        return cachedChains;
+    const chainsPath = path.join(getPackageRoot(import.meta.url), "agent-configs", "lfp-fallback-chains.toml");
+    if (!existsSync(chainsPath)) {
+        cachedChains = { agents: {}, categories: {} };
+        return cachedChains;
+    }
+    const text = readFileSync(chainsPath, "utf8");
+    const agents = {};
+    const categories = {};
+    let section = null;
+    let currentName = null;
+    for (const rawLine of text.split(/\r?\n/)) {
+        const line = rawLine.trim();
+        if (!line || line.startsWith("#"))
+            continue;
+        const agentMatch = line.match(/^\[agents\.([A-Za-z0-9_-]+)\]$/);
+        if (agentMatch) {
+            section = "agents";
+            currentName = agentMatch[1];
+            continue;
+        }
+        const catMatch = line.match(/^\[categories\.([A-Za-z0-9_-]+)\]$/);
+        if (catMatch) {
+            section = "categories";
+            currentName = catMatch[1];
+            continue;
+        }
+        const chainMatch = line.match(/^chain\s*=\s*\[(.+)\]$/);
+        if (!chainMatch || !currentName || !section)
+            continue;
+        const models = chainMatch[1].match(/"([^"]+)"/g);
+        const chain = models ? models.map((s) => s.slice(1, -1)) : [];
+        if (section === "agents")
+            agents[currentName] = chain;
+        else
+            categories[currentName] = chain;
+    }
+    cachedChains = { agents, categories };
+    return cachedChains;
+}
+export function resolveFallbackChain(agentName) {
+    const { agents } = loadFallbackChains();
+    return agents[agentName] ?? [];
+}
+export function resolveCategoryFallbackChain(categoryName) {
+    const { categories } = loadFallbackChains();
+    return categories[categoryName] ?? [];
 }
 function parseSavedJson(text) {
     const raw = JSON.parse(text);

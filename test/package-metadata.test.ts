@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
 
+import { ADDITIONAL_AGENT_CONFIGS } from "../src/install/codex-plugin-install.ts";
 import { escapeRegExp } from "../src/utils/toml-string-utils.ts";
 
 const packageJson = JSON.parse(readFileSync(path.resolve("package.json"), "utf8"));
@@ -79,7 +80,10 @@ test("given plugin manifest when validating release metadata then bundled manife
   assert.equal(pluginJson.version, packageJson.version);
   assert.equal(pluginJson.hooks, "./hooks/hooks.json");
   assert.equal(Object.hasOwn(pluginJson, "mcpServers"), false);
-  assert.deepEqual(pluginJson["x-lfp"].additionalAgents, []);
+  assert.deepEqual(
+    pluginJson["x-lfp"].additionalAgents,
+    ADDITIONAL_AGENT_CONFIGS.map((fileName) => `./agent-configs/${fileName}`)
+  );
   assert.deepEqual(pluginJson["x-lfp"].tools ?? [], []);
 });
 

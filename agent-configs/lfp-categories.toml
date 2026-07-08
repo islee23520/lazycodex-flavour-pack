@@ -1,0 +1,59 @@
+# LFP Category Routing Configuration
+# 8 OMO-style categories with model + reasoning + tier + fallback chain.
+# Consumed by src/model/category-resolver.ts and src/hooks/category-guidance-hook.ts.
+
+[categories.visual-engineering]
+model = "gemini-3.1-pro"
+model_reasoning_effort = "high"
+service_tier = "default"
+fallback_models = ["glm-5", "gpt-5.5"]
+keywords = ["frontend", "ui", "ux", "css", "design", "layout", "animation", "styling", "responsive", "web perf"]
+
+[categories.ultrabrain]
+model = "gpt-5.5"
+model_reasoning_effort = "xhigh"
+service_tier = "default"
+fallback_models = ["gemini-3.1-pro", "glm-5.1"]
+keywords = ["architecture", "algorithm", "complex logic", "hard problem", "optimization", "deep reasoning"]
+
+[categories.deep]
+model = "gpt-5.5"
+model_reasoning_effort = "high"
+service_tier = "default"
+fallback_models = ["gpt-5.5", "gemini-3.1-pro"]
+keywords = ["implement", "refactor", "code review", "debug", "fix bug", "add feature", "test"]
+
+[categories.artistry]
+model = "gemini-3.1-pro"
+model_reasoning_effort = "high"
+service_tier = "default"
+fallback_models = ["gpt-5.5", "glm-5"]
+keywords = ["creative", "unconventional", "novel approach", "brainstorm", "design pattern"]
+
+[categories.quick]
+model = "gpt-5.4-mini"
+model_reasoning_effort = "low"
+service_tier = "fast"
+fallback_models = ["gpt-5.4-mini", "gpt-5.5"]
+keywords = ["typo", "rename", "format", "simple", "trivial", "single file", "small change"]
+
+[categories.unspecified-low]
+model = "gpt-5.5"
+model_reasoning_effort = "medium"
+service_tier = "default"
+fallback_models = ["gpt-5.5", "glm-5"]
+keywords = []
+
+[categories.unspecified-high]
+model = "gpt-5.5"
+model_reasoning_effort = "high"
+service_tier = "default"
+fallback_models = ["gpt-5.5", "gemini-3.1-pro"]
+keywords = []
+
+[categories.writing]
+model = "gpt-5.5"
+model_reasoning_effort = "medium"
+service_tier = "default"
+fallback_models = ["gpt-5.5", "glm-5"]
+keywords = ["docs", "documentation", "readme", "prose", "technical writing", "changelog", "comment"]

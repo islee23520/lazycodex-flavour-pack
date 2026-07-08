@@ -18,7 +18,13 @@ export const PLUGIN_ID = "lfp";
 export const PLUGIN_REF = `${PLUGIN_ID}@${MARKETPLACE_ID}`;
 
 const DEFAULT_PACKAGE_ROOT = getPackageRoot(import.meta.url);
-export const ADDITIONAL_AGENT_CONFIGS = [];
+export const ADDITIONAL_AGENT_CONFIGS = [
+  "oracle.toml",
+  "prometheus.toml",
+  "hephaestus.toml",
+  "atlas.toml",
+  "sisyphus-junior.toml"
+];
 const PROTECTED_UPSTREAM_AGENT_CONFIGS = ["explorer.toml"];
 const LAZYCODEX_PLUGIN_REFS = new Set(["omo@sisyphuslabs", "lazycodex-ai"]);
 
@@ -60,7 +66,9 @@ export function getCodexPluginState(options = {}) {
     pluginEnabled: pluginBlock.includes("enabled = true"),
     openAiCompatProvider,
     anyModelProviderConfigured,
-    additionalAgentsInstalled: true,
+    additionalAgentsInstalled: ADDITIONAL_AGENT_CONFIGS.every((fileName) =>
+      existsSync(path.join(agentsRoot, fileName))
+    ),
     additionalAgentFiles: [...ADDITIONAL_AGENT_CONFIGS, ...REMOVED_LFP_AGENT_FILES].map((fileName) =>
       path.join(agentsRoot, fileName)
     ),

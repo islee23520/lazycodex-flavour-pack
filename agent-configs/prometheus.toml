@@ -1,0 +1,10 @@
+[source]
+agents_dir = "${CODEX_HOME}/agents"
+
+[agents.prometheus]
+model = "gpt-5.5"
+model_reasoning_effort = "xhigh"
+service_tier = "default"
+model_fallback = "glm-5.1"
+model_fallback_reasoning_effort = "xhigh"
+model_fallback_service_tier = "default"

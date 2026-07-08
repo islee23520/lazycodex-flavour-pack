@@ -31,6 +31,11 @@ test("given installed LFP plugin when runtime is promoted then hook registration
     assert.doesNotMatch(configText, /\[plugins\."lfp@islee23520"\.mcp_servers\.lfp_tools]/);
     assert.match(hooks.hooks.SessionStart[0].hooks[0].command, /sync-agent-overrides-hook\.mjs/);
     assert.match(hooks.hooks.UserPromptSubmit[0].hooks[0].command, /user-prompt-submit\.mjs/);
+
+    const agentsDir = path.join(codexHome, "agents");
+    for (const agent of ["oracle", "prometheus", "hephaestus", "atlas", "sisyphus-junior"]) {
+      assert.equal(existsSync(path.join(agentsDir, `${agent}.toml`)), true, `${agent}.toml should be installed`);
+    }
   } finally {
     if (originalEnv === undefined) {
       delete process.env.CODEX_HOME;

@@ -258,8 +258,10 @@ test("given packaged override config when reading then targets Codex-loaded agen
     service_tier: "fast"
   });
   assert.deepEqual(Object.keys(config.overrides).sort(), [
+    "atlas",
     "default",
     "explorer",
+    "hephaestus",
     "lazycodex-clone-fidelity-reviewer",
     "lazycodex-code-reviewer",
     "lazycodex-executor",
@@ -268,10 +270,13 @@ test("given packaged override config when reading then targets Codex-loaded agen
     "librarian",
     "metis",
     "momus",
+    "oracle",
     "plan",
+    "prometheus",
+    "sisyphus-junior",
     "ulw"
   ]);
-  assert.equal(Object.keys(config.overrides).filter((agentName) => !["default", "ulw"].includes(agentName)).length, 10);
+  assert.equal(Object.keys(config.overrides).filter((agentName) => !["default", "ulw"].includes(agentName)).length, 15);
   assert.deepEqual(config.overrides.momus, {
     model: "gpt-5.5",
     model_reasoning_effort: "xhigh",
