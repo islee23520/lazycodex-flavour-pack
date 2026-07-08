@@ -6,3 +6,4 @@ npm-debug.log*
 .omo/ulw/
 .omo/ulw-loop/
 *.code-workspace
+dist

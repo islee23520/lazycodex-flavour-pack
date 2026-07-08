@@ -404,6 +404,7 @@ test("given saved LFP overrides when sync runs then applies user config to agent
     const agentsDir = path.join(codexHome, "agents");
     const savedPath = path.join(codexHome, "lfp.json");
     mkdirSync(agentsDir, { recursive: true });
+    writeFileSync(path.join(codexHome, "config.toml"), 'model_provider = "opencodex"\n');
     writeFileSync(path.join(agentsDir, "explorer.toml"), 'name = "explorer"\nmodel = "gpt-5.4-mini"\n');
     writeFileSync(path.join(agentsDir, "librarian.toml"), 'name = "librarian"\nmodel = "gpt-5.4-mini"\n');
     writeFileSync(
@@ -423,8 +424,23 @@ test("given saved LFP overrides when sync runs then applies user config to agent
 
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /lazycodex-ai install stub/);
+    assert.match(result.stdout, /installed lfp@islee23520/);
+    assert.match(result.stdout, /updated Sisyphus main routing/);
     assert.match(result.stdout, /updated .*explorer\.toml/);
     assert.match(result.stdout, /updated .*librarian\.toml/);
+    const lazyCodexIndex = result.stdout.indexOf("lazycodex-ai install stub");
+    const lfpInstallIndex = result.stdout.indexOf("installed lfp@islee23520");
+    const routingIndex = result.stdout.indexOf("updated Sisyphus main routing");
+    const agentOverrideIndex = result.stdout.search(/updated .*explorer\.toml/);
+    assert.equal(lazyCodexIndex < lfpInstallIndex, true);
+    assert.equal(lfpInstallIndex < routingIndex, true);
+    assert.equal(routingIndex < agentOverrideIndex, true);
+    assert.equal(
+      existsSync(
+        path.join(codexHome, "local-marketplaces", "islee23520", "plugins", "lfp", ".codex-plugin", "plugin.json")
+      ),
+      true
+    );
     assert.match(explorer, /model = "xai\/grok-code-fast-1"/);
     assert.doesNotMatch(explorer, /^model_reasoning_effort = /m);
     assert.doesNotMatch(explorer, /^service_tier = /m);
@@ -726,6 +742,7 @@ test("given CLI help when invoked then documents npx usage", () => {
   assert.match(result.stdout, /npx @islee23520\/lfp@latest dry-setup/);
   assert.match(result.stdout, /npx @islee23520\/lfp@latest doctor/);
   assert.match(result.stdout, /npx @islee23520\/lfp@latest agent-config/);
+  assert.match(result.stdout, /Update LazyCodex, reinstall LFP/);
   assert.match(result.stdout, /runs npx lazycodex-ai@latest install before applying LFP/);
   assert.match(result.stdout, /--no-tui/);
 });

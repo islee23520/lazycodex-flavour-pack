@@ -3,7 +3,12 @@ import { createInterface } from "node:readline";
 import { pathToFileURL } from "node:url";
 
 import { maybeConfigureOpenCodexSisyphus } from "../codex/sisyphus-main-routing.js";
-import { getCodexPluginState, PLUGIN_REF } from "../install/codex-plugin-install.js";
+import {
+  getCodexPluginState,
+  getPendingCodexPluginActions,
+  installCodexPlugin,
+  PLUGIN_REF
+} from "../install/codex-plugin-install.js";
 import { formatLazyCodexInstallCommand, runLazyCodexInstall } from "../install/lazycodex-install.js";
 import { runSetup } from "../install/setup-command.js";
 import { configureAgentModelOverrides } from "../model/agent-model-config.js";
@@ -66,8 +71,8 @@ Commands:
   dry-setup        Preview what setup would do without writing.
   delete           Remove installed LFP plugin files and LFP config tables.
   doctor           Check LFP install status, saved config, agent models, and overrides.
-  sync             Update LazyCodex, optionally configure OpenCodex when missing, make Sisyphus the
-                   OMO main route on opencodex zai/glm-5.2[1m], and apply ~/.codex/lfp.json model settings.
+  sync             Update LazyCodex, reinstall LFP, optionally configure OpenCodex when missing, make
+                   Sisyphus the OMO main route on opencodex zai/glm-5.2[1m], and apply ~/.codex/lfp.json model settings.
   agent-config     Reconfigure ~/.codex/lfp.json model settings and apply supported OMO/LazyCodex agent model fields.
   benchmark-models Recommend or benchmark role-based model routing against the active OpenAI-compatible provider.
   skill-manager    Audit local skill folders, report invalid skills, and optionally move them to skills.disabled.
@@ -284,6 +289,20 @@ async function runSync(argv) {
     console.log(`would run ${formatLazyCodexInstallCommand()} before syncing LFP`);
   } else {
     runLazyCodexInstall();
+  }
+
+  const pluginPending = getPendingCodexPluginActions();
+  if (args.check) {
+    if (pluginPending.actions.length === 0) {
+      console.log(`${PLUGIN_REF} already installed`);
+    } else {
+      for (const action of pluginPending.actions) console.log(`would ${action}`);
+      process.exitCode = 1;
+    }
+  } else {
+    const installed = installCodexPlugin(ROOT);
+    console.log(`installed ${PLUGIN_REF} to ${installed.pluginRoot}`);
+    console.log(`enabled ${PLUGIN_REF} in ${installed.configPath}`);
   }
 
   const routingResult = await maybeConfigureOpenCodexSisyphus({ check: args.check, output: console });
