@@ -2,7 +2,9 @@ import path from "node:path";
 import { createInterface } from "node:readline";
 import { pathToFileURL } from "node:url";
 
+import { maybeConfigureOpenCodexSisyphus } from "../codex/sisyphus-main-routing.js";
 import { getCodexPluginState, PLUGIN_REF } from "../install/codex-plugin-install.js";
+import { formatLazyCodexInstallCommand, runLazyCodexInstall } from "../install/lazycodex-install.js";
 import { runSetup } from "../install/setup-command.js";
 import { configureAgentModelOverrides } from "../model/agent-model-config.js";
 import { runBenchmarkCommand } from "../model/model-benchmark.js";
@@ -21,7 +23,8 @@ import {
   printInstallSmokeState,
   printOpenAiCompatProviderState,
   printProviderInventoryVisibility,
-  printRolePolicyConfig
+  printRolePolicyConfig,
+  printXaiMcpPluginStatus
 } from "./cli-reporting.js";
 import { runDelete } from "./delete-command.js";
 import { dispatchXaiAuthCommand } from "./xai-auth-command.js";
@@ -35,7 +38,7 @@ Usage:
   lfp dry-setup [--config <path>] [--agent-models-only|--sync-global-defaults]
   lfp delete [--check]
   lfp doctor [--config <path>] [--fix-cache [--apply]]
-  lfp sync [--config <path>] [--check]
+  lfp sync [--config <path>] [--check] [--skip-lazycodex-install]
   lfp agent-config [--config <path>] [--agent-models-only|--sync-global-defaults]
   lfp benchmark-models [--recommend-only] [--roles <csv>] [--models <csv>] [--samples <n>] [--output <path>] [--dry-run] [--apply]
   lfp skill-manager [--check|--apply] [--json]
@@ -63,7 +66,8 @@ Commands:
   dry-setup        Preview what setup would do without writing.
   delete           Remove installed LFP plugin files and LFP config tables.
   doctor           Check LFP install status, saved config, agent models, and overrides.
-  sync             Apply ~/.codex/lfp.json model settings to installed agent TOMLs without prompting.
+  sync             Update LazyCodex, optionally configure OpenCodex when missing, make Sisyphus the
+                   OMO main route on opencodex zai/glm-5.2[1m], and apply ~/.codex/lfp.json model settings.
   agent-config     Reconfigure ~/.codex/lfp.json model settings and apply supported OMO/LazyCodex agent model fields.
   benchmark-models Recommend or benchmark role-based model routing against the active OpenAI-compatible provider.
   skill-manager    Audit local skill folders, report invalid skills, and optionally move them to skills.disabled.
@@ -130,7 +134,7 @@ export async function runCli(argv) {
   }
 
   if (command === "sync") {
-    runSync(args);
+    await runSync(args);
     return;
   }
 
@@ -236,6 +240,7 @@ async function runDoctor(argv) {
     console.log("lfp doctor: runtime fallback: missing");
     hasIssue = true;
   }
+  printXaiMcpPluginStatus();
   const appCacheOk = printDoctorCodexAppsCacheState(args);
   hasIssue ||= !appCacheOk;
 
@@ -271,8 +276,22 @@ function getEffectiveReadOnlyOverrideConfig(configPath, args) {
   return createRestoredUserOverrideConfig(configPath);
 }
 
-function runSync(argv) {
+async function runSync(argv) {
   const args = parseSyncArgs(argv);
+  if (args.skipLazycodexInstall) {
+    console.log(`${args.check ? "would skip" : "lfp sync: skipping"} LazyCodex install; using current install.`);
+  } else if (args.check) {
+    console.log(`would run ${formatLazyCodexInstallCommand()} before syncing LFP`);
+  } else {
+    runLazyCodexInstall();
+  }
+
+  const routingResult = await maybeConfigureOpenCodexSisyphus({ check: args.check, output: console });
+  for (const item of routingResult.changed) {
+    console.log(`${args.check ? "would update Sisyphus main routing in" : "updated Sisyphus main routing in"} ${item}`);
+  }
+  if (routingResult.changed.length === 0) console.log("Sisyphus main routing already applied");
+
   const configPath = args.config ?? getUserOverrideConfigPath();
   const result = syncAgentOverrides(configPath, { check: args.check });
   for (const item of result.changed) console.log(`${args.check ? "would update" : "updated"} ${item}`);

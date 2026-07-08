@@ -35,6 +35,10 @@ test("given TTY setup reaches provider consent when user declines then Clack fra
     spawnSync("tmux", ["send-keys", "-t", session, "n", "Enter"]);
     sleep(500);
     spawnSync("tmux", ["send-keys", "-t", session, "Enter"]);
+    sleep(500);
+    spawnSync("tmux", ["send-keys", "-t", session, "Enter"]);
+    sleep(500);
+    spawnSync("tmux", ["send-keys", "-t", session, "Enter"]);
     const transcript = stripAnsi(waitForTranscript(session, /__LFP_STATUS__:0/));
 
     const configText = readFileSync(path.join(fixture.codexHome, "config.toml"), "utf8");

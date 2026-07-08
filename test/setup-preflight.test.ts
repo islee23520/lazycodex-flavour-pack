@@ -123,7 +123,7 @@ test("given setup line mode gets isolated override options then default model gu
     process.env.HOME = root;
 
     await runSetupLineMode(
-      { skipLazycodexInstall: true },
+      { skipLazycodexInstall: true, skipXaiMcp: true },
       {
         check: false,
         root: path.resolve("."),

@@ -9,6 +9,7 @@ import {
   printProviderInventoryVisibility
 } from "../cli/cli-reporting.js";
 import { getCodexAppsToolCacheState } from "../codex/codex-apps-cache.js";
+import { maybeConfigureOpenCodexSisyphus } from "../codex/sisyphus-main-routing.js";
 import { configureAgentModelOverrides } from "../model/agent-model-config.js";
 import { fetchAvailableModels } from "../model/model-provider.js";
 import { buildRecommendedModelOverrides } from "../model/model-recommendations.js";
@@ -25,6 +26,7 @@ import { runSetupTui, shouldUseSetupTui } from "../tui/setup-tui.js";
 import { getPendingCodexPluginActions, installCodexPlugin, PLUGIN_REF } from "./codex-plugin-install.js";
 import { formatLazyCodexInstallCommand, runLazyCodexInstall } from "./lazycodex-install.js";
 import { maybePromptGitHubStart } from "./setup-command-github.js";
+import { maybePromptXaiMcpPlugin } from "./xai-mcp-plugin.js";
 
 export { GITHUB_START_TARGETS, selectGitHubStartTarget } from "./setup-command-github.js";
 
@@ -48,6 +50,8 @@ export async function runSetupLineMode(args, { check, root, defaultConfig }, opt
   } else {
     runLazyCodexInstall();
   }
+
+  await maybeConfigureOpenCodexSisyphus({ check, ...options, output: options.output ?? console });
 
   let providerOverride = resolveProviderOverride(args, options);
   const basePending = getPendingCodexPluginActions({ providerConfig: providerOverride ?? undefined });
@@ -154,6 +158,13 @@ async function installAndMaybePrompt(
       persistUserOverrides: options.persistUserOverrides
     });
   if (process.stdin.isTTY) await maybePromptGitHubStart({ gitHubStartSelector: options.gitHubStartSelector });
+
+  await maybePromptXaiMcpPlugin({
+    skipXaiMcp: args.skipXaiMcp,
+    env: options.env,
+    yesNoSelector: options.yesNoSelector,
+    readline: options.readline
+  });
 
   return effectiveConfigPath;
 }

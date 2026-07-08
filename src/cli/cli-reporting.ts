@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { getCodexAppsToolCacheState, quarantineDuplicateCodexAppsToolCaches } from "../codex/codex-apps-cache.js";
 import { getInstallSmokeState } from "../install/codex-plugin-install.js";
+import { getXaiMcpPluginStatus } from "../install/xai-mcp-plugin.js";
 import { AGENT_MODEL_FIELDS, VIRTUAL_OVERRIDE_SECTIONS } from "../model/model-field-scope.js";
 import { classifyModelInventory } from "../model/model-inventory.js";
 import { readOverrideConfig } from "../model/model-override-config.js";
@@ -197,4 +198,19 @@ function redactSecretText(value) {
     .replace(/Bearer\s+[A-Za-z0-9._~+/=-]+/gi, "Bearer [REDACTED]")
     .replace(/sk-[A-Za-z0-9._~+/=-]+/g, "sk-[REDACTED]")
     .replace(/([?&](?:api[_-]?key|token|auth|authorization)=)[^&\s]+/gi, "$1[REDACTED]");
+}
+
+export function printXaiMcpPluginStatus(options = {}) {
+  const status = getXaiMcpPluginStatus(options);
+  if (status.pluginFilesInstalled) {
+    console.log(`lfp doctor: xAI MCP plugin: installed (${status.pluginRef})`);
+    if (status.mcpServerBuilt) {
+      console.log("lfp doctor: xAI MCP server: built");
+    } else {
+      console.log("lfp doctor: xAI MCP server: not built");
+    }
+  } else {
+    console.log("lfp doctor: xAI MCP plugin: not installed");
+  }
+  return status;
 }

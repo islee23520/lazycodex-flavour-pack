@@ -415,13 +415,14 @@ test("given saved LFP overrides when sync runs then applies user config to agent
     );
 
     const result = spawnSync(process.execPath, [CLI, "sync"], {
-      env: { ...process.env, CODEX_HOME: codexHome },
+      env: cliEnv(codexHome),
       encoding: "utf8"
     });
     const explorer = readFileSync(path.join(agentsDir, "explorer.toml"), "utf8");
     const librarian = readFileSync(path.join(agentsDir, "librarian.toml"), "utf8");
 
     assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /lazycodex-ai install stub/);
     assert.match(result.stdout, /updated .*explorer\.toml/);
     assert.match(result.stdout, /updated .*librarian\.toml/);
     assert.match(explorer, /model = "xai\/grok-code-fast-1"/);

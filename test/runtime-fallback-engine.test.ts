@@ -26,9 +26,10 @@ test("given 200 status when checking retry then returns false", () => {
 test("given 429 error when getting retry guidance then emits guidance with agent name", () => {
   const result = getRetryGuidance("oracle", 429);
   assert.equal(result.emit, true);
-  assert.ok(result.guidance!.includes("oracle"));
-  assert.ok(result.guidance!.includes("429"));
-  assert.ok(result.guidance!.includes("retry"));
+  assert.equal(typeof result.guidance, "string");
+  assert.ok(result.guidance.includes("oracle"));
+  assert.ok(result.guidance.includes("429"));
+  assert.ok(result.guidance.includes("retry"));
 });
 
 test("given 200 success when getting retry guidance then does not emit", () => {

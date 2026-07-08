@@ -3,7 +3,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { getPackageRoot } from "../utils/package-root.js";
 import { isLfpOwnedAgent } from "./agent-model-metadata.js";
-import { AGENT_MODEL_FIELDS, getAgentModelFields, VIRTUAL_OVERRIDE_SECTIONS } from "./model-field-scope.js";
+import { getAgentModelFields, VIRTUAL_OVERRIDE_SECTIONS } from "./model-field-scope.js";
 import { readOverrideConfig } from "./model-override-config.js";
 import { getCompatibleModelFields } from "./model-reasoning-compat.js";
 import { REMOVED_AGENT_NAMES } from "./removed-lfp-agents.js";
