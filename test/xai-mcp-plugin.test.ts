@@ -52,3 +52,14 @@ test("given skipXaiMcp option when checking should prompt then returns false", (
   assert.equal(shouldPromptXaiMcpPlugin({ skipXaiMcp: true }), false);
   assert.equal(shouldPromptXaiMcpPlugin({ check: true }), false);
 });
+
+test("given promptXaiMcp true and skipXaiMcp false when shouldPromptXaiMcpPlugin then returns true in TTY per opt-in flag matrix", () => {
+  const originalTty = process.stdin.isTTY;
+  Object.defineProperty(process.stdin, "isTTY", { value: true, configurable: true });
+  try {
+    assert.equal(shouldPromptXaiMcpPlugin({ promptXaiMcp: true, skipXaiMcp: false }), true);
+    assert.equal(shouldPromptXaiMcpPlugin({ promptXaiMcp: true, skipXaiMcp: true }), false);
+  } finally {
+    Object.defineProperty(process.stdin, "isTTY", { value: originalTty, configurable: true });
+  }
+});

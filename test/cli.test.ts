@@ -202,6 +202,66 @@ test("given saved LFP overrides when setup skips model prompt then applies confi
   }
 });
 
+test("given LFP overrides are installed when undo runs then restores LazyCodex original surface", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-cli-undo-"));
+  try {
+    const codexHome = path.join(root, "codex-home");
+    const agentsDir = path.join(codexHome, "agents");
+    const savedPath = path.join(codexHome, "lfp.json");
+    mkdirSync(agentsDir, { recursive: true });
+    writeOmo410AgentFixtureSet(agentsDir);
+    writeFileSync(
+      savedPath,
+      savedOverrideJson({
+        default: {
+          model: "zai/glm-5.2[1m]",
+          model_reasoning_effort: "high",
+          service_tier: "default"
+        },
+        ulw: {
+          model: "gpt-5.5",
+          model_reasoning_effort: "xhigh",
+          service_tier: "default"
+        },
+        "lazycodex-executor": {
+          model: "custom-executor",
+          model_reasoning_effort: "high",
+          service_tier: "default"
+        }
+      })
+    );
+
+    const setup = spawnSync(process.execPath, [CLI, "setup", "--skip-model-prompt", "--skip-lazycodex-install"], {
+      env: cliEnv(codexHome),
+      encoding: "utf8"
+    });
+    const undo = spawnSync(process.execPath, [CLI, "undo"], {
+      env: cliEnv(codexHome),
+      encoding: "utf8"
+    });
+    const codexConfig = readFileSync(path.join(codexHome, "config.toml"), "utf8");
+
+    assert.equal(setup.status, 0, setup.stderr);
+    assert.equal(undo.status, 0, undo.stderr);
+    assert.match(undo.stdout, /lazycodex-ai install stub/);
+    assert.match(undo.stdout, /removed saved LFP model config/);
+    assert.equal(existsSync(savedPath), false);
+    assert.equal(
+      existsSync(
+        path.join(codexHome, "local-marketplaces", "islee23520", "plugins", "lfp", ".codex-plugin", "plugin.json")
+      ),
+      false
+    );
+    assert.equal(existsSync(path.join(agentsDir, "oracle.toml")), false);
+    assert.equal(existsSync(path.join(agentsDir, "lazycodex-executor.toml")), true);
+    assert.doesNotMatch(codexConfig, /\[plugins\."lfp@islee23520"]/);
+    assert.doesNotMatch(codexConfig, /^model = "zai\/glm-5\.2\[1m]"$/m);
+    assert.doesNotMatch(codexConfig, /^model_reasoning_effort = "high"$/m);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("given no saved user override when interactive setup runs then emits no Adjust prompt and no per-agent model questions", () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-cli-"));
   try {
@@ -254,14 +314,15 @@ test("given no saved user override when setup runs with explicit config then fin
 
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /updated .*metis\.toml/);
-    assert.match(explorerText, /model = "gpt-5.4-mini"/);
-    assert.match(explorerText, /model_reasoning_effort = "low"/);
-    assert.match(librarianText, /model = "gpt-5\.4-mini"/);
-    assert.match(librarianText, /model_reasoning_effort = "low"/);
+    assert.match(explorerText, /model = "xai\/grok-code-fast-1"/);
+    assert.doesNotMatch(explorerText, /model_reasoning_effort/);
+    assert.match(librarianText, /model = "xai\/grok-code-fast-1"/);
+    assert.doesNotMatch(librarianText, /model_reasoning_effort/);
     assert.match(metisText, /model = "gpt-5\.5"/);
     assert.match(momusText, /model_reasoning_effort = "xhigh"/);
     assert.match(planText, /model_reasoning_effort = "xhigh"/);
-    assert.match(reviewerText, /model_reasoning_effort = "xhigh"/);
+    assert.match(reviewerText, /model = "zai\/glm-5\.2\[1m]"/);
+    assert.doesNotMatch(reviewerText, /model_reasoning_effort/);
     assert.doesNotMatch(
       `${explorerText}\n${librarianText}\n${metisText}\n${momusText}\n${planText}\n${reviewerText}`,
       /model_fallback/
@@ -297,15 +358,17 @@ test("given saved LFP overrides when dry setup runs then reports no override dri
     assert.equal(result.status, 1);
     assert.doesNotMatch(result.stdout, /would update .*explorer\.toml/);
     assert.doesNotMatch(result.stdout, /would update .*metis\.toml/);
-    assert.doesNotMatch(result.stdout, /would update global model defaults/);
+    assert.match(result.stdout, /would update global model defaults/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
 });
 
-test("given setup args when parsing applier mode flags then exposes agent-only default and explicit global sync", () => {
+test("given setup args when parsing applier mode flags and xAI MCP opt-in flags then exposes all including promptXaiMcp skipXaiMcp per T4", () => {
   assert.deepEqual(parseSyncArgs(["--agent-models-only"]), { agentModelsOnly: true });
   assert.deepEqual(parseSyncArgs(["--sync-global-defaults"]), { syncGlobalDefaults: true });
+  assert.deepEqual(parseSyncArgs(["--prompt-xai-mcp"]), { promptXaiMcp: true });
+  assert.deepEqual(parseSyncArgs(["--skip-xai-mcp"]), { skipXaiMcp: true });
   assert.throws(() => parseSyncArgs(["--agent-models-only", "--sync-global-defaults"]), /cannot be combined/);
 });
 
@@ -410,6 +473,16 @@ test("given saved LFP overrides when sync runs then applies user config to agent
     writeFileSync(
       savedPath,
       savedOverrideJson({
+        default: {
+          model: "zai/glm-5.2[1m]",
+          model_reasoning_effort: "xhigh",
+          service_tier: "default"
+        },
+        ulw: {
+          model: "google-antigravity/gemini-pro-agent",
+          model_reasoning_effort: "medium",
+          service_tier: "default"
+        },
         explorer: { model: "xai/grok-code-fast-1", model_reasoning_effort: "low", service_tier: "fast" },
         librarian: { model: "xai/grok-code-fast-1", model_reasoning_effort: "low", service_tier: "fast" }
       })
@@ -421,20 +494,26 @@ test("given saved LFP overrides when sync runs then applies user config to agent
     });
     const explorer = readFileSync(path.join(agentsDir, "explorer.toml"), "utf8");
     const librarian = readFileSync(path.join(agentsDir, "librarian.toml"), "utf8");
+    const codexConfig = readFileSync(path.join(codexHome, "config.toml"), "utf8");
+    const ulwConfig = readFileSync(path.join(codexHome, "ulw.config.toml"), "utf8");
 
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /lazycodex-ai install stub/);
     assert.match(result.stdout, /installed lfp@islee23520/);
-    assert.match(result.stdout, /updated Sisyphus main routing/);
+    assert.match(result.stdout, /Sisyphus main routing/);
     assert.match(result.stdout, /updated .*explorer\.toml/);
     assert.match(result.stdout, /updated .*librarian\.toml/);
+    assert.match(result.stdout, /updated global model defaults in .*config\.toml/);
+    assert.match(result.stdout, /updated global model defaults in .*ulw\.config\.toml/);
     const lazyCodexIndex = result.stdout.indexOf("lazycodex-ai install stub");
     const lfpInstallIndex = result.stdout.indexOf("installed lfp@islee23520");
-    const routingIndex = result.stdout.indexOf("updated Sisyphus main routing");
+    const routingIndex = result.stdout.indexOf("Sisyphus main routing");
     const agentOverrideIndex = result.stdout.search(/updated .*explorer\.toml/);
+    const globalOverrideIndex = result.stdout.search(/updated global model defaults in .*config\.toml/);
     assert.equal(lazyCodexIndex < lfpInstallIndex, true);
     assert.equal(lfpInstallIndex < routingIndex, true);
     assert.equal(routingIndex < agentOverrideIndex, true);
+    assert.equal(agentOverrideIndex < globalOverrideIndex, true);
     assert.equal(
       existsSync(
         path.join(codexHome, "local-marketplaces", "islee23520", "plugins", "lfp", ".codex-plugin", "plugin.json")
@@ -445,6 +524,10 @@ test("given saved LFP overrides when sync runs then applies user config to agent
     assert.doesNotMatch(explorer, /^model_reasoning_effort = /m);
     assert.doesNotMatch(explorer, /^service_tier = /m);
     assert.match(librarian, /model = "xai\/grok-code-fast-1"/);
+    assert.match(codexConfig, /^model = "zai\/glm-5\.2\[1m]"$/m);
+    assert.match(codexConfig, /^model_reasoning_effort = "xhigh"$/m);
+    assert.match(ulwConfig, /^model = "google-antigravity\/gemini-pro-agent"$/m);
+    assert.match(ulwConfig, /^model_reasoning_effort = "medium"$/m);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -745,7 +828,12 @@ test("given CLI help when invoked then documents npx usage", () => {
   assert.match(result.stdout, /Update LazyCodex, reinstall LFP/);
   assert.match(result.stdout, /runs npx lazycodex-ai@latest install before applying LFP/);
   assert.match(result.stdout, /--no-tui/);
+  assert.match(result.stdout, /When to use which command:/);
+  assert.match(result.stdout, /first-time install          → setup/);
+  assert.match(result.stdout, /health \/ drift check        → doctor/);
+  assert.match(result.stdout, /full reset \+ drop lfp.json  → undo/);
 });
+
 
 test("given setup config is missing when setup runs then leaves Codex home unmodified", () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-cli-"));
@@ -853,6 +941,8 @@ test("given CLI doctor when changes are pending then reports setup work without 
     assert.match(result.stdout, /plugin files: missing/);
     assert.match(result.stdout, /plugin config: missing/);
     assert.match(result.stdout, /agent overrides: setup would update/);
+    assert.match(result.stdout, /lfp doctor: status: NEEDS ATTENTION/);
+    assert.match(result.stdout, /lfp doctor: next: lfp setup/);
     assert.match(result.stdout, /would update .*explorer\.toml/);
     assert.match(unchanged, /model = "gpt-5\.4-mini"/);
   } finally {
@@ -981,8 +1071,10 @@ test("given setup has run when doctor runs then reports lfp installed in Codex",
     assert.match(doctor.stdout, /plugin files: installed/);
     assert.match(doctor.stdout, /marketplace config: configured/);
     assert.match(doctor.stdout, /plugin config: enabled/);
-    assert.match(doctor.stdout, /LFP-owned agents: installed/);
+    assert.match(doctor.stdout, /agent surface: existing OMO\/LazyCodex agents/);
     assert.match(doctor.stdout, /agent overrides: already applied/);
+    assert.match(doctor.stdout, /lfp doctor: status: READY/);
+    assert.match(doctor.stdout, /lfp doctor: next: \(none\)/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -1190,12 +1282,7 @@ function writeOmo410AgentFixtureSet(agentsDir, overrides = {}) {
     librarian: { model: "gpt-5.4-mini", reasoning: "low", tier: "fast" },
     metis: { model: "gpt-5.5", reasoning: "high", tier: "default" },
     momus: { model: "gpt-5.5", reasoning: "xhigh", tier: "default" },
-    plan: { model: "gpt-5.5", reasoning: "xhigh", tier: "default" },
-    oracle: { model: "gpt-5.5", reasoning: "high", tier: "default" },
-    prometheus: { model: "gpt-5.5", reasoning: "xhigh", tier: "default" },
-    hephaestus: { model: "gpt-5.5", reasoning: "high", tier: "default" },
-    atlas: { model: "gpt-5.5", reasoning: "high", tier: "default" },
-    "sisyphus-junior": { model: "gpt-5.5", reasoning: "medium", tier: "default" }
+    plan: { model: "gpt-5.5", reasoning: "xhigh", tier: "default" }
   };
   for (const [name, defaults] of Object.entries(agents)) {
     const fields = { ...defaults, ...overrides[name] };
