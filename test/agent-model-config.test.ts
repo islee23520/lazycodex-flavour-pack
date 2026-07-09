@@ -847,13 +847,7 @@ test("given recommendations when bulk decline then full agent prompt sequence st
     const configPath = path.join(root, "overrides.toml");
     writeFileSync(
       configPath,
-      [
-        "[source]",
-        `agents_dir = "${root}"`,
-        "",
-        "[agents.explorer]",
-        'model = "old"'
-      ].join("\n")
+      ["[source]", `agents_dir = "${root}"`, "", "[agents.explorer]", 'model = "old"'].join("\n")
     );
     const output = captureOutput();
     const config = await configureAgentModelOverrides(configPath, {
@@ -865,7 +859,10 @@ test("given recommendations when bulk decline then full agent prompt sequence st
     });
     const questions = configOutput.questions;
     assert.ok(questions.some((q) => q.includes("Apply recommended models for all configured agent roles?")));
-    assert.ok(questions.some((q) => /explorer model/.test(q)), "full agent prompt sequence runs on decline");
+    assert.ok(
+      questions.some((q) => /explorer model/.test(q)),
+      "full agent prompt sequence runs on decline"
+    );
     assert.equal(config.overrides.explorer.model, "gpt-5.4-mini");
   } finally {
     rmSync(root, { recursive: true, force: true });
@@ -876,9 +873,9 @@ test("given bulk prompt when BACK then full manual marathon", async () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-models-"));
   try {
     const configPath = path.join(root, "overrides.toml");
-    writeFileSync(configPath, '[source]\nagents_dir = "' + root + '"\n[agents.explorer]\nmodel = "old"\n');
+    writeFileSync(configPath, `[source]\nagents_dir = "${root}"\n[agents.explorer]\nmodel = "old"\n`);
     const output = captureOutput();
-    const config = await configureAgentModelOverrides(configPath, {
+    const _config = await configureAgentModelOverrides(configPath, {
       models: ["gpt-5.4-mini", "grok-4.3"],
       readline: fakeReadline(["back", "1", "2", "3"]), // back triggers full manual
       output,
@@ -887,7 +884,10 @@ test("given bulk prompt when BACK then full manual marathon", async () => {
     });
     const questions = configOutput.questions;
     assert.ok(questions.some((q) => q.includes("Apply recommended models for all configured agent roles?")));
-    assert.ok(questions.some((q) => /explorer model/.test(q)), "full manual marathon on BACK");
+    assert.ok(
+      questions.some((q) => /explorer model/.test(q)),
+      "full manual marathon on BACK"
+    );
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -908,10 +908,7 @@ test("given saved lfp.json when keep then bulk prompt not shown", async () => {
       })
     );
     const configPath = path.join(root, "overrides.toml");
-    writeFileSync(
-      configPath,
-      `[source]\nagents_dir = "${path.join(root, "agents")}"\n`
-    );
+    writeFileSync(configPath, `[source]\nagents_dir = "${path.join(root, "agents")}"\n`);
     const output = captureOutput();
     const config = await configureAgentModelOverrides(configPath, {
       env: { CODEX_HOME: codexHome },
@@ -947,15 +944,15 @@ test("given bulk accept happy path when counting interactive field selectors the
     let tierCallCount = 0;
     let reasoningCallCount = 0;
     let yesNoCallCount = 0;
-    const modelSelector = (opts) => {
+    const modelSelector = (_opts) => {
       modelCallCount++;
       return "gpt-5.4-mini";
     };
-    const tierSelector = (opts) => {
+    const tierSelector = (_opts) => {
       tierCallCount++;
       return "default";
     };
-    const reasoningSelector = (opts) => {
+    const reasoningSelector = (_opts) => {
       reasoningCallCount++;
       return "low";
     };

@@ -829,11 +829,10 @@ test("given CLI help when invoked then documents npx usage", () => {
   assert.match(result.stdout, /runs npx lazycodex-ai@latest install before applying LFP/);
   assert.match(result.stdout, /--no-tui/);
   assert.match(result.stdout, /When to use which command:/);
-  assert.match(result.stdout, /first-time install          → setup/);
-  assert.match(result.stdout, /health \/ drift check        → doctor/);
-  assert.match(result.stdout, /full reset \+ drop lfp.json  → undo/);
+  assert.match(result.stdout, /first-time install {10}→ setup/);
+  assert.match(result.stdout, /health \/ drift check {8}→ doctor/);
+  assert.match(result.stdout, /full reset \+ drop lfp.json {2}→ undo/);
 });
-
 
 test("given setup config is missing when setup runs then leaves Codex home unmodified", () => {
   const root = mkdtempSync(path.join(tmpdir(), "lfp-cli-"));

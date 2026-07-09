@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -19,7 +19,10 @@ test("given empty actions when formatCheckPreview undo then exact nothing to und
 });
 
 test("given actions when formatCheckPreview undo then uses restore header and would lines", () => {
-  const lines = formatCheckPreview("undo", ["run npx lazycodex-ai@latest install to restore upstream", "remove saved LFP model config /home/u/.codex/lfp.json"]);
+  const lines = formatCheckPreview("undo", [
+    "run npx lazycodex-ai@latest install to restore upstream",
+    "remove saved LFP model config /home/u/.codex/lfp.json"
+  ]);
   assert.deepEqual(lines, [
     "lfp undo: would restore LazyCodex original surface:",
     "would run npx lazycodex-ai@latest install to restore upstream",
@@ -29,8 +32,12 @@ test("given actions when formatCheckPreview undo then uses restore header and wo
 
 test("given lines when printLines calls output.log per line", () => {
   const captured: string[] = [];
-  const out = { log(l: string) { captured.push(l); } };
-  printLines(["would foo", "would bar"], out as any);
+  const out = {
+    log(l: string) {
+      captured.push(l);
+    }
+  };
+  printLines(["would foo", "would bar"], out);
   assert.deepEqual(captured, ["would foo", "would bar"]);
 });
 

@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 // CI Integration Test — exercises real LFP CLI surfaces against isolated CODEX_HOME
 // Runs with plain node (no tsx) against compiled dist/ output
+// Updated for T5: reflects prune of legacy LFP-owned agents (no longer ships/installs oracle.toml etc.);
+// aligns doctor output with current "no LFP-owned agent tomls" messaging. No expansion of prune logic.
 
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync, readFileSync } from "node:fs";
@@ -75,7 +77,7 @@ try {
     assert.ok(stdout.includes("runtime fallback:"), "doctor should report runtime fallback");
   });
 
-  test("setup installs LFP agents to CODEX_HOME", () => {
+  test("setup prunes removed LFP-owned agents from CODEX_HOME", () => {
     const { stdout, status } = runCli(
       ["setup", "--skip-lazycodex-install", "--skip-model-prompt", "--config", path.join(LFP_ROOT, "agent-configs", "omo-agent-model-overrides.toml")],
       { CODEX_HOME: codexHome }
@@ -83,16 +85,16 @@ try {
     assert.equal(status, 0, `setup should exit 0, got ${status}: ${stdout}`);
     for (const agent of ["oracle", "prometheus", "hephaestus", "atlas", "sisyphus-junior"]) {
       const agentPath = path.join(codexHome, "agents", `${agent}.toml`);
-      assert.ok(existsSync(agentPath), `${agent}.toml should exist after setup`);
+      assert.ok(!existsSync(agentPath), `${agent}.toml should be pruned (not exist) after setup`);
     }
   });
 
-  test("doctor after setup reports agents installed", () => {
+  test("doctor after setup reports current agent surface (no LFP-owned TOMLs)", () => {
     const { stdout } = runCli(
       ["doctor", "--config", path.join(LFP_ROOT, "agent-configs", "omo-agent-model-overrides.toml")],
       { CODEX_HOME: codexHome }
     );
-    assert.ok(stdout.includes("LFP-owned agents: installed"), "doctor should report LFP agents installed");
+    assert.ok(stdout.includes("no LFP-owned agent tomls"), "doctor should report no LFP-owned agent tomls per current surface");
     assert.ok(stdout.includes("categories: configured"), "doctor should report categories configured");
     assert.ok(stdout.includes("runtime fallback: configured"), "doctor should report runtime fallback configured");
   });
@@ -128,4 +130,6 @@ try {
 }
 
 console.log(`\n${passed} passed, ${failures} failed`);
-if (failures > 0) process.exit(1);
+if (failures > 0) {
+  process.exit(1);
+}

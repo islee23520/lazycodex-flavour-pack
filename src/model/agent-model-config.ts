@@ -3,7 +3,7 @@ import { discoverAdditionalAgents, readInstalledAgentFields, writeOverrideFields
 import { isLfpOwnedAgent } from "./agent-model-metadata.js";
 import { BACK_SELECTION, printModelChoices, promptForYesNo } from "./model-config-prompts.js";
 import { fetchAvailableModels } from "./model-provider.js";
-import { buildRecommendedModelOverrides, applyRecommendedModelOverrides } from "./model-recommendations.js";
+import { applyRecommendedModelOverrides, buildRecommendedModelOverrides } from "./model-recommendations.js";
 import { readOverrideConfig } from "./sync-agent-overrides.js";
 import {
   getUserOverrideConfigPath,
@@ -91,9 +91,7 @@ export async function configureAgentModelOverrides(configPath, options = {}) {
     if (bulkAccept === true) {
       // Yes: applyRecommendedModelOverrides filtered to agent steps only; keep default+additional steps for prompting
       const agentStepKeys = new Set(
-        configuredSteps
-          .filter((step) => step.type === "agent")
-          .map((step) => step.agentName)
+        configuredSteps.filter((step) => step.type === "agent").map((step) => step.agentName)
       );
       const agentRecommendations = Object.fromEntries(
         Object.entries(recommendations).filter(([key]) => agentStepKeys.has(key))

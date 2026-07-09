@@ -138,8 +138,12 @@ test("given non-empty actions when formatCheckPreview undo then returns restore 
 
 test("given lines when printLines with mock output then logs each line exactly once", () => {
   const logs: string[] = [];
-  const mock = { log: (l: string) => { logs.push(l); } };
-  printLines(["first line", "second"], mock as any);
+  const mock = {
+    log: (l: string) => {
+      logs.push(l);
+    }
+  };
+  printLines(["first line", "second"], mock);
   assert.deepEqual(logs, ["first line", "second"]);
 });
 

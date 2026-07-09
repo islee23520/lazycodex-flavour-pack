@@ -5,7 +5,8 @@ import {
   groupModelAliases,
   logAgentGuide,
   printModelChoices,
-  promptForModel, promptForYesNo
+  promptForModel,
+  promptForYesNo
 } from "../src/model/model-config-prompts.ts";
 
 test("given provider-prefixed model aliases when grouping then displays one choice per underlying model", () => {
@@ -108,9 +109,13 @@ test("given promptForYesNo with defaultYes:true when empty answer then returns t
       resolve("");
     }
   };
-  const result = await promptForYesNo(rl, "Apply recommended models for all configured agent roles? [Y/n] (default/ulw still prompted; back = full manual): ", {
-    defaultYes: true
-  });
+  const result = await promptForYesNo(
+    rl,
+    "Apply recommended models for all configured agent roles? [Y/n] (default/ulw still prompted; back = full manual): ",
+    {
+      defaultYes: true
+    }
+  );
   assert.equal(result, true);
 });
 

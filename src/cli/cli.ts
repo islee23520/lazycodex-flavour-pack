@@ -100,6 +100,8 @@ Flags:
   --check  With delete, preview delete actions without writing.
   --check  With undo, preview restored LazyCodex original surface actions without writing.
   --skip-model-prompt  Skip the interactive LFP model prompt during setup.
+  --prompt-xai-mcp  With setup, optionally prompt to install external xAI MCP plugin (off by default).
+  --skip-xai-mcp  With setup, never prompt for xAI MCP even if --prompt-xai-mcp is set.
   --skip-lazycodex-install  Local development only: install this checkout without running LazyCodex install first.
   --no-tui  Force legacy line-output setup even when running in an interactive terminal.
   --agent-models-only  Apply only installed agent TOMLs; do NOT sync default and ULW models into Codex config.toml.
@@ -366,7 +368,9 @@ async function runSync(argv) {
     const globalResult = syncGlobalModelDefaults(configPath, { check: args.check });
     hasGlobalChanges = globalResult.changed.length > 0;
     for (const item of globalResult.changed) {
-      console.log(`${args.check ? "would update global model defaults in" : "updated global model defaults in"} ${item}`);
+      console.log(
+        `${args.check ? "would update global model defaults in" : "updated global model defaults in"} ${item}`
+      );
     }
   } else {
     console.log("global defaults: preserved (agent-only mode)");
