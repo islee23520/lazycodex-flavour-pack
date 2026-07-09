@@ -6,36 +6,29 @@
   "homepage": "https://linalab.io",
   "repository": "https://github.com/islee23520/lazycodex-flavour-pack",
   "license": "MIT",
-  "keywords": ["lazycodex", "flavour-pack", "codex", "hooks", "agents", "model-routing"],
+  "keywords": ["lazycodex", "flavour-pack", "codex", "hooks", "model-routing"],
   "hooks": "./hooks/hooks.json",
   "interface": {
-    "displayName": "LFP — Full OMO Bridge for Codex",
-    "shortDescription": "Extends LazyCodex with model/provider setup, category routing guidance, and fallback lookup.",
-    "longDescription": "LFP keeps LazyCodex/OMO agents as the source of truth and focuses on model operations: provider setup, configurable primary model fields, category-based model routing guidance, interactive TUI setup, and atomic runtime promotion with rollback.",
+    "displayName": "LFP — Model Ops for LazyCodex",
+    "shortDescription": "Model/provider setup, three-field agent overrides, category and fallback guidance for Codex.",
+    "longDescription": "LFP keeps LazyCodex/OMO as the owner of agent behavior. It installs this flavour pack into Codex, optionally configures an OpenAI-compatible provider after consent, saves routing choices to lfp.json, applies only the three primary model fields to existing agent TOMLs, and provides category/fallback guidance plus interactive setup with atomic runtime promotion and rollback. LFP does not ship LFP-owned agent TOMLs.",
     "developerName": "islee23520",
     "category": "Developer Tools",
-    "capabilities": ["Hooks", "Agents", "Workflow"],
+    "capabilities": ["Hooks", "Workflow"],
     "websiteURL": "https://linalab.io",
     "privacyPolicyURL": "https://linalab.io",
     "termsOfServiceURL": "https://linalab.io",
     "defaultPrompt": [
       "Use LFP to configure LazyCodex/OMO model routing and provider defaults.",
       "Use the fallback guidance when a configured agent hits quota, rate-limit, or provider failure.",
-      "Keep agent behavior owned by LazyCodex/OMO; LFP only manages supported model fields and saved fallback lookup."
+      "Keep agent behavior sourced from LazyCodex/OMO; LFP only manages supported model fields and plugin install."
     ],
     "brandColor": "#2563EB",
     "screenshots": []
   },
   "x-lfp": {
     "extends": ["omo@sisyphuslabs", "lazycodex-ai"],
-    "modelOverrideSource": "./agent-configs/omo-agent-model-overrides.toml",
-    "additionalAgents": [
-      "./agent-configs/oracle.toml",
-      "./agent-configs/prometheus.toml",
-      "./agent-configs/hephaestus.toml",
-      "./agent-configs/atlas.toml",
-      "./agent-configs/sisyphus-junior.toml"
-    ]
+    "modelOverrideSource": "./agent-configs/omo-agent-model-overrides.toml"
   },
   "capabilities": []
 }

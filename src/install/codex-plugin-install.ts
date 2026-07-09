@@ -11,20 +11,23 @@ import {
 import { getPackageRoot } from "../utils/package-root.js";
 import { escapeRegExp, getTableBlock } from "../utils/toml-string-utils.js";
 import { cleanupInstallSnapshot, createInstallSnapshot, restoreInstallSnapshot } from "./install-transaction.js";
-import { commitRuntimePromotion, prepareRuntimePromotion, rollbackRuntimePromotion } from "./runtime-promotion.js";
+import {
+  commitRuntimePromotion,
+  normalizeRuntimeEntry,
+  prepareRuntimePromotion,
+  rollbackRuntimePromotion
+} from "./runtime-promotion.js";
 
 export const MARKETPLACE_ID = "islee23520";
 export const PLUGIN_ID = "lfp";
 export const PLUGIN_REF = `${PLUGIN_ID}@${MARKETPLACE_ID}`;
 
 const DEFAULT_PACKAGE_ROOT = getPackageRoot(import.meta.url);
-export const ADDITIONAL_AGENT_CONFIGS = [
-  "oracle.toml",
-  "prometheus.toml",
-  "hephaestus.toml",
-  "atlas.toml",
-  "sisyphus-junior.toml"
-];
+// LFP installs no agent tomls of its own; it only syncs model fields into the
+// existing OMO/LazyCodex agent surface. Legacy LFP-owned agents (oracle,
+// prometheus, hephaestus, atlas, sisyphus-junior) are pruned on sync via
+// REMOVED_LFP_AGENT_NAMES in removed-lfp-agents.ts.
+export const ADDITIONAL_AGENT_CONFIGS = [];
 const PROTECTED_UPSTREAM_AGENT_CONFIGS = ["explorer.toml"];
 const LAZYCODEX_PLUGIN_REFS = new Set(["omo@sisyphuslabs", "lazycodex-ai"]);
 
@@ -101,6 +104,7 @@ export function installCodexPlugin(packageRoot, options = {}) {
     writeMarketplaceManifest(state);
     upsertCodexConfig(state, { installOpenAiCompatProvider: options.installOpenAiCompatProvider === true });
     commitRuntimePromotion(promotion);
+    refreshPluginCache(packageRoot, state);
     cleanupInstallSnapshot(snapshot);
     return getCodexPluginState(pluginOptions);
   } catch (error) {
@@ -263,5 +267,27 @@ function readTextIfExists(filePath) {
   } catch (error) {
     if (error?.code === "ENOENT") return "";
     throw error;
+  }
+}
+
+function refreshPluginCache(packageRoot, state) {
+  const version = readPluginVersion(packageRoot);
+  if (version === null) return;
+  const cacheDir = path.join(state.codexHome, "plugins", "cache", MARKETPLACE_ID, PLUGIN_ID, version);
+  if (!existsSync(cacheDir)) return;
+  for (const entry of RUNTIME_ENTRIES) {
+    const item = normalizeRuntimeEntry(entry);
+    const source = path.join(packageRoot, item.path);
+    if (item.optional && !existsSync(source)) continue;
+    rmSync(path.join(cacheDir, item.path), { recursive: true, force: true });
+    cpSync(source, path.join(cacheDir, item.path), { recursive: true });
+  }
+}
+
+function readPluginVersion(packageRoot) {
+  try {
+    return JSON.parse(readFileSync(path.join(packageRoot, "package.json"), "utf8"))?.version ?? null;
+  } catch {
+    return null;
   }
 }

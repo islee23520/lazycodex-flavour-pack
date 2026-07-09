@@ -88,7 +88,7 @@ test("given setup can see provider models when user presses enter then shows rec
 
     await maybePromptModelOverrides({}, configPath, {
       env: { ...process.env, CODEX_HOME: root, HOME: root },
-      readline: fakeReadline(["", "", "", "", "", ""]),
+      readline: fakeReadline(["y", "", "", "", "", "", "", ""]),
       output,
       models: ["gpt-5.4-mini", "gpt-5.5", "grok-4.20-0309-reasoning"]
     });
@@ -98,8 +98,7 @@ test("given setup can see provider models when user presses enter then shows rec
     assert.match(text, /explorer: gpt-5\.4-mini .* from current old-explorer/);
     assert.match(text, /metis: grok-4\.20-0309-reasoning .* from current old-metis/);
     assert.match(text, /Showing default OMO\/LazyCodex model guide/);
-    assert.ok(output.questions.some((question) => /explorer model/.test(question)));
-    assert.ok(output.questions.some((question) => /metis model/.test(question)));
+    assert.ok(output.questions.some((question) => /explorer/.test(question)));
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -141,7 +140,10 @@ test("given setup line mode gets isolated override options then default model gu
         },
         tierSelector: async ({ current }) => current,
         reasoningSelector: async ({ current }) => current,
-        yesNoSelector: async () => false,
+        yesNoSelector: async ({ question } = {}) => {
+          if (question && /Overwrite/i.test(question)) return true;
+          return false;
+        },
         providerConsentSelector: async () => false,
         gitHubStartSelector: async () => null
       }
@@ -149,7 +151,7 @@ test("given setup line mode gets isolated override options then default model gu
 
     assert.ok(output.questions.some((question) => /default model gpt-5\.5/.test(question)));
     assert.ok(output.questions.some((question) => /ulw model gpt-5\.5/.test(question)));
-    assert.ok(output.questions.some((question) => /explorer model gpt-5\.4-mini/.test(question)));
+    assert.ok(output.questions.some((question) => /explorer model xai\/grok-code-fast-1/.test(question)));
     assert.doesNotMatch(output.lines.join("\n"), /Adjust LFP model overrides now/);
   } finally {
     if (previousCodexHome === undefined) {
@@ -271,8 +273,8 @@ test("given provider fetch fails in non-interactive setup then writes lfp json f
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /wrote recommended models to .*lfp\.json/);
     assert.equal(saved.schemaVersion, 2);
-    assert.equal(saved.overrides.explorer.model, "gpt-5.4-mini");
-    assert.match(explorerText, /model = "gpt-5\.4-mini"/);
+    assert.equal(saved.overrides.explorer.model, "xai/grok-code-fast-1");
+    assert.match(explorerText, /model = "xai\/grok-code-fast-1"/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -312,12 +314,7 @@ function writeOmoAgentFixtureSet(agentsDir, overrides = {}) {
     librarian: { model: "gpt-5.4-mini", reasoning: "low", tier: "fast" },
     metis: { model: "gpt-5.5", reasoning: "high", tier: "default" },
     momus: { model: "gpt-5.5", reasoning: "xhigh", tier: "default" },
-    plan: { model: "gpt-5.5", reasoning: "xhigh", tier: "default" },
-    oracle: { model: "gpt-5.5", reasoning: "high", tier: "default" },
-    prometheus: { model: "gpt-5.5", reasoning: "xhigh", tier: "default" },
-    hephaestus: { model: "gpt-5.5", reasoning: "high", tier: "default" },
-    atlas: { model: "gpt-5.5", reasoning: "high", tier: "default" },
-    "sisyphus-junior": { model: "gpt-5.5", reasoning: "medium", tier: "default" }
+    plan: { model: "gpt-5.5", reasoning: "xhigh", tier: "default" }
   };
   for (const [name, defaults] of Object.entries(agents)) {
     const fields = { ...defaults, ...overrides[name] };

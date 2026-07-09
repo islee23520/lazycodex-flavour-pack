@@ -213,7 +213,7 @@ test("given setup recommendation flow when user presses enter per agent then wri
 
     const config = await configureAgentModelOverrides(configPath, {
       models: ["gpt-5.4-mini", "gpt-5.5", "grok-4.3"],
-      readline: fakeReadline(["", "", "", "", "", "", "", "", ""]),
+      readline: fakeReadline(["n", "", "", "", "", "", "", "", "", ""]),
       output,
       recommendModels: true,
       persistUserOverrides: false
@@ -267,7 +267,7 @@ test("given recommended agent when user presses enter then shows current versus 
 
     const config = await configureAgentModelOverrides(configPath, {
       models: ["grok-4.20-0309-reasoning", "gpt-5.5", "glm-5.2"],
-      readline: fakeReadline(["", "", ""]),
+      readline: fakeReadline(["n", "", "", ""]),
       output,
       recommendModels: true,
       persistUserOverrides: false
@@ -312,7 +312,7 @@ test("given setup recommendation flow when user overrides one agent then keeps m
 
     const config = await configureAgentModelOverrides(configPath, {
       models: ["gpt-5.4-mini", "gpt-5.5", "grok-4.3"],
-      readline: fakeReadline(["3", "1", "2"]),
+      readline: fakeReadline(["n", "3", "1", "2"]),
       output: silentOutput(),
       recommendModels: true,
       persistUserOverrides: false
@@ -391,7 +391,7 @@ test("given setup confirm configured flow when user presses enter then re-applie
 
     const config = await configureAgentModelOverrides(configPath, {
       models: ["gpt-5.4-mini", "gpt-5.5", "grok-4.3"],
-      readline: fakeReadline(["", "", "", "", "", ""]),
+      readline: fakeReadline(["n", "", "", "", "", "", ""]),
       output,
       recommendModels: true,
       confirmConfiguredValues: true,
@@ -532,7 +532,7 @@ test("given discovered LazyCodex code reviewer agent has recommendation when use
 
     const config = await configureAgentModelOverrides(configPath, {
       models: ["gpt-5.5", "grok-4.20-0309-reasoning", "glm-5.2"],
-      readline: fakeReadline(["y", "", "", ""]),
+      readline: fakeReadline(["n", "y", "", "", ""]),
       output,
       recommendModels: true,
       persistUserOverrides: false
@@ -789,3 +789,199 @@ function agentText(name, model, tier) {
     ""
   ].join("\n");
 }
+
+test("given recommendations when bulk accept agents with defaultYes then agent steps skipped and default/ulw prompts still run", async () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-models-"));
+  try {
+    const configPath = path.join(root, "overrides.toml");
+    writeFileSync(
+      configPath,
+      [
+        "[source]",
+        `agents_dir = "${root}"`,
+        "",
+        "[agents.default]",
+        'model = "old"',
+        "",
+        "[agents.ulw]",
+        'model = "old"',
+        "",
+        "[agents.explorer]",
+        'model = "old"',
+        ""
+      ].join("\n")
+    );
+    const output = captureOutput();
+    // first "" triggers defaultYes=true for bulk accept; then answers for default and ulw model/tier/reasoning (6 more)
+    const config = await configureAgentModelOverrides(configPath, {
+      models: ["gpt-5.4-mini", "grok-4.3"],
+      readline: fakeReadline(["", "1", "1", "1", "1", "1", "1"]),
+      output,
+      recommendModels: true,
+      persistUserOverrides: false
+    });
+    const questions = configOutput.questions;
+    assert.ok(
+      questions.some((question) => question.includes("Apply recommended models for all configured agent roles?")),
+      "bulk prompt with defaultYes shown"
+    );
+    assert.ok(
+      questions.some((q) => /Default Codex model|ULW model/.test(q)),
+      "default/ulw prompts still run"
+    );
+    assert.ok(
+      !questions.some((q) => /explorer model|=== OMO Agent Model Overrides/.test(q)),
+      "agent steps skipped on bulk accept"
+    );
+    assert.equal(config.overrides.explorer.model, "gpt-5.4-mini");
+    assert.equal(config.overrides.explorer.service_tier, "fast");
+    assert.equal(config.overrides.explorer.model_reasoning_effort, "low");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("given recommendations when bulk decline then full agent prompt sequence still runs", async () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-models-"));
+  try {
+    const configPath = path.join(root, "overrides.toml");
+    writeFileSync(
+      configPath,
+      ["[source]", `agents_dir = "${root}"`, "", "[agents.explorer]", 'model = "old"'].join("\n")
+    );
+    const output = captureOutput();
+    const config = await configureAgentModelOverrides(configPath, {
+      models: ["gpt-5.4-mini", "grok-4.3"],
+      readline: fakeReadline(["n", "1", "1", "1"]), // n declines bulk, then agent prompts
+      output,
+      recommendModels: true,
+      persistUserOverrides: false
+    });
+    const questions = configOutput.questions;
+    assert.ok(questions.some((q) => q.includes("Apply recommended models for all configured agent roles?")));
+    assert.ok(
+      questions.some((q) => /explorer model/.test(q)),
+      "full agent prompt sequence runs on decline"
+    );
+    assert.equal(config.overrides.explorer.model, "gpt-5.4-mini");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("given bulk prompt when BACK then full manual marathon", async () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-models-"));
+  try {
+    const configPath = path.join(root, "overrides.toml");
+    writeFileSync(configPath, `[source]\nagents_dir = "${root}"\n[agents.explorer]\nmodel = "old"\n`);
+    const output = captureOutput();
+    const _config = await configureAgentModelOverrides(configPath, {
+      models: ["gpt-5.4-mini", "grok-4.3"],
+      readline: fakeReadline(["back", "1", "2", "3"]), // back triggers full manual
+      output,
+      recommendModels: true,
+      persistUserOverrides: false
+    });
+    const questions = configOutput.questions;
+    assert.ok(questions.some((q) => q.includes("Apply recommended models for all configured agent roles?")));
+    assert.ok(
+      questions.some((q) => /explorer model/.test(q)),
+      "full manual marathon on BACK"
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("given saved lfp.json when keep then bulk prompt not shown", async () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-saved-"));
+  try {
+    const codexHome = path.join(root, "codex-home");
+    mkdirSync(codexHome, { recursive: true });
+    const lfpJsonPath = path.join(codexHome, "lfp.json");
+    writeFileSync(
+      lfpJsonPath,
+      JSON.stringify({
+        schemaVersion: 2,
+        overrides: { explorer: { model: "gpt-5.4-mini" } },
+        source: { agentsDir: "${CODEX_HOME}/agents" }
+      })
+    );
+    const configPath = path.join(root, "overrides.toml");
+    writeFileSync(configPath, `[source]\nagents_dir = "${path.join(root, "agents")}"\n`);
+    const output = captureOutput();
+    const config = await configureAgentModelOverrides(configPath, {
+      env: { CODEX_HOME: codexHome },
+      readline: fakeReadline(["n"]), // n = do not adjust = keep
+      output,
+      recommendModels: true,
+      persistUserOverrides: true
+    });
+    const questions = configOutput.questions;
+    assert.ok(
+      !questions.some((q) => q.includes("Apply recommended models for all configured agent roles?")),
+      "bulk prompt not shown on keep saved config"
+    );
+    assert.ok(
+      questions.some((q) => q.includes("Adjust LFP model overrides now?")),
+      "adjust prompt is shown instead"
+    );
+    assert.equal(config.overrides.explorer.model, "gpt-5.4-mini");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("given bulk accept happy path when counting interactive field selectors then agent-role model/effort/tier selectors are not called", async () => {
+  const root = mkdtempSync(path.join(tmpdir(), "lfp-bulk-selectors-"));
+  try {
+    const configPath = path.join(root, "overrides.toml");
+    writeFileSync(
+      configPath,
+      `[source]\nagents_dir = "${root}"\n\n[agents.default]\nmodel = "old"\n\n[agents.explorer]\nmodel = "old"\n`
+    );
+    let modelCallCount = 0;
+    let tierCallCount = 0;
+    let reasoningCallCount = 0;
+    let yesNoCallCount = 0;
+    const modelSelector = (_opts) => {
+      modelCallCount++;
+      return "gpt-5.4-mini";
+    };
+    const tierSelector = (_opts) => {
+      tierCallCount++;
+      return "default";
+    };
+    const reasoningSelector = (_opts) => {
+      reasoningCallCount++;
+      return "low";
+    };
+    const yesNoSelector = (opts) => {
+      yesNoCallCount++;
+      if (opts.question.includes("Apply recommended")) {
+        assert.equal(opts.defaultYes, true, "defaultYes:true passed to yesNoSelector for bulk prompt");
+      }
+      return true; // accept bulk
+    };
+    const config = await configureAgentModelOverrides(configPath, {
+      models: ["gpt-5.4-mini", "grok-4.3"],
+      readline: fakeReadline([]),
+      output: silentOutput(),
+      recommendModels: true,
+      persistUserOverrides: false,
+      modelSelector,
+      tierSelector,
+      reasoningSelector,
+      yesNoSelector
+    });
+    assert.ok(yesNoCallCount >= 1, "yesNoSelector was called for bulk prompt");
+    assert.equal(modelCallCount, 2, "model selector called for non-agent steps (default/ulw) only");
+    assert.equal(tierCallCount, 2, "tier selector called for non-agent steps only");
+    assert.equal(reasoningCallCount, 2, "reasoning selector called for non-agent steps only");
+    assert.equal(config.overrides.explorer.model, "gpt-5.4-mini", "bulk accept applied recommended to agent");
+    assert.equal(config.overrides.explorer.service_tier, "fast");
+    assert.equal(config.overrides.explorer.model_reasoning_effort, "low");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});

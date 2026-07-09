@@ -42,7 +42,7 @@ export async function runSetupTui(args, context, deps = {}) {
   }
 
   const capturedOutput = [];
-  const restoreConsole = captureConsoleOutput(capturedOutput);
+  const restoreConsole = captureConsoleOutput(capturedOutput, prompts);
   try {
     await runLineSetup({ ...args, noTui: true }, context, {
       modelSelector: createModelSelector(prompts),
@@ -60,11 +60,21 @@ export async function runSetupTui(args, context, deps = {}) {
   prompts.outro(colors.green(`Enabled ${PLUGIN_REF}. Run lfp doctor to verify anytime.`));
 }
 
-function captureConsoleOutput(lines) {
+function captureConsoleOutput(lines, promptsRef) {
   const originalLog = console.log;
   const originalError = console.error;
-  console.log = (...values) => lines.push(values.map(String).join(" "));
-  console.error = (...values) => lines.push(values.map(String).join(" "));
+  const BOUND = 100;
+  const writeLine = (line) => {
+    lines.push(line);
+    if (lines.length > BOUND) {
+      lines.shift();
+    }
+    // Dual-write to prompts.log for live progress during runLineSetup
+    // (supports both clack.log.message and mock log fn)
+    (promptsRef?.log?.message ?? promptsRef?.log)?.(line);
+  };
+  console.log = (...values) => writeLine(values.map(String).join(" "));
+  console.error = (...values) => writeLine(values.map(String).join(" "));
   return () => {
     console.log = originalLog;
     console.error = originalError;

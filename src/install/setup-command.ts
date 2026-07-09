@@ -159,12 +159,14 @@ async function installAndMaybePrompt(
     });
   if (process.stdin.isTTY) await maybePromptGitHubStart({ gitHubStartSelector: options.gitHubStartSelector });
 
-  await maybePromptXaiMcpPlugin({
-    skipXaiMcp: args.skipXaiMcp,
-    env: options.env,
-    yesNoSelector: options.yesNoSelector,
-    readline: options.readline
-  });
+  if (args.promptXaiMcp === true && args.skipXaiMcp !== true) {
+    await maybePromptXaiMcpPlugin({
+      skipXaiMcp: args.skipXaiMcp,
+      env: options.env,
+      yesNoSelector: options.yesNoSelector,
+      readline: options.readline
+    });
+  }
 
   return effectiveConfigPath;
 }

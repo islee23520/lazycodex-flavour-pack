@@ -4,7 +4,14 @@ export const REMOVED_LFP_AGENT_NAMES = new Set([
   "artistry-qa",
   "sisyphus",
   "visual-engineering",
-  "visual-looker"
+  "visual-looker",
+  // Legacy LFP-owned agents never dispatched by upstream OMO/LazyCodex. Pruned on
+  // sync so re-running lfp removes any tomls/overrides left by older LFP versions.
+  "oracle",
+  "prometheus",
+  "hephaestus",
+  "atlas",
+  "sisyphus-junior"
 ]);
 
 export const REMOVED_UPSTREAM_AGENT_NAMES = new Set(["codex-ultrawork-reviewer"]);

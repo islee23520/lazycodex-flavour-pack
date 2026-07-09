@@ -5,7 +5,7 @@ import { test } from "node:test";
 
 const CONFIG_PATH = path.resolve(import.meta.dirname, "..", "agent-configs", "lfp-fallback-chains.toml");
 
-const EXPECTED_AGENTS = ["oracle", "prometheus", "hephaestus", "atlas", "sisyphus-junior"];
+const EXPECTED_AGENTS: string[] = [];
 const EXPECTED_CATEGORIES = [
   "visual-engineering",
   "ultrabrain",
@@ -57,10 +57,13 @@ function parseFallbackChains(text: string) {
   return { agents, categories };
 }
 
-test("given fallback chains config when parsed then has 5 agent chains", () => {
+test("given fallback chains config when parsed then has no removed LFP-owned agent chains", () => {
   const text = readFileSync(CONFIG_PATH, "utf8");
   const { agents } = parseFallbackChains(text);
-
+  const removed = ["oracle", "prometheus", "hephaestus", "atlas", "sisyphus-junior"];
+  for (const name of removed) {
+    assert.equal(agents[name], undefined, `Removed agent ${name} must not have a fallback chain`);
+  }
   for (const name of EXPECTED_AGENTS) {
     assert.ok(agents[name], `Agent ${name} must have a fallback chain`);
     assert.ok(agents[name].length >= 2, `Agent ${name} chain must have at least 2 models`);

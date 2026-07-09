@@ -496,3 +496,44 @@ test("given TUI OMO overrides with additional agents then uses yesNoSelector and
     ["github", "lazycodex-ai", "sisyphuslabs/lazycodex-ai", "https://github.com/sisyphuslabs/lazycodex-ai"]
   );
 });
+
+test("given TUI setup when line setup emits install logs then prompts.log receives lines before outro", async () => {
+  const calls = [];
+  const prompts = {
+    intro: (message) => calls.push(["intro", message]),
+    note: (message, title) => calls.push(["note", title, message]),
+    confirm: async () => true,
+    isCancel: () => false,
+    cancel: (message) => calls.push(["cancel", message]),
+    outro: (message) => calls.push(["outro", message]),
+    log: (line) => calls.push(["log", line])
+  };
+
+  await runSetupTui(
+    {},
+    { check: false, root: "/tmp/lfp", defaultConfig: "/tmp/lfp/config.toml" },
+    {
+      prompts,
+      colors: { inverse: (value) => value, green: (value) => value },
+      runLineSetup: async () => {
+        console.log("installed lfp@islee23520");
+        console.log("plugin enabled");
+      }
+    }
+  );
+
+  const logCalls = calls.filter((c) => c[0] === "log");
+  const outroIndex = calls.findIndex((c) => c[0] === "outro");
+  assert.ok(logCalls.length >= 2, "prompts.log must receive emitted install lines");
+  assert.ok(
+    logCalls.some((c) => c[1] === "installed lfp@islee23520"),
+    "log received first install log"
+  );
+  assert.ok(
+    logCalls.some((c) => c[1] === "plugin enabled"),
+    "log received second install log"
+  );
+  const firstLogIndex = calls.findIndex((c) => c[0] === "log");
+  assert.ok(firstLogIndex >= 0 && firstLogIndex < outroIndex, "log lines received before outro");
+  assert.equal(calls.at(-1)[0], "outro");
+});

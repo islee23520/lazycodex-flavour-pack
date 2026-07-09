@@ -5,6 +5,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 
+import { formatCheckPreview, printLines } from "../src/cli/destructive-action-preview.ts";
+
 const CLI = path.resolve("scripts/cli.mjs");
 const LAZYCODEX_INSTALL_STUB = path.resolve("test/fixtures/lazycodex-install-stub.mjs");
 
@@ -103,6 +105,50 @@ test("given delete fails during config update then previous plugin is restored",
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
+});
+
+// Unit tests for shared destructive preview (T3)
+test("given empty actions when formatCheckPreview delete then returns exact nothing message", () => {
+  const lines = formatCheckPreview("delete", []);
+  assert.deepEqual(lines, ["lfp delete: nothing to remove"]);
+});
+
+test("given empty actions when formatCheckPreview undo then returns exact nothing message", () => {
+  const lines = formatCheckPreview("undo", []);
+  assert.deepEqual(lines, ["lfp undo: nothing to undo"]);
+});
+
+test("given non-empty actions when formatCheckPreview delete then returns header plus would-prefixed lines", () => {
+  const lines = formatCheckPreview("delete", ["remove plugin files from /tmp/x", "remove marketplace foo"]);
+  assert.deepEqual(lines, [
+    "lfp delete: would remove:",
+    "would remove plugin files from /tmp/x",
+    "would remove marketplace foo"
+  ]);
+});
+
+test("given non-empty actions when formatCheckPreview undo then returns restore header plus would-prefixed lines", () => {
+  const lines = formatCheckPreview("undo", ["run lazycodex-ai install", "remove saved LFP model config /tmp/lfp.json"]);
+  assert.deepEqual(lines, [
+    "lfp undo: would restore LazyCodex original surface:",
+    "would run lazycodex-ai install",
+    "would remove saved LFP model config /tmp/lfp.json"
+  ]);
+});
+
+test("given lines when printLines with mock output then logs each line exactly once", () => {
+  const logs: string[] = [];
+  const mock = {
+    log: (l: string) => {
+      logs.push(l);
+    }
+  };
+  printLines(["first line", "second"], mock);
+  assert.deepEqual(logs, ["first line", "second"]);
+});
+
+test("given empty lines when printLines then does not throw", () => {
+  printLines([]);
 });
 
 function createFixture(root) {

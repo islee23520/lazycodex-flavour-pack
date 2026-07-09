@@ -1,6 +1,11 @@
 [source]
 agents_dir = "${CODEX_HOME}/agents"
 
+# LFP targets only agents upstream OMO dispatches. Legacy LFP-owned agents
+# (oracle/prometheus/hephaestus/atlas/sisyphus-junior) are absent by design —
+# re-adding them recreates orphan overrides. Provider load is spread across
+# gpt/glm/gemini/grok so no single gateway hits concentrated xhigh 429s.
+
 [agents.default]
 model = "gpt-5.5"
 model_reasoning_effort = "medium"
@@ -12,14 +17,10 @@ model_reasoning_effort = "xhigh"
 service_tier = "default"
 
 [agents.explorer]
-model = "gpt-5.4-mini"
-model_reasoning_effort = "low"
-service_tier = "fast"
+model = "xai/grok-code-fast-1"
 
 [agents.librarian]
-model = "gpt-5.4-mini"
-model_reasoning_effort = "low"
-service_tier = "fast"
+model = "xai/grok-code-fast-1"
 
 [agents.metis]
 model = "gpt-5.5"
@@ -41,10 +42,10 @@ model = "gpt-5.5"
 model_reasoning_effort = "high"
 service_tier = "default"
 
+# Reviewer chain is cross-provider: code-reviewer GLM cross-checks GPT-authored
+# code; qa/gate on GPT to avoid piling xhigh load on the GLM gateway.
 [agents.lazycodex-code-reviewer]
-model = "gpt-5.5"
-model_reasoning_effort = "xhigh"
-service_tier = "default"
+model = "zai/glm-5.2[1m]"
 
 [agents.lazycodex-qa-executor]
 model = "gpt-5.5"
@@ -53,50 +54,8 @@ service_tier = "default"
 
 [agents.lazycodex-gate-reviewer]
 model = "gpt-5.5"
-model_reasoning_effort = "xhigh"
+model_reasoning_effort = "high"
 service_tier = "default"
 
 [agents.lazycodex-clone-fidelity-reviewer]
-model = "gpt-5.5"
-model_reasoning_effort = "xhigh"
-service_tier = "default"
-
-[agents.oracle]
-model = "gpt-5.5"
-model_reasoning_effort = "high"
-service_tier = "default"
-model_fallback = "gemini-3.1-pro"
-model_fallback_reasoning_effort = "high"
-model_fallback_service_tier = "default"
-
-[agents.prometheus]
-model = "gpt-5.5"
-model_reasoning_effort = "xhigh"
-service_tier = "default"
-model_fallback = "glm-5.1"
-model_fallback_reasoning_effort = "xhigh"
-model_fallback_service_tier = "default"
-
-[agents.hephaestus]
-model = "gpt-5.5"
-model_reasoning_effort = "high"
-service_tier = "default"
-model_fallback = "gpt-5.5"
-model_fallback_reasoning_effort = "medium"
-model_fallback_service_tier = "default"
-
-[agents.atlas]
-model = "gpt-5.5"
-model_reasoning_effort = "high"
-service_tier = "default"
-model_fallback = "gpt-5.5"
-model_fallback_reasoning_effort = "medium"
-model_fallback_service_tier = "default"
-
-[agents.sisyphus-junior]
-model = "gpt-5.5"
-model_reasoning_effort = "medium"
-service_tier = "default"
-model_fallback = "gpt-5.4-mini"
-model_fallback_reasoning_effort = "medium"
-model_fallback_service_tier = "default"
+model = "google-antigravity/gemini-3.1-pro-preview"

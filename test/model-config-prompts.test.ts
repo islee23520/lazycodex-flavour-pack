@@ -5,7 +5,8 @@ import {
   groupModelAliases,
   logAgentGuide,
   printModelChoices,
-  promptForModel
+  promptForModel,
+  promptForYesNo
 } from "../src/model/model-config-prompts.ts";
 
 test("given provider-prefixed model aliases when grouping then displays one choice per underlying model", () => {
@@ -101,3 +102,40 @@ function captureOutput() {
 function silentOutput() {
   return { log() {} };
 }
+
+test("given promptForYesNo with defaultYes:true when empty answer then returns true", async () => {
+  const rl = {
+    question(_question, resolve) {
+      resolve("");
+    }
+  };
+  const result = await promptForYesNo(
+    rl,
+    "Apply recommended models for all configured agent roles? [Y/n] (default/ulw still prompted; back = full manual): ",
+    {
+      defaultYes: true
+    }
+  );
+  assert.equal(result, true);
+});
+
+test("given promptForYesNo with defaultYes:false when empty answer then returns false", async () => {
+  const rl = {
+    question(_question, resolve) {
+      resolve("");
+    }
+  };
+  const result = await promptForYesNo(rl, "Test? [y/N]: ", { defaultYes: false });
+  assert.equal(result, false);
+});
+
+test("given promptForYesNo with yesNoSelector and defaultYes then passes defaultYes to selector", async () => {
+  let receivedOpts = null;
+  const yesNoSelector = async (opts) => {
+    receivedOpts = opts;
+    return true;
+  };
+  await promptForYesNo(null, "Bulk question?", { yesNoSelector, defaultYes: true });
+  assert.equal(receivedOpts.defaultYes, true);
+  assert.equal(receivedOpts.question, "Bulk question?");
+});

@@ -1,21 +1,10 @@
 # LFP Declarative Fallback Chains
 # Per-agent and per-category ordered fallback model arrays.
 # Consumed by src/model/model-fallback-resolver.ts.
-
-[agents.oracle]
-chain = ["gemini-3.1-pro", "glm-5.1", "gpt-5.5"]
-
-[agents.prometheus]
-chain = ["glm-5.1", "gemini-3.1-pro", "gpt-5.5"]
-
-[agents.hephaestus]
-chain = ["gpt-5.5", "glm-5.1"]
-
-[agents.atlas]
-chain = ["gpt-5.5", "glm-5.1"]
-
-[agents.sisyphus-junior]
-chain = ["gpt-5.4-mini", "gpt-5.5", "glm-5"]
+#
+# Only existing OMO/LazyCodex agents have per-agent chains. Legacy LFP-owned
+# agents (oracle/prometheus/hephaestus/atlas/sisyphus-junior) are intentionally
+# absent — they are not dispatched upstream.
 
 [categories.visual-engineering]
 chain = ["glm-5", "gpt-5.5"]

@@ -1,11 +1,13 @@
 const MODELS_WITHOUT_REASONING_EFFORT = [
   /^glm[-_.]/i,
+  /\/glm[-_.]/i,
   /^gemini[-_.]/i,
+  /\/gemini[-_.]/i,
   /(?:^|[-_.])non[-_.]?reasoning(?:[-_.]|$)/i,
   /^grok-(?:build|code-fast|composer)(?:[-_.]|$)/i,
   /\/grok-(?:build|code-fast|composer)(?:[-_.]|$)/i
 ];
-const MODELS_WITH_SERVICE_TIER = [/^(?:gpt|codex)(?:[-_.]|$)/i];
+const MODELS_WITH_SERVICE_TIER = [/(?:^|\/)(?:gpt|codex)(?:[-_.]|$)/i];
 
 export function getCompatibleReasoningEffort(model, reasoning) {
   if (MODELS_WITHOUT_REASONING_EFFORT.some((pattern) => pattern.test(model ?? ""))) {

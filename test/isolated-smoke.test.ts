@@ -31,7 +31,7 @@ test("given isolated smoke command when run then setup and doctor pass without r
     assert.match(result.stdout, /ulw profile synced=true/);
     assert.match(result.stdout, /lazycodex 4\.11 momus xhigh=true/);
     assert.match(result.stdout, /lazycodex 4\.11 plan xhigh=true/);
-    assert.match(result.stdout, /omo managed agents=15/);
+    assert.match(result.stdout, /omo managed agents=10/);
     assert.match(result.stdout, /lazycodex 4\.11 code reviewer xhigh=true/);
     assert.match(result.stdout, /lazycodex 4\.11 qa executor medium=true/);
     assert.match(result.stdout, /duplicate tool cache healthy=true/);

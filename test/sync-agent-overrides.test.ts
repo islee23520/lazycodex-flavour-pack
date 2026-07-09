@@ -251,17 +251,13 @@ test("given packaged override config when reading then targets Codex-loaded agen
     model_reasoning_effort: "xhigh",
     service_tier: "default"
   });
-  assert.equal(config.overrides.explorer.model, "gpt-5.4-mini");
+  assert.equal(config.overrides.explorer.model, "xai/grok-code-fast-1");
   assert.deepEqual(config.overrides.librarian, {
-    model: "gpt-5.4-mini",
-    model_reasoning_effort: "low",
-    service_tier: "fast"
+    model: "xai/grok-code-fast-1"
   });
   assert.deepEqual(Object.keys(config.overrides).sort(), [
-    "atlas",
     "default",
     "explorer",
-    "hephaestus",
     "lazycodex-clone-fidelity-reviewer",
     "lazycodex-code-reviewer",
     "lazycodex-executor",
@@ -270,13 +266,10 @@ test("given packaged override config when reading then targets Codex-loaded agen
     "librarian",
     "metis",
     "momus",
-    "oracle",
     "plan",
-    "prometheus",
-    "sisyphus-junior",
     "ulw"
   ]);
-  assert.equal(Object.keys(config.overrides).filter((agentName) => !["default", "ulw"].includes(agentName)).length, 15);
+  assert.equal(Object.keys(config.overrides).filter((agentName) => !["default", "ulw"].includes(agentName)).length, 10);
   assert.deepEqual(config.overrides.momus, {
     model: "gpt-5.5",
     model_reasoning_effort: "xhigh",
@@ -288,9 +281,7 @@ test("given packaged override config when reading then targets Codex-loaded agen
     service_tier: "default"
   });
   assert.deepEqual(config.overrides["lazycodex-code-reviewer"], {
-    model: "gpt-5.5",
-    model_reasoning_effort: "xhigh",
-    service_tier: "default"
+    model: "zai/glm-5.2[1m]"
   });
   assert.deepEqual(config.overrides["lazycodex-qa-executor"], {
     model: "gpt-5.5",

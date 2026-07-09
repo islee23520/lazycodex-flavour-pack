@@ -81,7 +81,7 @@ test("given plugin manifest when validating release metadata then bundled manife
   assert.equal(pluginJson.hooks, "./hooks/hooks.json");
   assert.equal(Object.hasOwn(pluginJson, "mcpServers"), false);
   assert.deepEqual(
-    pluginJson["x-lfp"].additionalAgents,
+    pluginJson["x-lfp"].additionalAgents ?? [],
     ADDITIONAL_AGENT_CONFIGS.map((fileName) => `./agent-configs/${fileName}`)
   );
   assert.deepEqual(pluginJson["x-lfp"].tools ?? [], []);

@@ -9,7 +9,9 @@ const SYNC_OPTIONS = new Set([
   "--provider-wire-api",
   "--provider-api-key-env",
   "--agent-models-only",
-  "--sync-global-defaults"
+  "--sync-global-defaults",
+  "--prompt-xai-mcp",
+  "--skip-xai-mcp"
 ]);
 const DOCTOR_OPTIONS = new Set(["--config", "--fix-cache", "--apply"]);
 const KOREAN_POSTPOSITIONS = [
@@ -53,6 +55,14 @@ export function parseSyncArgs(argv) {
     }
     if (item === "--skip-lazycodex-install") {
       parsed.skipLazycodexInstall = true;
+      continue;
+    }
+    if (item === "--prompt-xai-mcp") {
+      parsed.promptXaiMcp = true;
+      continue;
+    }
+    if (item === "--skip-xai-mcp") {
+      parsed.skipXaiMcp = true;
       continue;
     }
     if (item === "--no-tui") {

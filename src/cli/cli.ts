@@ -32,6 +32,7 @@ import {
   printXaiMcpPluginStatus
 } from "./cli-reporting.js";
 import { runDelete } from "./delete-command.js";
+import { runUndo } from "./undo-command.js";
 import { dispatchXaiAuthCommand } from "./xai-auth-command.js";
 
 const ROOT = getPackageRoot(import.meta.url);
@@ -42,6 +43,7 @@ Usage:
   lfp setup [--config <path>] [--agent-models-only|--sync-global-defaults] [--skip-model-prompt] [--no-tui]
   lfp dry-setup [--config <path>] [--agent-models-only|--sync-global-defaults]
   lfp delete [--check]
+  lfp undo [--check] [--skip-lazycodex-install]
   lfp doctor [--config <path>] [--fix-cache [--apply]]
   lfp sync [--config <path>] [--check] [--skip-lazycodex-install]
   lfp agent-config [--config <path>] [--agent-models-only|--sync-global-defaults]
@@ -54,6 +56,7 @@ npx:
   npx @islee23520/lfp@latest setup
   npx @islee23520/lfp@latest dry-setup
   npx @islee23520/lfp@latest delete
+  npx @islee23520/lfp@latest undo
   npx @islee23520/lfp@latest doctor
   npx @islee23520/lfp@latest sync
   npx @islee23520/lfp@latest agent-config
@@ -70,21 +73,35 @@ Commands:
                    Enter keeps each configured agent value.
   dry-setup        Preview what setup would do without writing.
   delete           Remove installed LFP plugin files and LFP config tables.
+  undo             Remove LFP overrides, delete LFP-managed Codex surfaces, and re-run LazyCodex install
+                   so upstream LazyCodex/OMO agent files become the source of truth again.
   doctor           Check LFP install status, saved config, agent models, and overrides.
   sync             Update LazyCodex, reinstall LFP, optionally configure OpenCodex when missing, make
-                   Sisyphus the OMO main route on opencodex zai/glm-5.2[1m], and apply ~/.codex/lfp.json model settings.
+                   Sisyphus the OMO main route on the best available OMO-guided model, and apply ~/.codex/lfp.json model settings.
   agent-config     Reconfigure ~/.codex/lfp.json model settings and apply supported OMO/LazyCodex agent model fields.
   benchmark-models Recommend or benchmark role-based model routing against the active OpenAI-compatible provider.
   skill-manager    Audit local skill folders, report invalid skills, and optionally move them to skills.disabled.
   xai auth         Manage dedicated LFP xAI credentials under CODEX_HOME/xai-oauth without registering MCP servers.
   help             Show this help.
 
+  When to use which command:
+    first-time install          → setup
+    refresh after LazyCodex     → sync
+    change models only          → agent-config
+    health / drift check        → doctor
+    preview writes              → dry-setup
+    remove plugin, keep lfp.json→ delete
+    full reset + drop lfp.json  → undo
+
 Flags:
   --config <path>  Use a specific override config file instead of the packaged defaults or ~/.codex/lfp.json.
   --fix-cache  Check duplicate Codex Apps tool cache files.
   --apply  With doctor --fix-cache, quarantine duplicate cache files.
   --check  With delete, preview delete actions without writing.
+  --check  With undo, preview restored LazyCodex original surface actions without writing.
   --skip-model-prompt  Skip the interactive LFP model prompt during setup.
+  --prompt-xai-mcp  With setup, optionally prompt to install external xAI MCP plugin (off by default).
+  --skip-xai-mcp  With setup, never prompt for xAI MCP even if --prompt-xai-mcp is set.
   --skip-lazycodex-install  Local development only: install this checkout without running LazyCodex install first.
   --no-tui  Force legacy line-output setup even when running in an interactive terminal.
   --agent-models-only  Apply only installed agent TOMLs; do NOT sync default and ULW models into Codex config.toml.
@@ -130,6 +147,11 @@ export async function runCli(argv) {
 
   if (command === "delete") {
     runDelete(args);
+    return;
+  }
+
+  if (command === "undo") {
+    await runUndo(args);
     return;
   }
 
@@ -214,10 +236,9 @@ async function runDoctor(argv) {
   );
   console.log(`lfp doctor: plugin config: ${state.pluginEnabled ? "enabled" : "missing"} (${PLUGIN_REF})`);
   console.log(
-    `lfp doctor: LFP-owned agents: ${state.additionalAgentsInstalled ? "installed" : "missing"} (oracle, prometheus, hephaestus, atlas, sisyphus-junior)`
+    "lfp doctor: agent surface: existing OMO/LazyCodex agents (LFP rides on upstream; no LFP-owned agent tomls)"
   );
   hasIssue ||= !state.pluginFilesInstalled || !state.marketplaceConfigured || !state.pluginEnabled;
-  hasIssue ||= !state.additionalAgentsInstalled;
   printOpenAiCompatProviderState(state);
   hasIssue ||= state.openAiCompatProvider.status === "drifted";
   await printProviderInventoryVisibility({ commandName: "doctor" });
@@ -249,6 +270,7 @@ async function runDoctor(argv) {
   const appCacheOk = printDoctorCodexAppsCacheState(args);
   hasIssue ||= !appCacheOk;
 
+  let overrideChanged = 0;
   try {
     const effectiveConfigPath = effectiveConfig?.configPath ?? configPath;
     const driftResult = printAgentModelDrift(effectiveConfigPath, { commandName: "doctor" });
@@ -260,12 +282,37 @@ async function runDoctor(argv) {
       console.log("lfp doctor: agent overrides: setup would update:");
       for (const item of result.changed) console.log(`would update ${item}`);
     }
+    overrideChanged = result.changed.length;
   } catch (error) {
     hasIssue = true;
     console.log(`lfp doctor: LazyCodex/OMO: ${error instanceof Error ? error.message : String(error)}`);
+    overrideChanged = 0;
   } finally {
     effectiveConfig?.cleanup();
   }
+
+  hasIssue ||= overrideChanged > 0;
+
+  const hasPluginIssue = !state.pluginFilesInstalled || !state.marketplaceConfigured || !state.pluginEnabled;
+  const hasOverrideDrift = overrideChanged > 0;
+  const hasProviderDrift = state.openAiCompatProvider.status === "drifted";
+  let doctorStatus = "READY";
+  let nextAction = "(none)";
+  if (hasPluginIssue) {
+    doctorStatus = "NEEDS ATTENTION";
+    nextAction = "lfp setup";
+  } else if (hasOverrideDrift) {
+    doctorStatus = "NEEDS ATTENTION";
+    nextAction = "lfp sync";
+  } else if (hasProviderDrift) {
+    doctorStatus = "NEEDS ATTENTION";
+    nextAction = "lfp doctor";
+  } else if (hasIssue) {
+    doctorStatus = "NEEDS ATTENTION";
+    nextAction = "lfp doctor --fix-cache";
+  }
+  console.log(`lfp doctor: status: ${doctorStatus}`);
+  console.log(`lfp doctor: next: ${nextAction}`);
 
   if (hasIssue) process.exitCode = 1;
 }
@@ -315,7 +362,21 @@ async function runSync(argv) {
   const result = syncAgentOverrides(configPath, { check: args.check });
   for (const item of result.changed) console.log(`${args.check ? "would update" : "updated"} ${item}`);
   if (result.changed.length === 0) console.log("agent overrides already applied");
-  if (args.check && result.changed.length > 0) process.exitCode = 1;
+
+  let hasGlobalChanges = false;
+  if (args.agentModelsOnly !== true) {
+    const globalResult = syncGlobalModelDefaults(configPath, { check: args.check });
+    hasGlobalChanges = globalResult.changed.length > 0;
+    for (const item of globalResult.changed) {
+      console.log(
+        `${args.check ? "would update global model defaults in" : "updated global model defaults in"} ${item}`
+      );
+    }
+  } else {
+    console.log("global defaults: preserved (agent-only mode)");
+  }
+
+  if (args.check && (result.changed.length > 0 || hasGlobalChanges)) process.exitCode = 1;
 }
 
 async function runAgentConfig(argv) {

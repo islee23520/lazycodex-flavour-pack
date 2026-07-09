@@ -48,6 +48,7 @@
     "setup": "node scripts/cli.mjs setup",
     "dry-setup": "node scripts/cli.mjs dry-setup",
     "delete": "node scripts/cli.mjs delete",
+    "undo": "node scripts/cli.mjs undo",
     "doctor": "node scripts/cli.mjs doctor",
     "sync": "node scripts/cli.mjs sync",
     "agent-config": "node scripts/cli.mjs agent-config",
@@ -60,8 +61,7 @@
   },
   "dependencies": {
     "@clack/prompts": "^1.5.1",
-    "picocolors": "^1.1.1",
-    "zod": "^4.4.3"
+    "picocolors": "^1.1.1"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.1",

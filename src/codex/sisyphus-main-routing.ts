@@ -4,11 +4,21 @@ import os from "node:os";
 import path from "node:path";
 import { createInterface } from "node:readline";
 
+import { fetchAvailableModels } from "../model/model-provider.js";
+import { getCompatibleModelFields } from "../model/model-reasoning-compat.js";
 import { escapeRegExp, getTableBlock, readTopLevelTomlString } from "../utils/toml-string-utils.js";
 
-const SISYPHUS_MAIN_MODEL = "zai/glm-5.2[1m]";
 const SISYPHUS_MAIN_PROVIDER = "opencodex";
 const SISYPHUS_RULE_DESCRIPTION = "OMO Hephaestus baseline discipline for Codex";
+const OMO_SISYPHUS_MODEL_CHAIN = [
+  "claude-opus-4-7",
+  "kimi-k2.6",
+  "k2p5",
+  "kimi-k2.5",
+  "gpt-5.5",
+  "glm-5",
+  "big-pickle"
+];
 
 export async function maybeConfigureOpenCodexSisyphus(options = {}) {
   const env = options.env ?? process.env;
@@ -35,24 +45,28 @@ export async function maybeConfigureOpenCodexSisyphus(options = {}) {
   }
 
   return {
-    ...syncSisyphusMainRouting({ check, env }),
+    ...(await syncSisyphusMainRouting({ check, env, models: options.models, fetch: options.fetch })),
     configured: true,
     prompted: !isOpenCodexActive(currentText)
   };
 }
 
-export function syncSisyphusMainRouting(options = {}) {
+export async function syncSisyphusMainRouting(options = {}) {
   const env = options.env ?? process.env;
   const check = options.check === true;
   const codexHome = getCodexHome(env);
   const home = getHome(env);
   const configPath = path.join(codexHome, "config.toml");
   const rulePath = path.join(home, ".opencode", "rules", "hephaestus.md");
+  const model = await resolveSisyphusMainModel({ ...options, env });
+  // No guide match and no user-configured model: leave the LazyCodex default
+  // intact rather than forcing a model onto the user.
+  if (model === null) return { changed: [], configPath, rulePath, model: null };
   const changed = [];
-  if (syncCodexMainModel(configPath, check)) changed.push(configPath);
-  if (syncSisyphusRule(rulePath, check)) changed.push(rulePath);
+  if (syncCodexMainModel(configPath, check, model)) changed.push(configPath);
+  if (syncSisyphusRule(rulePath, check, model)) changed.push(rulePath);
 
-  return { changed, configPath, rulePath };
+  return { changed, configPath, rulePath, model };
 }
 
 function isOpenCodexActive(text) {
@@ -63,7 +77,8 @@ function isOpenCodexActive(text) {
 }
 
 async function shouldConfigureOpenCodex(options) {
-  const question = "Configure OpenCodex (ocx) and make Sisyphus the default OMO route on zai/glm-5.2[1m]? [y/N]: ";
+  const question =
+    "Configure OpenCodex (ocx) and make Sisyphus the default OMO route from the OMO model guide? [y/N]: ";
   if (typeof options.yesNoSelector === "function") return !!(await options.yesNoSelector({ question }));
   if (!process.stdin.isTTY) {
     options.output?.log?.("OpenCodex Sisyphus routing: missing; skipping prompt in non-interactive mode.");
@@ -111,13 +126,54 @@ function parseOcxArgs(value, defaultArgs) {
   return trimmed.split(/\s+/);
 }
 
-function syncCodexMainModel(configPath, check) {
+async function resolveSisyphusMainModel(options) {
+  const env = options.env ?? process.env;
+  const models = Array.isArray(options.models)
+    ? options.models
+    : await fetchAvailableModels({ env, fetch: options.fetch });
+  // OMO model guide takes priority. When no guide model is available, honor the
+  // model the user already configured instead of forcing a hardcoded default —
+  // the sisyphus model can be anything the user picked.
+  return selectOmoSisyphusModel(models) ?? readUserConfiguredMainModel(env);
+}
+
+function readUserConfiguredMainModel(env) {
+  const configPath = path.join(getCodexHome(env), "config.toml");
+  return readTopLevelTomlString(readTextIfExists(configPath), "model");
+}
+
+export function selectOmoSisyphusModel(models) {
+  const normalized = normalizeModelIds(models);
+  for (const target of OMO_SISYPHUS_MODEL_CHAIN) {
+    const match = normalized.find(({ leaf }) => leaf === target || leaf.startsWith(`${target}.`));
+    if (match !== undefined) return match.id;
+  }
+  return null;
+}
+
+function normalizeModelIds(models) {
+  if (!Array.isArray(models)) return [];
+  return models
+    .filter((model) => typeof model === "string" && model.trim().length > 0)
+    .map((model) => {
+      const id = model.trim();
+      const leaf = id.split("/").at(-1)?.trim() ?? id;
+      return { id, leaf };
+    });
+}
+
+function syncCodexMainModel(configPath, check, model) {
   const currentText = readTextIfExists(configPath);
-  const nextText = applyTopLevelStrings(currentText, {
-    model_provider: SISYPHUS_MAIN_PROVIDER,
-    model: SISYPHUS_MAIN_MODEL,
+  const modelFields = getCompatibleModelFields({
+    model,
     model_reasoning_effort: "medium",
     service_tier: "default"
+  });
+  const nextText = applyTopLevelModelFields(currentText, {
+    model_provider: SISYPHUS_MAIN_PROVIDER,
+    model: modelFields.model,
+    model_reasoning_effort: modelFields.model_reasoning_effort,
+    service_tier: modelFields.service_tier
   });
   if (currentText === nextText) return false;
 
@@ -128,7 +184,15 @@ function syncCodexMainModel(configPath, check) {
   return true;
 }
 
-function syncSisyphusRule(rulePath, check) {
+function applyTopLevelModelFields(text, values) {
+  let next = text;
+  for (const [key, value] of Object.entries(values)) {
+    next = typeof value === "string" ? upsertTopLevelString(next, key, value) : removeTopLevelKey(next, key);
+  }
+  return next;
+}
+
+function syncSisyphusRule(rulePath, check, model) {
   const currentText = readTextIfExists(rulePath);
   const nextText = `${[
     "---",
@@ -136,7 +200,7 @@ function syncSisyphusRule(rulePath, check) {
     "alwaysApply: true",
     "---",
     "",
-    "You are Sisyphus, the default LazyCodex/OMO ultraworker running on OpenCodex `zai/glm-5.2[1m]`.",
+    `You are Sisyphus, the default LazyCodex/OMO ultraworker running on OpenCodex \`${model}\`.`,
     "",
     "Default to routing and orchestration. Keep normal turns lightweight, preserve the user's workspace, and choose the right executor before doing deep work.",
     "",
@@ -157,14 +221,6 @@ function syncSisyphusRule(rulePath, check) {
   return true;
 }
 
-function applyTopLevelStrings(text, values) {
-  let next = text;
-  for (const [key, value] of Object.entries(values)) {
-    next = upsertTopLevelString(next, key, value);
-  }
-  return next;
-}
-
 function upsertTopLevelString(text, key, value) {
   const line = `${key} = ${JSON.stringify(value)}`;
   const pattern = new RegExp(`(^|\\n)${escapeRegExp(key)}\\s*=\\s*"[^"]*"\\s*(?=\\n|$)`);
@@ -179,6 +235,11 @@ function upsertTopLevelString(text, key, value) {
   const before = text.slice(0, firstSection.index).replace(/\n*$/, "");
   const after = text.slice(firstSection.index).replace(/^\n*/, "");
   return `${before.length > 0 ? `${before}\n` : ""}${line}\n\n${after}`;
+}
+
+function removeTopLevelKey(text, key) {
+  const pattern = new RegExp(`(^|\\n)${escapeRegExp(key)}\\s*=\\s*"[^"]*"\\s*(?=\\n|$)`);
+  return text.replace(pattern, "$1").replace(/\n{3,}/g, "\n\n");
 }
 
 function readTextIfExists(filePath) {
