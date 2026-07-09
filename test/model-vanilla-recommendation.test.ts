@@ -33,7 +33,7 @@ test("given setup model prompt when installed LazyCodex agent exists then shows 
 
     await configureAgentModelOverrides(configPath, {
       models: ["gpt-5.4-mini", "gpt-5.5", "grok-4.3"],
-      readline: fakeReadline(["", "", ""]),
+      readline: fakeReadline(["n", "", "", ""]),  // "n" to decline bulk-accept so agent prompt and vanilla log runs
       output,
       recommendModels: true,
       persistUserOverrides: false

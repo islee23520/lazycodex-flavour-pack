@@ -3,7 +3,7 @@ import { discoverAdditionalAgents, readInstalledAgentFields, writeOverrideFields
 import { isLfpOwnedAgent } from "./agent-model-metadata.js";
 import { BACK_SELECTION, printModelChoices, promptForYesNo } from "./model-config-prompts.js";
 import { fetchAvailableModels } from "./model-provider.js";
-import { buildRecommendedModelOverrides } from "./model-recommendations.js";
+import { buildRecommendedModelOverrides, applyRecommendedModelOverrides } from "./model-recommendations.js";
 import { readOverrideConfig } from "./sync-agent-overrides.js";
 import {
   getUserOverrideConfigPath,
@@ -81,7 +81,32 @@ export async function configureAgentModelOverrides(configPath, options = {}) {
     }))
   ];
 
-  await runModelOverridePrompts(config, configuredSteps, {
+  let stepsToRun = configuredSteps;
+  if (Object.keys(recommendations).length > 0) {
+    const bulkQuestion = `Apply recommended models for all configured agent roles? [Y/n] (default/ulw still prompted; back = full manual): `;
+    const bulkAccept = await promptForYesNo(rl, bulkQuestion, {
+      defaultYes: true,
+      yesNoSelector: options.yesNoSelector
+    });
+    if (bulkAccept === true) {
+      // Yes: applyRecommendedModelOverrides filtered to agent steps only; keep default+additional steps for prompting
+      const agentStepKeys = new Set(
+        configuredSteps
+          .filter((step) => step.type === "agent")
+          .map((step) => step.agentName)
+      );
+      const agentRecommendations = Object.fromEntries(
+        Object.entries(recommendations).filter(([key]) => agentStepKeys.has(key))
+      );
+      applyRecommendedModelOverrides(config.overrides, agentRecommendations);
+      stepsToRun = configuredSteps.filter((step) => step.type !== "agent");
+    } else if (bulkAccept === BACK_SELECTION) {
+      // BACK_SELECTION or decline: full configuredSteps marathon
+    }
+    // No extra logs to minimize output changes
+  }
+
+  await runModelOverridePrompts(config, stepsToRun, {
     models,
     output: options.output,
     recommendations,

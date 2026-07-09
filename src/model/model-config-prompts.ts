@@ -171,12 +171,13 @@ export function printModelChoices(models, output) {
 }
 
 export async function promptForYesNo(rl, question, options = {}) {
-  const { yesNoSelector } = options;
+  const { yesNoSelector, defaultYes = false } = options;
   if (typeof yesNoSelector === "function") {
-    return await yesNoSelector({ question });
+    return await yesNoSelector({ question, defaultYes });
   }
   const answer = (await prompt(rl, question)).trim().toLowerCase();
   if (isBackAnswer(answer)) return BACK_SELECTION;
+  if (answer.length === 0) return defaultYes;
   return ["y", "yes"].includes(answer);
 }
 
