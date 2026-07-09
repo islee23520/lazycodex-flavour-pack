@@ -1,17 +1,16 @@
 import { deleteCodexPlugin, getPendingCodexPluginDeleteActions } from "../install/codex-plugin-delete.js";
 import { PLUGIN_REF } from "../install/codex-plugin-install.js";
+import { formatCheckPreview, printLines } from "./destructive-action-preview.js";
 
 export function runDelete(argv) {
   const check = parseDeleteArgs(argv).check === true;
   const { actions } = getPendingCodexPluginDeleteActions();
   if (check) {
-    if (actions.length === 0) {
-      console.log("lfp delete: nothing to remove");
-      return;
+    const lines = formatCheckPreview("delete", actions);
+    printLines(lines);
+    if (actions.length > 0) {
+      process.exitCode = 1;
     }
-    console.log("lfp delete: would remove:");
-    for (const action of actions) console.log(`would ${action}`);
-    process.exitCode = 1;
     return;
   }
 
