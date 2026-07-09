@@ -2,7 +2,6 @@ import { readFileSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { getPackageRoot } from "../utils/package-root.js";
-import { isLfpOwnedAgent } from "./agent-model-metadata.js";
 import { getAgentModelFields, VIRTUAL_OVERRIDE_SECTIONS } from "./model-field-scope.js";
 import { readOverrideConfig } from "./model-override-config.js";
 import { getCompatibleModelFields } from "./model-reasoning-compat.js";
@@ -52,11 +51,7 @@ export function syncAgentOverrides(configPath, options = {}) {
   for (const agentName of Object.keys(agentOverrides)) {
     const sourcePath = path.join(sourceDir, `${agentName}.toml`);
     const currentText = readFileSync(sourcePath, "utf8");
-    const nextText = applyModelOverrides(
-      currentText,
-      getSyncModelFields(agentOverrides[agentName] ?? {}, agentName),
-      agentName
-    );
+    const nextText = applyModelOverrides(currentText, getSyncModelFields(agentOverrides[agentName] ?? {}), agentName);
     if (currentText === nextText) continue;
     changed.push(sourcePath);
     if (!options.check) writeFileSync(sourcePath, nextText);
@@ -96,22 +91,13 @@ export function applyModelOverrides(sourceText, values, agentName) {
   return `${output.join("\n").replace(/\n*$/, "")}\n`;
 }
 
-function getSyncModelFields(fields, agentName) {
+function getSyncModelFields(fields) {
   const compatible = getCompatibleModelFields(fields);
-  const base = {
+  return {
     model: compatible.model,
     model_reasoning_effort: compatible.model_reasoning_effort,
     service_tier: compatible.service_tier
   };
-  if (agentName && isLfpOwnedAgent(agentName)) {
-    return {
-      ...base,
-      model_fallback: fields.model_fallback,
-      model_fallback_reasoning_effort: fields.model_fallback_reasoning_effort,
-      model_fallback_service_tier: fields.model_fallback_service_tier
-    };
-  }
-  return base;
 }
 
 function parseArgs(argv) {

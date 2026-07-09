@@ -326,7 +326,7 @@ test("given saved user override has unsupported max reasoning when configuring t
         readline: fakeReadline(["n"]),
         output: silentOutput()
       }),
-      /"overrides",\s*"explorer",\s*"model_reasoning_effort"/
+      /overrides\.explorer\.model_reasoning_effort/
     );
   } finally {
     rmSync(root, { recursive: true, force: true });
@@ -496,7 +496,7 @@ test("given malformed previous saved override config when restoring then leaves 
 
     assert.throws(
       () => restoreAgentModelApplication(configPath, previousPath, { env: { ...process.env, CODEX_HOME: codexHome } }),
-      /Invalid|Expected string|received number/i
+      /Invalid|Expected string|received number|expected a non-empty string/i
     );
     assert.equal(readFileSync(path.join(agentsDir, "explorer.toml"), "utf8"), currentAgentText);
     assert.equal(readFileSync(currentSavedPath, "utf8"), currentSavedText);

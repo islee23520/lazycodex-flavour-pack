@@ -115,7 +115,15 @@ export function saveUserOverrideConfig(configPath, userConfigPath) {
 export function mergeUserOverrideText(currentText, userText) {
   const currentSource = SOURCE_SECTION_PATTERN.exec(currentText)?.[0] ?? "";
   const userWithoutSource = stripSourceSection(userText);
-  return `${currentSource.trimEnd()}\n\n${userWithoutSource.trim().replace(/\n*$/, "")}\n`;
+  const merged = `${currentSource.trimEnd()}\n\n${userWithoutSource.trim().replace(/\n*$/, "")}\n`;
+  for (const section of ["default", "ulw"]) {
+    if (new RegExp(`^\\[agents\\.${section}\\]`, "m").test(userWithoutSource)) continue;
+    const seedSection = extractAgentSection(currentText, section);
+    if (seedSection === null) continue;
+    const insertion = `${currentSource.trimEnd()}\n${seedSection}\n`;
+    return `${insertion}\n${userWithoutSource.trim().replace(/\n*$/, "")}\n`;
+  }
+  return merged;
 }
 
 function stripSourceSection(text) {
@@ -191,4 +199,11 @@ function savedOverrideConfigToToml(config) {
     lines.push("");
   }
   return lines.join("\n");
+}
+
+function extractAgentSection(text, agentName) {
+  const pattern = new RegExp(`(^|\\n)((\\[agents\\.${agentName}\\]\\n)([^\\[]*))(?=\\n\\[|$)`);
+  const match = text.match(pattern);
+  if (match === null) return null;
+  return match[2].trim().replace(/\n*$/, "");
 }

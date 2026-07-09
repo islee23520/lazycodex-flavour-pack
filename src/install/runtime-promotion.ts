@@ -23,7 +23,7 @@ export function prepareRuntimePromotion(packageRoot, pluginRoot, entries) {
   }
 }
 
-function normalizeRuntimeEntry(entry) {
+export function normalizeRuntimeEntry(entry) {
   if (typeof entry === "string") return { path: entry, optional: false };
   return { path: entry.path, optional: entry.optional === true };
 }

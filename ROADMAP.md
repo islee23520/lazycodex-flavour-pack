@@ -1,125 +1,112 @@
 # LFP Roadmap
 
-LFP (LazyCodex Flavour Pack) extends LazyCodex — the OMO Light edition for Codex — to bring the full OMO feature set into the Codex environment. LazyCodex intentionally ships only a portable subset (rules, ultrawork, lsp, 6 core agents) because it targets GPT-only workflows. LFP bridges the rest: the complete agent roster, category-based model routing, fallback resolver for saved override configurations, art team orchestration, visual specialists, and multi-model provider support.
+LFP (LazyCodex Flavour Pack) is the **model/provider operations layer** for LazyCodex on Codex. LazyCodex/OMO owns agent behavior and agent TOMLs. LFP owns install/plugin promotion, consent-gated provider setup, saved overrides (`lfp.json`), three-primary-field sync, category/fallback **guidance**, benchmarks, and doctor/sync/undo tooling.
 
-Track roadmap work in GitHub issues: <https://github.com/islee23520/lazycodex-flavour-pack/issues>.
+Track work in GitHub issues: <https://github.com/islee23520/lazycodex-flavour-pack/issues>.
 
-## Direction
+## Direction (locked)
 
-- LFP is the **full OMO feature bridge for Codex**, not a lightweight overlay.
-- `agent-configs/` is the source of truth for LFP-owned agents, model overrides, categories, and fallback configuration.
-- Setup stays safe: install/update upstream LazyCodex first, register LFP, install LFP agents, configure the provider when consented, verify upstream, then apply model-field overrides.
-- Agent TOML override sync on upstream OMO agents is limited to exactly three primary model fields. LFP-owned agents have full TOML control.
-- Codex only supports `SessionStart` and `UserPromptSubmit` hooks. Category routing, runtime fallback, and orchestration work within this constraint — via guidance hooks, resolver logic, and multi-agent patterns.
-- Install safety is mandatory for every agent or config write: snapshot → write → promote with rollback.
+- LFP is **not** a full OMO agent roster bridge. It does **not** ship or reinstall LFP-owned agent TOMLs (`oracle`, `prometheus`, `hephaestus`, `atlas`, `sisyphus-junior`, …). Those are pruned on setup/sync when left by older LFP versions.
+- `agent-configs/` is the source of truth for **packaged defaults**: override seed, categories, role policies, fallback chains, runtime fallback, provider template — not agent personas.
+- Agent TOML writes are limited to exactly three primary fields: `model`, `model_reasoning_effort`, `service_tier`. Same three for optional global `config.toml` / `ulw.config.toml` defaults.
+- Codex only supports `SessionStart` and `UserPromptSubmit` hooks. Category routing and runtime fallback are **guidance + resolver**, not automatic API intercept/retry.
+- Install safety is mandatory: snapshot → write → promote with rollback.
+- LFP repo stays MCP-free (no `.mcp.json` / plugin tools). Optional external xAI MCP install is consent-gated and separate.
 
-## OMO Feature Gap
+## Capability map
 
-| OMO Feature | LazyCodex (Light) | LFP Current | LFP Target |
+| Capability | Status | Notes |
+| --- | --- | --- |
+| LazyCodex install + LFP plugin promote | Done | `setup` / `sync` |
+| 3-field override sync + `lfp.json` | Done | Hooks + CLI |
+| Provider consent + OpenAI-compat template | Done | Ledger under `.ledger/lfp/` |
+| Category guidance (8 categories) | Done | Guidance only |
+| Declarative fallback chains | Done | Guidance/resolver; not agent TOML fields |
+| Runtime fallback config | Done | Guidance only (no API intercept) |
+| Benchmark / recommend | Done | `benchmark-models` |
+| skill-manager | Done | Hygiene CLI |
+| xAI dedicated auth | Done | Never mutates Codex host `auth.json` |
+| LFP-owned agent TOMLs | **Reversed** | Not shipped; prune only |
+| Full OMO skill/team port | Out of scope | Belongs upstream / separate projects |
+| CLI/TUI UX simplification | **In progress** | See UX map below |
+
+## Phased history
+
+### Phase 0: Vision docs — superseded
+
+Earlier “full OMO bridge” docs are replaced by this ops-layer direction (this file + README + AGENTS + plugin manifest).
+
+### Phase 1: LFP-owned agents — cancelled / reversed
+
+Adding oracle/prometheus/hephaestus/atlas/sisyphus-junior as LFP-owned TOMLs created orphan agents not dispatched by upstream. Code now sets `ADDITIONAL_AGENT_CONFIGS = []` and prunes removed names.
+
+### Phase 2–4: Category + fallback + runtime guidance — landed (stabilize)
+
+Configs and resolvers exist. Remaining work is quiet hooks, doctor clarity, and UX — not greenfield feature ports.
+
+### Phase 5: Full feature parity — deferred / out of scope
+
+Background agents, Team Mode, bulk skill ports stay with LazyCodex/OMO or separate tools unless Codex gains new hook surfaces.
+
+## Near-term work (priority order)
+
+1. **Identity lock** — keep README / ROADMAP / plugin / AGENTS aligned with ops-layer (this change set).
+2. **CLI/TUI UX** — reduce setup marathon and command confusion (see map).
+3. **Doctor UX** — single scannable answer: installed? enabled? overrides drift? pruned agents gone? categories/fallback OK?
+4. **Guidance quietness** — positive + quiet tests for any new trigger terms.
+5. **Dead-path cleanup** — modules not on setup mainline (`setup-model-prompt` style leftovers) only after UX map P0s.
+
+## CLI / TUI UX map (evidence-bound)
+
+Full analysis: `.omo/evidence/lfp-cli-tui-ux.md`.
+
+### Command surface graph
+
+```text
+lfp
+├── setup ─────────┬── [TUI] intro confirm → runSetupLineMode(with selectors)
+│                  └── [line] LazyCodex → Sisyphus route → provider consent
+│                              → install plugin → model marathon
+│                              → GitHub start? → xAI MCP consent? → sync 3 fields
+├── dry-setup ──── same pipeline, check-only (no TUI)
+├── agent-config ─ model marathon only (no reinstall)
+├── sync ───────── LazyCodex → reinstall LFP → Sisyphus → apply lfp.json (no prompts)
+├── doctor ─────── multi-line status dump (exit 1 on any issue)
+├── delete ─────── remove LFP plugin tables (keeps lfp.json)
+├── undo ───────── restore LazyCodex + strip LFP surfaces + drop lfp.json
+├── benchmark-models
+├── skill-manager
+├── xai auth …
+└── help
+```
+
+### Setup interaction cost (worst case)
+
+| Stage | UI | Cost driver |
+| --- | --- | --- |
+| TUI intro | 1 confirm | Extra gate before any work |
+| LazyCodex install | spawn | Slow; opaque progress |
+| Provider consent | y/N (+ ledger) | Good |
+| Model overrides | **12 targets × up to 3 fields** (+ guides/logs) | **Primary pain** |
+| Saved lfp.json | keep vs adjust | Good when present; still re-enter marathon on “adjust” |
+| GitHub start | optional selector | Surprise late in flow |
+| xAI MCP | optional consent | Naming confuses MCP-free story |
+| Final sync | silent-ish logs | OK |
+
+Rough interactive field count: **default + ulw + ~10 agents × {model, effort, tier} ≈ 30+ prompts** if user never “keeps” wholesale.
+
+### Ranked pain points → next UX fixes
+
+| Pri | Pain | Why | Candidate fix |
 | --- | --- | --- | --- |
-| 11 agents | 6 core | +6 LFP-owned = 12 total | +5 missing = 17 total |
-| 8 categories with model routing | None | None | Full category system |
-| Per-agent + per-category fallback chains | None | Resolver for saved override configurations | Manual chains + resolver |
-| Runtime fallback (retry on 408/429/5xx) | None | Guidance hook | Retry engine |
-| 14+ skills | Subset | None | Port remaining skills |
-| Background agents / parallel orchestration | None | None | Emulated via multi-agent patterns |
-| Team Mode (61 hooks) | None | Art team trio | Team Mode emulation |
-| Multi-model support (GPT, Gemini, Grok, Claude) | GPT-focused | Provider config + benchmark + multi-model override | Full multi-model |
-
-## Phased Plan
-
-### Phase 0: Vision Alignment ✅
-
-**Goal:** Update project documentation to reflect the full OMO bridge direction.
-
-- [x] Rewrite AGENTS.md from "lightweight overlay" to "full OMO feature bridge"
-- [x] Rewrite ROADMAP.md with phased migration plan
-- [x] Update plugin.json description and capabilities
-- [x] Update README.md intro and contents
-- [x] Update package.json description
-
-### Phase 1: Missing Agents
-
-**Goal:** Add the 5 OMO agents not yet present in Codex: oracle, prometheus, hephaestus, atlas, sisyphus-junior.
-
-**Files to create:**
-- `agent-configs/oracle.toml` — read-only high-IQ reasoning consultant for architecture and debugging
-- `agent-configs/prometheus.toml` — strategic planner, writes `.omo/plans/*.md`
-- `agent-configs/hephaestus.toml` — implementation worker
-- `agent-configs/atlas.toml` — execution coordinator
-- `agent-configs/sisyphus-junior.toml` — focused task executor (no delegation)
-
-**Files to modify:**
-- `.codex-plugin/plugin.json` — add 5 agents to `additionalAgents`
-- `src/install/codex-plugin-install.ts` — verify new agents install correctly
-- `src/cli/cli-reporting.ts` — doctor reports new agents
-
-**Test:** New test file verifying all 5 agent TOMLs parse, install, and pass smoke check.
-
-### Phase 2: Category System
-
-**Goal:** Implement OMO's 8-category routing in Codex. Categories route work to domain-optimized models.
-
-**Categories:** visual-engineering, ultrabrain, deep, artistry, quick, unspecified-low, unspecified-high, writing.
-
-**Files to create:**
-- `agent-configs/lfp-categories.toml` — declarative category definitions (model, reasoning_effort, service_tier, fallback_models per category)
-- `src/model/category-resolver.ts` — resolves a category name → model + agent + fallback chain
-- `src/hooks/category-guidance-hook.ts` — UserPromptSubmit hook that emits category routing guidance when a category keyword is detected
-- `test/category-resolver.test.ts` — tests for category resolution
-
-**Files to modify:**
-- `src/hooks/user-prompt-submit.ts` — route to category guidance hook
-- `.codex-plugin/plugin.json` — add category resolver as a hook if needed
-
-**Constraint:** Category routing is guidance + resolver based. Codex has no native category dispatch; LFP guides the agent to use the right model/agent for the category.
-
-### Phase 3: Declarative Fallback Chains
-
-**Goal:** Implement OMO's per-agent and per-category `fallback_models[]` as declarative config consumed by the existing resolver.
-
-**Files to create:**
-- `agent-configs/lfp-fallback-chains.toml` — per-agent + per-category ordered fallback model arrays
-- `test/fallback-chains.test.ts` — tests for chain resolution
-
-**Files to modify:**
-- `src/model/model-fallback-resolver.ts` — read declarative chains, return ordered fallback list
-- `src/model/model-override-schema.ts` — add fallback chain schema
-- `src/model/model-fallback-guidance.ts` — emit full chain on quota/429 trigger, not just first fallback
-
-### Phase 4: Runtime Fallback Engine
-
-**Goal:** Implement OMO's runtime retry logic for transient errors (408/429/5xx).
-
-**Files to create:**
-- `src/model/runtime-fallback-engine.ts` — retry policy engine (max attempts, cooldown, timeout, notify)
-- `agent-configs/lfp-runtime-fallback.toml` — runtime fallback config (retry_on_errors, max_fallback_attempts, cooldown_seconds, timeout_seconds, notify_on_fallback)
-- `test/runtime-fallback.test.ts` — tests for retry logic
-
-**Files to modify:**
-- `src/model/model-fallback-guidance.ts` — use runtime engine for retry guidance
-- `.codex-plugin/plugin.json` — expose runtime fallback guidance hook
-
-**Constraint:** Codex hooks cannot intercept model API calls directly. Runtime fallback works via guidance (tell agent to retry with fallback model) + resolver, not automatic retry. True automatic retry depends on future Codex failure-hook support.
-
-### Phase 5: Full Feature Parity
-
-**Goal:** Port remaining OMO capabilities that Codex can support.
-
-**Sub-phases:**
-- **5a: Background agent emulation** — multi-agent dispatch patterns via spawn_agent + guidance hooks
-- **5b: Team Mode emulation** — extend art team pattern (role separation, checkpoints, evidence-bound QA) to general orchestration
-- **5c: Remaining skills** — port OMO skills not shipped by LazyCodex (security-research, opencode-qa, hyperplan, github-triage, etc.)
-- **5d: Model fallback title** — experimental model_fallback_title feature from OMO config
-
-## Near-Term Work
-
-- Preserve `setup`, `dry-setup`, `doctor`, `agent-config`, `smoke:isolated` commands.
-- Make `doctor` answer "is LFP installed in Codex and are all OMO features bridged?" without noisy output.
-- Keep OpenAI-compatible provider setup conservative: add missing config, preserve user-managed active providers, report drift.
-- Add visual/art/category/fallback hook triggers only with positive and quiet-case tests.
-- Keep legacy JSON override compatibility until old callers are gone.
-- Validate new agents (oracle, prometheus, hephaestus, atlas, sisyphus-junior) at install time and doctor time.
+| P0 | Setup model marathon | 30+ micro-prompts; no “accept all recommendations” | One “Apply recommended for all” + optional deep-edit per role |
+| P0 | setup vs sync vs agent-config vs doctor | Overlapping mental model | HELP one-liner matrix + doctor “next command” hint |
+| P1 | TUI is thin wrapper | Only shells line mode; console capture hides live progress | Stream progress notes; drop redundant intro or make it skippable once |
+| P1 | doctor noise / exit 1 | Many lines, no summary first | PASS/WARN/FAIL header + details section |
+| P1 | delete vs undo | Easy to pick wrong destructive command | Shared “what will be removed” table; stronger undo wording |
+| P2 | `--agent-models-only` / `--sync-global-defaults` | Dual flags, default is global sync | Default agent-only? or single `--scope=agents\|global` |
+| P2 | xAI MCP consent inside setup | Breaks MCP-free mental model mid-setup | Move to `lfp xai …` only; setup link text |
+| P2 | Line vs TUI back semantics | Two interaction languages | Shared BACK token docs in every prompt |
 
 ## Backlog
 
@@ -128,5 +115,5 @@ Track roadmap work in GitHub issues: <https://github.com/islee23520/lazycodex-fl
 - <https://github.com/islee23520/lazycodex-flavour-pack/issues/8>: TTY provider selector.
 - <https://github.com/islee23520/lazycodex-flavour-pack/issues/9>: Noninteractive provider configuration input.
 - <https://github.com/islee23520/lazycodex-flavour-pack/issues/10>: Provider auth and secret-source validation.
-- Category-aware benchmark scenarios (benchmark per category model, not just per agent).
-- Team Mode orchestration patterns beyond art team (sisyphus loop, plan-review loop).
+- Category-aware benchmark scenarios.
+- UX: bulk-accept recommendations; doctor summary strip; setup progress streaming.

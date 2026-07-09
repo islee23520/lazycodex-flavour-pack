@@ -34,7 +34,7 @@ test("given installed LFP plugin when runtime is promoted then hook registration
 
     const agentsDir = path.join(codexHome, "agents");
     for (const agent of ["oracle", "prometheus", "hephaestus", "atlas", "sisyphus-junior"]) {
-      assert.equal(existsSync(path.join(agentsDir, `${agent}.toml`)), true, `${agent}.toml should be installed`);
+      assert.equal(existsSync(path.join(agentsDir, `${agent}.toml`)), false, `${agent}.toml must not be installed`);
     }
   } finally {
     if (originalEnv === undefined) {

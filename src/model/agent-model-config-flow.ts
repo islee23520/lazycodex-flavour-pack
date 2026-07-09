@@ -48,6 +48,7 @@ async function runPromptStep(config, step, options) {
       modelSelector: options.modelSelector,
       tierSelector: options.tierSelector,
       reasoningSelector: options.reasoningSelector,
+      yesNoSelector: options.yesNoSelector,
       readline: options.readline
     });
 
@@ -79,6 +80,17 @@ async function runPromptStep(config, step, options) {
 
 async function promptForModelSection(config, agentName, options) {
   const fields = config.overrides[agentName] ?? {};
+  const hasExistingValue = typeof fields.model === "string" && fields.model.length > 0;
+  if (hasExistingValue && typeof options.yesNoSelector === "function") {
+    const label = options.displayName ?? agentName;
+    const shouldChange = await promptForYesNo(
+      options.readline,
+      `  Overwrite ${label} (current: ${fields.model})? [y/N]: `,
+      { yesNoSelector: options.yesNoSelector }
+    );
+    if (shouldChange === BACK_SELECTION) return BACK_SELECTION;
+    if (!shouldChange) return null;
+  }
   const current = typeof fields.model === "string" ? fields.model : options.models[0];
   const currentReasoning = typeof fields.model_reasoning_effort === "string" ? fields.model_reasoning_effort : "low";
   const currentTier = typeof fields.service_tier === "string" ? fields.service_tier : "default";
